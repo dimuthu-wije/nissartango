@@ -8,6 +8,10 @@
 		"directory": "./dist",
 		"binding": "ASSETS"
 	},
+	"routes": [
+  			{ "pattern": "nissartango.fr", "custom_domain": true },
+  			{ "pattern": "www.nissartango.fr", "custom_domain": true }
+			],
 	"observability": {
 		"enabled": true
 	}
