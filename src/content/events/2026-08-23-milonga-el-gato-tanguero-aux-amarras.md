@@ -2,7 +2,7 @@
 title: MILONGA "El Gato Tanguero" aux Amarras
 type: milonga
 date: 2026-08-26T20:30:00
-endDate: 2026-08-24T00:00:00
+endDate: 2026-08-26T00:00:00
 location: 2 rue La Bruyère
 city: Nice
 organizer: El Gato Tanguero, et Pierre Gabrielli
