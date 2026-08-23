@@ -1,0 +1,75 @@
+---
+import { getCollection, render } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+  const events = await getCollection('events');
+  return events.map((event) => ({
+    params: { slug: event.id },
+    props: { event },
+  }));
+}
+
+const { event } = Astro.props;
+const { Content } = await render(event);
+const d = event.data;
+
+const fullFmt = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+});
+const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+const description = `${d.type} le ${fullFmt.format(d.date)} à ${d.location}, ${d.city}.`;
+---
+
+<Layout title={`${d.title} — Nissa Tango`} description={description}>
+  <a href="/" class="back">← Agenda</a>
+
+  <span class="type">{d.type}</span>
+  <h1>{d.title}</h1>
+
+  <dl class="details">
+    <dt>Date</dt>
+    <dd>{fullFmt.format(d.date)} à {timeFmt.format(d.date)}</dd>
+
+    <dt>Lieu</dt>
+    <dd>{d.location}, {d.city}</dd>
+
+    {d.teachers.length > 0 && (<><dt>Avec</dt><dd>{d.teachers.join(', ')}</dd></>)}
+    {d.price && (<><dt>Tarif</dt><dd>{d.price}</dd></>)}
+
+    <dt>Organisé par</dt>
+    <dd>
+      {d.organizerUrl
+        ? <a href={d.organizerUrl} rel="noopener">{d.organizer}</a>
+        : d.organizer}
+    </dd>
+  </dl>
+
+  <div class="body"><Content /></div>
+
+  {d.signupUrl && <a class="cta" href={d.signupUrl} rel="noopener">S'inscrire</a>}
+</Layout>
+
+<style>
+  .back { font-size: 0.85rem; color: var(--muted); text-decoration: none; }
+  .type {
+    display: block; margin-top: 2rem; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--accent); font-weight: 600;
+  }
+  h1 { font-size: 1.9rem; margin: 0.3rem 0 1.75rem; letter-spacing: -0.02em; }
+  .details {
+    display: grid; grid-template-columns: 7rem 1fr; gap: 0.5rem 1rem;
+    margin: 0 0 2rem; padding: 1.25rem 0; border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line); font-size: 0.95rem;
+  }
+  .details dt { color: var(--muted); font-size: 0.85rem; }
+  .details dd { margin: 0; }
+  .details a { color: var(--accent); }
+  .body { margin-bottom: 2rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff;
+    padding: 0.7rem 1.4rem; border-radius: 4px; text-decoration: none;
+    font-size: 0.9rem; font-weight: 600;
+  }
+</style>
