@@ -1,11 +1,71 @@
 ---
-import Welcome from '../components/Welcome.astro';
+import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const now = new Date();
+const events = (await getCollection('events'))
+  .filter((e) => e.data.date >= now)
+  .sort((a, b) => a.data.date.getTime() - b.data.date.getTime());
+
+const dayFmt = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long', day: 'numeric', month: 'long',
+});
+const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="Nissa Tango — Agenda du tango à Nice">
+  <h1>Agenda</h1>
+  <p class="intro">Cours, practicas, milongas et stages à Nice et sur la Côte d'Azur.</p>
+
+  {events.length === 0 && <p class="empty">Aucun événement à venir pour le moment.</p>}
+
+  <ul class="events">
+    {events.map((e) => (
+      <li>
+        <div class="when">
+          <span class="date">{dayFmt.format(e.data.date)}</span>
+          <span class="time">{timeFmt.format(e.data.date)}</span>
+        </div>
+        <div class="what">
+          <span class="type">{e.data.type}</span>
+          <h2>{e.data.title}</h2>
+          <p class="meta">
+            {e.data.location}, {e.data.city}
+            {e.data.price && <> · {e.data.price}</>}
+          </p>
+          {e.data.organizer !== 'Nissa Tango' && (
+            <p class="org">Organisé par {e.data.organizer}</p>
+          )}
+        </div>
+      </li>
+    ))}
+  </ul>
 </Layout>
+
+<style>
+  h1 { font-size: 2rem; margin: 0 0 0.4rem; letter-spacing: -0.02em; }
+  .intro { color: var(--muted); margin: 0 0 2.5rem; }
+  .empty { color: var(--muted); font-style: italic; }
+  .events { list-style: none; padding: 0; margin: 0; }
+  .events li {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: 1.5rem;
+    padding: 1.25rem 0;
+    border-top: 1px solid var(--line);
+  }
+  .when { display: flex; flex-direction: column; }
+  .date { font-weight: 600; font-size: 0.9rem; text-transform: capitalize; }
+  .time { color: var(--muted); font-size: 0.85rem; }
+  .type {
+    display: inline-block; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--accent); font-weight: 600;
+  }
+  .what h2 { font-size: 1.05rem; margin: 0.2rem 0 0.3rem; font-weight: 600; }
+  .meta { margin: 0; color: var(--muted); font-size: 0.9rem; }
+  .org { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.85rem; font-style: italic; }
+  @media (max-width: 34rem) {
+    .events li { grid-template-columns: 1fr; gap: 0.4rem; }
+    .when { flex-direction: row; gap: 0.5rem; }
+  }
+</style>
