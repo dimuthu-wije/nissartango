@@ -13,7 +13,7 @@ const dayFmt = new Intl.DateTimeFormat('fr-FR', {
 const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
 ---
 
-<Layout title="Nissa Tango — Agenda du tango à Nice">
+<Layout title="Nissartango — Agenda du tango à Nice">
   <h1>Agenda</h1>
   <p class="intro">Cours, practicas, milongas et stages à Nice et sur la Côte d'Azur.</p>
 
@@ -33,7 +33,7 @@ const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-d
             {e.data.location}, {e.data.city}
             {e.data.price && <> · {e.data.price}</>}
           </p>
-          {e.data.organizer !== 'Nissa Tango' && (
+          {e.data.organizer !== 'Nissartango' && (
             <p class="org">Organisé par {e.data.organizer}</p>
           )}
         </div>

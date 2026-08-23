@@ -25,7 +25,7 @@ const events = defineCollection({
     endDate: optionalDate,
     location: z.string(),
     city: z.string().default('Nice'),
-    organizer: z.string().default('Nissa Tango'),
+    organizer: z.string().default('Nissartango'),
     organizerUrl: optionalUrl,
     teachers: z.array(z.string()).default([]),
     price: optionalString,
