@@ -3,8 +3,14 @@ interface Props {
   title: string;
   description?: string;
   lang?: string;
+  image?: string;
 }
-const { title, description = "Agenda du tango à Nice et sur la Côte d'Azur", lang = 'fr' } = Astro.props;
+const {
+  title,
+  description = "Agenda du tango à Nice et sur la Côte d'Azur",
+  lang = 'fr',
+  image,
+} = Astro.props;
 ---
 <!doctype html>
 <html lang={lang}>
@@ -17,6 +23,8 @@ const { title, description = "Agenda du tango à Nice et sur la Côte d'Azur", l
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={Astro.url.href} />
+    {image && <meta property="og:image" content={new URL(image, Astro.site)} />}
+    {image && <meta name="twitter:card" content="summary_large_image" />}
   </head>
   <body>
     <header>

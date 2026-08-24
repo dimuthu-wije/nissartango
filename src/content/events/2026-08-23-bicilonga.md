@@ -5,8 +5,7 @@ date: 2026-08-25T18:30:00
 endDate: 2026-08-25T22:30:00
 location: Place Garibaldi
 city: Nice
-organizer: Dim
-organizerUrl: ''
+organizer: nissartango
 teachers:
   - Dim
 price: Au chapeau

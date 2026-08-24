@@ -1,6 +1,7 @@
 ---
-import { getCollection, render } from 'astro:content';
+import { getCollection, getEntry, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
+import { nextDate, RECURRENCE_LABELS } from '../../lib/events';
 
 export async function getStaticPaths() {
   const events = await getCollection('events');
@@ -13,24 +14,30 @@ export async function getStaticPaths() {
 const { event } = Astro.props;
 const { Content } = await render(event);
 const d = event.data;
+const organizer = (await getEntry(d.organizer))?.data;
+const when = nextDate(event);
+const recurrenceLabel = RECURRENCE_LABELS[d.recurrence];
 
 const fullFmt = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
 });
 const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-const description = `${d.type} le ${fullFmt.format(d.date)} à ${d.location}, ${d.city}.`;
+const description = `${d.type} le ${fullFmt.format(when)} à ${d.location}, ${d.city}.`;
 ---
 
-<Layout title={`${d.title} — Nissartango`} description={description}>
+<Layout title={`${d.title} — Nissartango`} description={description} image={d.image}>
   <a href="/" class="back">← Agenda</a>
 
   <span class="type">{d.type}</span>
   <h1>{d.title}</h1>
 
   <dl class="details">
-    <dt>Date</dt>
-    <dd>{fullFmt.format(d.date)} à {timeFmt.format(d.date)}</dd>
+    <dt>{recurrenceLabel ? 'Prochaine date' : 'Date'}</dt>
+    <dd>
+      {fullFmt.format(when)} à {timeFmt.format(when)}
+      {recurrenceLabel && <span class="recur">{recurrenceLabel}</span>}
+    </dd>
 
     <dt>Lieu</dt>
     <dd>{d.location}, {d.city}</dd>
@@ -40,9 +47,17 @@ const description = `${d.type} le ${fullFmt.format(d.date)} à ${d.location}, ${
 
     <dt>Organisé par</dt>
     <dd>
-      {d.organizerUrl
-        ? <a href={d.organizerUrl} rel="noopener">{d.organizer}</a>
-        : d.organizer}
+      {organizer?.website
+        ? <a href={organizer.website} rel="noopener">{organizer.name}</a>
+        : (organizer?.name ?? d.organizer.id)}
+      {organizer && (
+        <span class="social">
+          {organizer.instagram && <a href={`https://instagram.com/${organizer.instagram}`} rel="noopener">Instagram</a>}
+          {organizer.facebook && <a href={`https://facebook.com/${organizer.facebook}`} rel="noopener">Facebook</a>}
+          {organizer.tiktok && <a href={`https://tiktok.com/@${organizer.tiktok}`} rel="noopener">TikTok</a>}
+          {organizer.email && <a href={`mailto:${organizer.email}`}>Email</a>}
+        </span>
+      )}
     </dd>
   </dl>
 
@@ -66,10 +81,15 @@ const description = `${d.type} le ${fullFmt.format(d.date)} à ${d.location}, ${
   .details dt { color: var(--muted); font-size: 0.85rem; }
   .details dd { margin: 0; }
   .details a { color: var(--accent); }
+  .recur {
+    display: block; color: var(--muted); font-size: 0.85rem;
+  }
   .body { margin-bottom: 2rem; }
   .cta {
     display: inline-block; background: var(--accent); color: #fff;
     padding: 0.7rem 1.4rem; border-radius: 4px; text-decoration: none;
     font-size: 0.9rem; font-weight: 600;
   }
+  .social { display: block; margin-top: 0.3rem; font-size: 0.85rem; }
+  .social a { margin-right: 0.75rem; }
 </style>

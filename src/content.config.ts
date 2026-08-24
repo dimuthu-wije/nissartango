@@ -1,4 +1,4 @@
-import { defineCollection, z } from 'astro:content';
+import { defineCollection, reference, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
 const optionalUrl = z.preprocess(
@@ -16,6 +16,19 @@ const optionalDate = z.preprocess(
   z.coerce.date().optional()
 );
 
+const organizers = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/organizers' }),
+  schema: z.object({
+    name: z.string(),
+    website: optionalUrl,
+    instagram: optionalString,
+    facebook: optionalString,
+    tiktok: optionalString,
+    email: optionalString,
+    phone: optionalString,
+  }),
+});
+
 const events = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/events' }),
   schema: z.object({
@@ -23,17 +36,17 @@ const events = defineCollection({
     type: z.enum(['cours', 'practica', 'milonga', 'stage', 'demo', 'festival']),
     date: z.coerce.date(),
     endDate: optionalDate,
+    recurrence: z.enum(['none', 'weekly', 'biweekly', 'monthly']).default('none'),
+    recurrenceEnd: optionalDate,
+    exceptions: z.array(z.coerce.date()).default([]),
     location: z.string(),
     city: z.string().default('Nice'),
-    organizer: z.string().default('Nissartango'),
-    organizerUrl: optionalUrl,
+    organizer: reference('organizers'),
     teachers: z.array(z.string()).default([]),
     price: optionalString,
     signupUrl: optionalUrl,
     image: optionalString,
-    title_en: optionalString,
-    description_en: optionalString,
   }),
 });
 
-export const collections = { events };
+export const collections = { events, organizers };

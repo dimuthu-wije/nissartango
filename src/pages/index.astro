@@ -1,11 +1,13 @@
 ---
 import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
+import { upcoming } from '../lib/events';
+import { SITE_ORGANIZER_ID } from '../data/site';
 
-const now = new Date();
-const events = (await getCollection('events'))
-  .filter((e) => e.data.date >= now)
-  .sort((a, b) => a.data.date.getTime() - b.data.date.getTime());
+const events = upcoming(await getCollection('events'));
+const organizers = new Map(
+  (await getCollection('organizers')).map((o) => [o.id, o.data])
+);
 
 const dayFmt = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long', day: 'numeric', month: 'long',
@@ -20,25 +22,30 @@ const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-d
   {events.length === 0 && <p class="empty">Aucun événement à venir pour le moment.</p>}
 
   <ul class="events">
-    {events.map((e) => (
-      <li>
-        <div class="when">
-          <span class="date">{dayFmt.format(e.data.date)}</span>
-          <span class="time">{timeFmt.format(e.data.date)}</span>
-        </div>
-        <div class="what">
-          <span class="type">{e.data.type}</span>
-          <h2><a href={`/evenements/${e.id}`}>{e.data.title}</a></h2>
-          <p class="meta">
-            {e.data.location}, {e.data.city}
-            {e.data.price && <> · {e.data.price}</>}
-          </p>
-          {e.data.organizer !== 'Nissartango' && (
-            <p class="org">Organisé par {e.data.organizer}</p>
-          )}
-        </div>
-      </li>
-    ))}
+    {events.map((o) => {
+      const e = o.entry.data;
+      const orgId = e.organizer.id;
+      const orgName = organizers.get(orgId)?.name ?? orgId;
+      return (
+        <li>
+          <div class="when">
+            <span class="date">{dayFmt.format(o.date)}</span>
+            <span class="time">{timeFmt.format(o.date)}</span>
+          </div>
+          <div class="what">
+            <span class="type">{e.type}</span>
+            <h2><a href={`/evenements/${o.entry.id}`}>{e.title}</a></h2>
+            <p class="meta">
+              {e.location}, {e.city}
+              {e.price && <> · {e.price}</>}
+            </p>
+            {orgId !== SITE_ORGANIZER_ID && (
+              <p class="org">Organisé par {orgName}</p>
+            )}
+          </div>
+        </li>
+      );
+    })}
   </ul>
 </Layout>
 
