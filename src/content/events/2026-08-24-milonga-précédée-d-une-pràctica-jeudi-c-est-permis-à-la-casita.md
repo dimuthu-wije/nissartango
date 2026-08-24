@@ -13,5 +13,5 @@ organizer: rosa-gervasi
 teachers: []
 price: '10'
 signupUrl: ''
-image: /uploads/events/774862894_1413482254217082_4092733349031169183_n.jpg
+image: ''
 ---
