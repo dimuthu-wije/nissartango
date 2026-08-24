@@ -9,7 +9,7 @@ exceptions:
   - 2026-10-22
 location: La Casita del Tango
 city: Nice
-organizer: nissartango
+organizer: rosa-gervasi
 teachers: []
 price: '10'
 signupUrl: ''
