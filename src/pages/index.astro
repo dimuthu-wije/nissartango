@@ -36,8 +36,8 @@ const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-d
             <span class="type">{e.type}</span>
             <h2><a href={`/evenements/${o.entry.id}`}>{e.title}</a></h2>
             <p class="meta">
-              {e.location}, {e.city}
-              {e.price && <> · {e.price}</>}
+              {e.location.name}{e.location.name && ', '}{e.city}
+              {e.price?.full && <> · {e.price.full}</>}
             </p>
             {orgId !== SITE_ORGANIZER_ID && (
               <p class="org">Organisé par {orgName}</p>

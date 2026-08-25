@@ -23,7 +23,7 @@ const fullFmt = new Intl.DateTimeFormat('fr-FR', {
 });
 const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-const description = `${d.type} le ${fullFmt.format(when)} à ${d.location}, ${d.city}.`;
+const description = `${d.type} le ${fullFmt.format(when)} à ${d.location.name ?? ''}, ${d.city}.`;
 ---
 
 <Layout title={`${d.title} — Nissartango`} description={description} image={d.image}>
@@ -40,7 +40,22 @@ const description = `${d.type} le ${fullFmt.format(when)} à ${d.location}, ${d.
     </dd>
 
     <dt>Lieu</dt>
-    <dd>{d.location}, {d.city}</dd>
+    <dd>
+      {d.location.name}{d.location.name && <br />}
+      {d.location.address}{d.location.address && ', '}{d.location.postalCode} {d.city}
+    </dd>
+
+    {d.teachers.length > 0 && (<><dt>Avec</dt><dd>{d.teachers.join(', ')}</dd></>)}
+    {(d.price?.full || d.price?.member) && (
+      <>
+        <dt>Prix d'entrée</dt>
+        <dd>
+          {d.price.full && <>Plein tarif : {d.price.full}</>}
+          {d.price.full && d.price.member && <br />}
+          {d.price.member && <>Tarif adhérent/réduit : {d.price.member}</>}
+        </dd>
+      </>
+    )}
 
     {d.teachers.length > 0 && (<><dt>Avec</dt><dd>{d.teachers.join(', ')}</dd></>)}
     {d.price && (<><dt>Tarif</dt><dd>{d.price}</dd></>)}

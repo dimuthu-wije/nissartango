@@ -16,6 +16,23 @@ const optionalDate = z.preprocess(
   z.coerce.date().optional()
 );
 
+const location = z.preprocess(
+  (v) => (typeof v === 'object' && v !== null ? v : {}),
+  z.object({
+    name: optionalString,
+    address: optionalString,
+    postalCode: optionalString,
+  })
+);
+
+const price = z.preprocess(
+  (v) => (typeof v === 'object' && v !== null ? v : undefined),
+  z.object({
+    full: optionalString,
+    member: optionalString,
+  }).optional()
+);
+
 const organizers = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/organizers' }),
   schema: z.object({
@@ -39,11 +56,11 @@ const events = defineCollection({
     recurrence: z.enum(['none', 'weekly', 'biweekly', 'monthly']).default('none'),
     recurrenceEnd: optionalDate,
     exceptions: z.array(z.coerce.date()).default([]),
-    location: z.string(),
+    location: location,
     city: z.string().default('Nice'),
     organizer: reference('organizers'),
     teachers: z.array(z.string()).default([]),
-    price: optionalString,
+    price: price,
     signupUrl: optionalUrl,
     image: optionalString,
   }),
