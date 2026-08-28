@@ -22,3 +22,13 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# supabase CLI working files (config.toml and migrations ARE committed)
+supabase/.branches/
+supabase/.temp/
+
+# Event images are pulled from Supabase Storage on every build; Storage is
+# their source of truth. Delete these two lines if you would rather have the
+# flyers backed up in git alongside data/snapshot.json.
+src/assets/events/*
+!src/assets/events/.gitkeep

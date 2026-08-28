@@ -4,13 +4,21 @@ interface Props {
   description?: string;
   lang?: string;
   image?: string;
+  canonical?: string;
+  jsonLd?: unknown;
 }
 const {
   title,
   description = "Agenda du tango à Nice et sur la Côte d'Azur",
   lang = 'fr',
   image,
+  canonical,
+  jsonLd,
 } = Astro.props;
+
+// Canonical from Astro.site, not Astro.url: the built pages are served from
+// one origin and any preview deployment must still point at the real one.
+const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).href;
 ---
 <!doctype html>
 <html lang={lang}>
@@ -22,9 +30,14 @@ const {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content={Astro.url.href} />
+    <link rel="canonical" href={canonicalUrl} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:locale" content="fr_FR" />
     {image && <meta property="og:image" content={new URL(image, Astro.site)} />}
     {image && <meta name="twitter:card" content="summary_large_image" />}
+    {jsonLd && (
+      <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+    )}
   </head>
   <body>
     <header>

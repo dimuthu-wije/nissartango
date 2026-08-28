@@ -1,14 +1,15 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "nissartango",
-	"main": "@astrojs/cloudflare/entrypoints/server",
+	// No "main": the public site is static assets and nothing else. There is no
+	// Worker script, so there is no code path that could call Supabase at
+	// runtime -- the boundary this whole design protects is now structural
+	// rather than remembered. The editor SPA is a separate deployment.
 	"compatibility_date": "2026-08-23",
-	"compatibility_flags": ["global_fetch_strictly_public"],
 	"workers_dev": false,
 	"preview_urls": true,
 	"assets": {
-		"directory": "./dist",
-		"binding": "ASSETS"
+		"directory": "./dist"
 	},
 	"routes": [
 		{ "pattern": "nissartango.fr", "custom_domain": true },

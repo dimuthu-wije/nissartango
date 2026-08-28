@@ -1,0 +1,229 @@
+---
+import { getCollection, render } from 'astro:content';
+import { Image } from 'astro:assets';
+import Layout from '../../layouts/Layout.astro';
+import {
+  loadAgenda, socialLinks, TYPE_LABELS, priceSummary,
+  fmtFull, fmtTime, isoWithOffset, toRow,
+} from '../../lib/content';
+import { expand, nextDate, RECURRENCE_LABELS } from '../../lib/occurrences.js';
+
+// ONE page per series, never one per occurrence. A weekly practica is a single
+// thing with a single URL; thin per-date duplicates would compete with each
+// other in search results and multiply for no reader benefit.
+export async function getStaticPaths() {
+  const events = await getCollection('events');
+  return events.map((entry) => ({ params: { slug: entry.data.slug }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const e = toRow(entry);
+const { Content } = await render(entry);
+
+const { organizers, exceptionsByEvent } = await loadAgenda();
+const organizer = organizers.get(e.organizer_id);
+const exceptions = exceptionsByEvent.get(e.id) ?? [];
+
+const tz = e.timezone || 'Europe/Paris';
+const when = nextDate(e, exceptions);
+const recurrenceLabel = RECURRENCE_LABELS[e.recurrence];
+const price = priceSummary(e);
+const cancelled = Boolean(e.cancelled_at);
+
+// Upcoming dates worth listing on a series page, cancellations included so a
+// reader can see which week is off.
+const dates = e.recurrence === 'none'
+  ? []
+  : expand(e, exceptions).filter((o) => o.start >= new Date()).slice(0, 8);
+
+// Images are downloaded into src/assets/events by scripts/fetch-content.mjs,
+// so Astro can optimise them and Cloudflare can serve them. The glob is how a
+// build-time-known filename reaches Vite's asset pipeline.
+const images = import.meta.glob<{ default: ImageMetadata }>(
+  '../../assets/events/*.{jpeg,jpg,png,webp,avif}', { eager: true });
+const image = e.image_file
+  ? images[`../../assets/events/${e.image_file}`]?.default
+  : undefined;
+
+const canonical = new URL(`/evenements/${e.slug}`, Astro.site).href;
+const description =
+  `${TYPE_LABELS[e.type] ?? e.type} le ${fmtFull(when, tz)} à ` +
+  `${e.location_name ? e.location_name + ', ' : ''}${e.city}.`;
+
+// --- schema.org ------------------------------------------------------------
+// startDate carries the real offset (+02:00 in summer, +01:00 in winter);
+// a floating local time or a UTC instant both mislead aggregators.
+// No offers on a cancelled event: eventStatus says Cancelled, and an Offer
+// with availability InStock alongside it is a contradiction aggregators can
+// and do act on.
+const offers = (!cancelled && (e.price_full != null || e.price_member != null))
+  ? [e.price_full != null && {
+      '@type': 'Offer', price: String(e.price_full), priceCurrency: 'EUR',
+      availability: 'https://schema.org/InStock', url: e.signup_url ?? canonical,
+    },
+    e.price_member != null && {
+      '@type': 'Offer', name: 'Tarif adhérent/réduit',
+      price: String(e.price_member), priceCurrency: 'EUR',
+      availability: 'https://schema.org/InStock', url: e.signup_url ?? canonical,
+    }].filter(Boolean)
+  : undefined;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Event',
+  name: e.title,
+  url: canonical,
+  startDate: isoWithOffset(when, tz),
+  ...(e.duration_minutes
+    ? { endDate: isoWithOffset(new Date(when.getTime() + e.duration_minutes * 60000), tz) }
+    : {}),
+  eventStatus: cancelled
+    ? 'https://schema.org/EventCancelled'
+    : 'https://schema.org/EventScheduled',
+  eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+  ...(e.body ? { description: e.body.replace(/\s+/g, ' ').trim().slice(0, 300) } : {}),
+  location: {
+    '@type': 'Place',
+    name: e.location_name ?? e.city,
+    address: {
+      '@type': 'PostalAddress',
+      ...(e.location_address ? { streetAddress: e.location_address } : {}),
+      addressLocality: e.city,
+      ...(e.location_postal_code ? { postalCode: e.location_postal_code } : {}),
+      addressCountry: 'FR',
+    },
+  },
+  ...(organizer ? {
+    organizer: {
+      '@type': 'Organization',
+      name: organizer.name,
+      ...(organizer.website ? { url: organizer.website } : {}),
+    },
+  } : {}),
+  ...(e.teachers.length ? { performer: e.teachers.map((n: string) => ({ '@type': 'Person', name: n })) } : {}),
+  ...(offers ? { offers } : {}),
+  ...(image ? { image: [new URL(image.src, Astro.site).href] } : {}),
+};
+---
+
+<Layout
+  title={`${e.title} — Nissartango`}
+  description={description}
+  canonical={canonical}
+  jsonLd={jsonLd}
+>
+  <a href="/" class="back">← Agenda</a>
+
+  <span class="type">{TYPE_LABELS[e.type] ?? e.type}</span>
+  <h1>{e.title}</h1>
+
+  {cancelled && (
+    <p class="banner">
+      Annulé{e.cancellation_note ? ` — ${e.cancellation_note}` : ''}
+    </p>
+  )}
+
+  {image && (
+    <Image src={image} alt={e.title} widths={[400, 800, 1200]}
+           sizes="(max-width: 46rem) 100vw, 46rem" class="flyer" />
+  )}
+
+  <dl class="details">
+    <dt>{recurrenceLabel ? 'Prochaine date' : 'Date'}</dt>
+    <dd>
+      {fmtFull(when, tz)} à {fmtTime(when, tz)}
+      {recurrenceLabel && <span class="recur">{recurrenceLabel}</span>}
+    </dd>
+
+    <dt>Lieu</dt>
+    <dd>
+      {e.location_name}{e.location_name && <br />}
+      {e.location_address}{e.location_address && <br />}
+      {e.location_postal_code} {e.city}
+    </dd>
+
+    {e.teachers.length > 0 && (<><dt>Avec</dt><dd>{e.teachers.join(', ')}</dd></>)}
+
+    {(e.price_full != null || e.price_member != null || e.price_note) && (
+      <>
+        <dt>Tarif</dt>
+        <dd>
+          {price}
+          {e.price_note && (e.price_full != null || e.price_member != null) && (
+            <span class="note">{e.price_note}</span>
+          )}
+        </dd>
+      </>
+    )}
+
+    <dt>Organisé par</dt>
+    <dd>
+      {organizer?.name ?? '—'}
+      {organizer && socialLinks(organizer).length > 0 && (
+        <span class="social">
+          {socialLinks(organizer).map((l) => (
+            <a href={l.href} rel="noopener">{l.label}</a>
+          ))}
+        </span>
+      )}
+    </dd>
+  </dl>
+
+  {dates.length > 0 && (
+    <section class="dates">
+      <h2>Prochaines dates</h2>
+      <ul>
+        {dates.map((o) => (
+          <li class={o.cancelled ? 'off' : undefined}>
+            {fmtFull(o.start, tz)}
+            {o.cancelled && <> — annulé{o.note ? ` (${o.note})` : ''}</>}
+            {o.moved && <> — déplacé{o.note ? ` (${o.note})` : ''}</>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <div class="body"><Content /></div>
+
+  {e.signup_url && !cancelled && (
+    <a class="cta" href={e.signup_url} rel="noopener">S'inscrire</a>
+  )}
+</Layout>
+
+<style>
+  .back { font-size: 0.85rem; color: var(--muted); text-decoration: none; }
+  .type {
+    display: block; margin-top: 2rem; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--accent); font-weight: 600;
+  }
+  h1 { font-size: 1.9rem; margin: 0.3rem 0 1.25rem; letter-spacing: -0.02em; }
+  .banner {
+    background: #fdecea; color: #b3261e; font-weight: 600;
+    padding: 0.7rem 1rem; border-radius: 4px; margin: 0 0 1.5rem;
+  }
+  .flyer { width: 100%; height: auto; border-radius: 4px; margin-bottom: 1.75rem; }
+  .details {
+    display: grid; grid-template-columns: 7rem 1fr; gap: 0.5rem 1rem;
+    margin: 0 0 2rem; padding: 1.25rem 0; border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line); font-size: 0.95rem;
+  }
+  .details dt { color: var(--muted); font-size: 0.85rem; }
+  .details dd { margin: 0; }
+  .details a { color: var(--accent); }
+  .recur, .note { display: block; color: var(--muted); font-size: 0.85rem; }
+  .social { display: block; margin-top: 0.3rem; font-size: 0.85rem; }
+  .social a { margin-right: 0.75rem; }
+  .dates { margin-bottom: 2rem; }
+  .dates h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
+              color: var(--muted); margin-bottom: 0.5rem; }
+  .dates ul { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; }
+  .dates li { padding: 0.2rem 0; }
+  .dates li.off { color: var(--muted); text-decoration: line-through; }
+  .body { margin-bottom: 2rem; }
+  .cta {
+    display: inline-block; background: var(--accent); color: #fff;
+    padding: 0.7rem 1.4rem; border-radius: 4px; text-decoration: none;
+    font-size: 0.9rem; font-weight: 600;
+  }
+</style>

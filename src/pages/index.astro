@@ -1,47 +1,44 @@
 ---
-import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
-import { upcoming } from '../lib/events';
-import { SITE_ORGANIZER_ID } from '../data/site';
+import { loadAgenda, TYPE_LABELS, priceSummary, fmtDay, fmtTime } from '../lib/content';
 
-const events = upcoming(await getCollection('events'));
-const organizers = new Map(
-  (await getCollection('organizers')).map((o) => [o.id, o.data])
-);
+const { occurrences, organizers } = await loadAgenda();
 
-const dayFmt = new Intl.DateTimeFormat('fr-FR', {
-  weekday: 'long', day: 'numeric', month: 'long',
-});
-const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
+// A cancelled series keeps its page but leaves the listing. A cancelled
+// OCCURRENCE stays, struck through, with its reason: "pas de practica le
+// 15 août" tells a reader something; a silently missing Tuesday does not.
+const rows = occurrences.filter((o) => !o.event.cancelled_at);
 ---
 
 <Layout title="Nissartango — Agenda du tango à Nice">
   <h1>Agenda</h1>
   <p class="intro">Cours, practicas, milongas et stages à Nice et sur la Côte d'Azur.</p>
 
-  {events.length === 0 && <p class="empty">Aucun événement à venir pour le moment.</p>}
+  {rows.length === 0 && <p class="empty">Aucun événement à venir pour le moment.</p>}
 
   <ul class="events">
-    {events.map((o) => {
-      const e = o.entry.data;
-      const orgId = e.organizer.id;
-      const orgName = organizers.get(orgId)?.name ?? orgId;
+    {rows.map((o) => {
+      const e = o.event;
+      const organizer = organizers.get(e.organizer_id);
+      const price = priceSummary(e);
       return (
-        <li>
+        <li class={o.cancelled ? 'cancelled' : undefined}>
           <div class="when">
-            <span class="date">{dayFmt.format(o.date)}</span>
-            <span class="time">{timeFmt.format(o.date)}</span>
+            <span class="date">{fmtDay(o.start, e.timezone)}</span>
+            <span class="time">{fmtTime(o.start, e.timezone)}</span>
           </div>
           <div class="what">
-            <span class="type">{e.type}</span>
-            <h2><a href={`/evenements/${o.entry.id}`}>{e.title}</a></h2>
+            <span class="type">{TYPE_LABELS[e.type] ?? e.type}</span>
+            <h2><a href={`/evenements/${e.slug}`}>{e.title}</a></h2>
             <p class="meta">
-              {e.location.name}{e.location.name && ', '}{e.city}
-              {e.price?.full && <> · {e.price.full}</>}
+              {e.location_name}{e.location_name && ', '}{e.city}
+              {price && <> · {price}</>}
+              {organizer && <> · {organizer.name}</>}
             </p>
-            {orgId !== SITE_ORGANIZER_ID && (
-              <p class="org">Organisé par {orgName}</p>
+            {o.cancelled && (
+              <p class="off">Annulé{o.note ? ` — ${o.note}` : ''}</p>
             )}
+            {o.moved && <p class="off moved">Séance déplacée{o.note ? ` — ${o.note}` : ''}</p>}
           </div>
         </li>
       );
@@ -50,31 +47,31 @@ const timeFmt = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-d
 </Layout>
 
 <style>
-  h1 { font-size: 2rem; margin: 0 0 0.4rem; letter-spacing: -0.02em; }
-  .intro { color: var(--muted); margin: 0 0 2.5rem; }
-  .empty { color: var(--muted); font-style: italic; }
+  h1 { font-size: 1.9rem; margin: 2rem 0 0.25rem; letter-spacing: -0.02em; }
+  .intro { color: var(--muted); margin: 0 0 2rem; }
+  .empty { color: var(--muted); }
   .events { list-style: none; padding: 0; margin: 0; }
   .events li {
-    display: grid;
-    grid-template-columns: 9rem 1fr;
-    gap: 1.5rem;
-    padding: 1.25rem 0;
-    border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 8.5rem 1fr; gap: 1rem;
+    padding: 1.1rem 0; border-top: 1px solid var(--line);
   }
   .when { display: flex; flex-direction: column; }
-  .date { font-weight: 600; font-size: 0.9rem; text-transform: capitalize; }
+  .date { font-size: 0.9rem; text-transform: capitalize; }
   .time { color: var(--muted); font-size: 0.85rem; }
   .type {
-    display: inline-block; font-size: 0.7rem; text-transform: uppercase;
-    letter-spacing: 0.08em; color: var(--accent); font-weight: 600;
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent); font-weight: 600;
   }
-  .what h2 { font-size: 1.05rem; margin: 0.2rem 0 0.3rem; font-weight: 600; }
-  .meta { margin: 0; color: var(--muted); font-size: 0.9rem; }
-  .org { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.85rem; font-style: italic; }
-  @media (max-width: 34rem) {
-    .events li { grid-template-columns: 1fr; gap: 0.4rem; }
+  h2 { font-size: 1.05rem; margin: 0.15rem 0 0.3rem; }
+  h2 a { color: inherit; text-decoration: none; }
+  h2 a:hover { text-decoration: underline; }
+  .meta { margin: 0; color: var(--muted); font-size: 0.88rem; }
+  .off { margin: 0.35rem 0 0; font-size: 0.85rem; font-weight: 600; color: #b3261e; }
+  .off.moved { color: var(--muted); }
+  li.cancelled .date, li.cancelled h2 { text-decoration: line-through; }
+  li.cancelled { opacity: 0.75; }
+  @media (max-width: 30rem) {
+    .events li { grid-template-columns: 1fr; gap: 0.25rem; }
     .when { flex-direction: row; gap: 0.5rem; }
   }
-  .what h2 a { color: inherit; text-decoration: none; }
-  .what h2 a:hover { color: var(--accent); }
 </style>

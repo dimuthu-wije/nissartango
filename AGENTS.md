@@ -141,3 +141,26 @@ public/admin/index.html       CMS entry point
 Be objective and disagree with me when I'm wrong. Point out design problems
 before writing code. I'll paste build logs and file contents; tell me exactly
 what to change rather than having me experiment.
+## Supabase
+
+Schema lives in `supabase/migrations/` and is applied with the CLI, never
+through the dashboard or an MCP connector. As of the first `db push` to the
+dev project those files are history: **append new migrations, never edit an
+applied one.**
+
+Project settings that live in the dashboard and do NOT travel with this repo
+are written down in **`supabase/PROJECT_SETUP.md`** — read it before creating
+the production project. Short version: Data API on, automatically-expose-new-
+tables off, automatic RLS on. A mistake should deny, not expose.
+
+Verification:
+
+```
+./scripts/test-schema.sh          # 117 in-database assertions, local only
+./scripts/create-test-users.sh    # test accounts (local only, deletes/recreates)
+./scripts/prove-rls.sh            # 42 HTTP proofs with the anon key
+```
+
+`supabase/tests/grants_check.sql` is read-only and safe against any project,
+including production — it is the half of the suite that the local stack cannot
+answer honestly.
