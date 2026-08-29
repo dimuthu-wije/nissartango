@@ -1,0 +1,30 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "nissartango-cron",
+	"main": "src/index.mjs",
+	"compatibility_date": "2026-08-29",
+
+	// UTC. Cloudflare cron triggers have no timezone option, so these drift
+	// against Paris by an hour across the changeovers. At 03:15 and 09:15 UTC
+	// that is irrelevant -- see the note in src/index.mjs.
+	"triggers": {
+		"crons": [
+			"15 3 * * *", // rebuild + keep-alive
+			"15 9 * * *"  // keep-alive only, at a different hour so one bad
+			              // run cannot take out both jobs on the same day
+		]
+	},
+
+	// Both of these are PUBLIC by design: the publishable key is the one that
+	// ships in browsers, and RLS is what protects the data. The deploy hook URL
+	// is the actual secret here, and it is set with:
+	//     npx wrangler secret put DEPLOY_HOOK_URL
+	"vars": {
+		"SUPABASE_URL": "https://eqcgeqzzuzcwrflwasjo.supabase.co",
+		"SUPABASE_ANON_KEY": "sb_publishable_skzfneinpRaYYqrpLvgYMw_rhaPUQ5E"
+	},
+
+	"observability": {
+		"enabled": true
+	}
+}
