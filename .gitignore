@@ -4,6 +4,12 @@ dist/
 # generated types
 .astro/
 
+# wrangler's local state, and the deploy-config redirect the Astro Cloudflare
+# adapter used to write. That redirect pointed at dist/client/wrangler.json,
+# which no longer exists now the site is adapter-free -- and because it was
+# committed, it followed the repo to Cloudflare and failed every deploy.
+.wrangler/
+
 # dependencies
 node_modules/
 
