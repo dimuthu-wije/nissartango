@@ -137,15 +137,35 @@ for (const f of eventPages) {
 ok(`${eventPages.length} event page(s) with Event JSON-LD, offsets included`);
 
 // 6. Sitemap covers every event page.
+//
+// Comparing the raw directory name is not enough: `new URL()` percent-encodes
+// non-ASCII, and sitemaps.org requires URL-escaped entries, so a legacy slug
+// like ...-précédée-... appears as ...-pr%C3%A9c%C3%A9d%C3%A9e-... in the XML
+// while the directory on disk keeps its accents. Both spellings are the same
+// URL; accept either.
+//
+// (Only imported slugs look like this. public.slugify() folds accents, so
+// anything created from now on is ASCII.)
 const sitemapFile = files.find((f) => rel(f) === 'sitemap.xml');
 if (!sitemapFile) fail('no sitemap.xml');
 else {
   const xml = await readFile(sitemapFile, 'utf8');
+  let missing = 0;
   for (const f of eventPages) {
     const slug = path.basename(path.dirname(rel(f)));
-    if (!xml.includes(`/evenements/${slug}`)) fail(`sitemap.xml is missing ${slug}`);
+    const raw = `/evenements/${slug}`;
+    const encoded = `/evenements/${encodeURIComponent(slug)}`;
+    if (!xml.includes(raw) && !xml.includes(encoded)) {
+      fail(`sitemap.xml is missing ${slug}`);
+      missing++;
+    }
   }
-  ok('sitemap.xml lists every event page');
+  const locs = (xml.match(/<loc>/g) ?? []).length;
+  if (locs !== eventPages.length + 1) {
+    fail(`sitemap.xml has ${locs} <loc> entries; expected ${eventPages.length + 1} (${eventPages.length} events + the agenda)`);
+  } else if (!missing) {
+    ok(`sitemap.xml lists all ${locs} URLs`);
+  }
 }
 
 console.log(failures ? `\n${failures} FAILED\n` : '\nbuild output verified\n');
