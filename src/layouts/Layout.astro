@@ -18,7 +18,12 @@ const {
 
 // Canonical from Astro.site, not Astro.url: the built pages are served from
 // one origin and any preview deployment must still point at the real one.
-const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).href;
+// Trailing slash, always: that is the form the server returns 200 for, and a
+// canonical pointing at a URL that redirects is a canonical that is wrong.
+const path = Astro.url.pathname.endsWith('/') || /\.[a-z0-9]+$/i.test(Astro.url.pathname)
+  ? Astro.url.pathname
+  : `${Astro.url.pathname}/`;
+const canonicalUrl = canonical ?? new URL(path, Astro.site).href;
 ---
 <!doctype html>
 <html lang={lang}>
@@ -42,7 +47,6 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).href;
   <body>
     <header>
       <a href="/" class="logo">nissartango</a>
-      <a href="/en/" class="lang">EN</a>
     </header>
     <main><slot /></main>
     <footer>
@@ -75,7 +79,6 @@ const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).href;
     border-bottom: 1px solid var(--line);
   }
   .logo { font-weight: 700; font-size: 1.1rem; text-decoration: none; color: var(--ink); letter-spacing: -0.01em; }
-  .lang { font-size: 0.85rem; text-decoration: none; color: var(--muted); }
   main { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
   footer { border-top: 1px solid var(--line); padding: 2rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
 </style>

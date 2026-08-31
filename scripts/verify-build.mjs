@@ -119,22 +119,71 @@ for (const f of html) {
 ok('every page has a canonical URL');
 
 // 5. Event pages carry valid schema.org Event JSON-LD with a real offset.
+//
+//    A recurring series emits one Event per visible date inside an @graph, so
+//    every node is checked, not just the first. That is the point of the
+//    change: a series whose 22 October is cancelled must SAY so, and a single
+//    node covering the whole series cannot.
 const eventPages = html.filter((f) => rel(f).startsWith('evenements' + path.sep));
 if (!eventPages.length) fail('no event detail pages were generated');
+
+/** Every Event object in a page's JSON-LD, whether bare or inside an @graph. */
+function ldEvents(data) {
+  const list = Array.isArray(data) ? data : data['@graph'] ?? [data];
+  return list.filter((n) => n && n['@type'] === 'Event');
+}
+
+let ldNodeCount = 0;
+const ldUrls = [];          // fed to check 8
 for (const f of eventPages) {
   const text = await readFile(f, 'utf8');
   const m = text.match(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/);
   if (!m) { fail(`${rel(f)} has no JSON-LD`); continue; }
   let data;
-  try { data = JSON.parse(m[1]); } catch (err) { fail(`${rel(f)} JSON-LD is not valid JSON`); continue; }
-  if (data['@type'] !== 'Event') fail(`${rel(f)} JSON-LD is not an Event`);
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(data.startDate ?? '')) {
-    fail(`${rel(f)} startDate lacks a UTC offset: ${data.startDate}`);
+  try { data = JSON.parse(m[1]); } catch { fail(`${rel(f)} JSON-LD is not valid JSON`); continue; }
+
+  const nodes = ldEvents(data);
+  if (!nodes.length) { fail(`${rel(f)} JSON-LD contains no Event`); continue; }
+  ldNodeCount += nodes.length;
+
+  const seenIds = new Set();
+  for (const n of nodes) {
+    const where = `${rel(f)} [${n.startDate ?? '?'}]`;
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(n.startDate ?? '')) {
+      fail(`${where} startDate lacks a UTC offset`);
+    }
+    if (n.location?.['@type'] !== 'Place') fail(`${where} location is not a Place`);
+    if (n.location?.address?.['@type'] !== 'PostalAddress') fail(`${where} address is not a PostalAddress`);
+    if (!/^https:\/\/schema\.org\/Event(Scheduled|Cancelled|Rescheduled|MovedOnline|Postponed)$/.test(n.eventStatus ?? '')) {
+      fail(`${where} has no usable eventStatus: ${n.eventStatus}`);
+    }
+    // Cancelled and on sale at the same time is a contradiction aggregators act on.
+    if (n.eventStatus === 'https://schema.org/EventCancelled' && n.offers) {
+      fail(`${where} is EventCancelled but still carries offers`);
+    }
+    if (n.eventStatus === 'https://schema.org/EventRescheduled' && !n.previousStartDate) {
+      fail(`${where} is EventRescheduled without previousStartDate`);
+    }
+    // Multiple nodes on one page must be distinguishable, or a consumer
+    // collapses them into one and the extra dates are lost.
+    if (nodes.length > 1) {
+      if (!n['@id']) fail(`${where} is one of ${nodes.length} Events but has no @id`);
+      else if (seenIds.has(n['@id'])) fail(`${where} repeats @id ${n['@id']}`);
+      seenIds.add(n['@id']);
+    }
+    // A fragment @id has to land somewhere: the list item must carry the id.
+    for (const u of [n['@id'], n.url]) {
+      if (!u) continue;
+      ldUrls.push([rel(f), u]);
+      const hash = u.includes('#') ? u.slice(u.indexOf('#') + 1) : null;
+      if (hash && !text.includes(`id="${hash}"`)) {
+        fail(`${where} points at #${hash}, which is not an id on the page`);
+      }
+    }
+    for (const o of n.offers ?? []) if (o.url) ldUrls.push([rel(f), o.url]);
   }
-  if (data.location?.['@type'] !== 'Place') fail(`${rel(f)} location is not a Place`);
-  if (data.location?.address?.['@type'] !== 'PostalAddress') fail(`${rel(f)} address is not a PostalAddress`);
 }
-ok(`${eventPages.length} event page(s) with Event JSON-LD, offsets included`);
+ok(`${eventPages.length} event page(s), ${ldNodeCount} Event node(s), offsets and statuses checked`);
 
 // 6. Sitemap covers every event page.
 //
@@ -190,6 +239,92 @@ if (redirectsFile) {
   }
   if (!bad) ok(`${lines.length} redirect(s), all pointing at pages that exist`);
 }
+
+// 8. Every internal URL the site emits must be the form the server returns
+//    200 for, with no redirect in between.
+//
+//    Cloudflare's asset router serves <slug>/index.html at /<slug>/ and 301s
+//    the bare /<slug> to it. So an extension-less path without a trailing
+//    slash is a redirect, and a canonical, a sitemap entry or a JSON-LD url in
+//    that form declares one URL while the server answers on another. This
+//    check resolves each emitted URL against dist/ the same way the router
+//    would, and fails on anything that would not answer directly.
+const distSet = new Set(files.map((f) => rel(f).split(path.sep).join('/')));
+
+/** How the asset router would resolve a pathname; null if it would not, directly. */
+function resolves(pathname) {
+  let p = decodeURIComponent(pathname);
+  if (p === '/') return distSet.has('index.html') ? 'index.html' : null;
+  if (p.endsWith('/')) {
+    const f = p.slice(1) + 'index.html';
+    return distSet.has(f) ? f : null;
+  }
+  // No trailing slash: only a real file answers directly. An extension-less
+  // path here is precisely the redirect case.
+  const f = p.slice(1);
+  return distSet.has(f) ? f : null;
+}
+
+const emitted = [];   // [source, url]
+for (const f of html) {
+  const text = await readFile(f, 'utf8');
+  for (const m of text.matchAll(/<link rel="canonical" href="([^"]+)"/g)) emitted.push([rel(f), m[1]]);
+  for (const m of text.matchAll(/<meta property="og:url" content="([^"]+)"/g)) emitted.push([rel(f), m[1]]);
+  for (const m of text.matchAll(/<a\b[^>]*\shref="([^"]+)"/g)) emitted.push([rel(f), m[1]]);
+}
+emitted.push(...ldUrls);
+
+const sitemapText = sitemapFile ? await readFile(sitemapFile, 'utf8') : '';
+for (const m of sitemapText.matchAll(/<loc>([^<]+)<\/loc>/g)) emitted.push(['sitemap.xml', m[1]]);
+
+if (redirectsFile) {
+  for (const line of (await readFile(redirectsFile, 'utf8')).split('\n')) {
+    const t = line.trim();
+    if (!t.startsWith('/')) continue;
+    const dest = t.split(/\s+/)[1];
+    if (dest) emitted.push(['_redirects', dest]);
+  }
+}
+
+// The origin the site declares about itself. Anything on it is ours to serve;
+// anything else is somebody else's problem and is skipped.
+const origin = (() => {
+  for (const [, u] of emitted) {
+    const m = /^(https?:\/\/[^/]+)/.exec(u);
+    if (m) return m[1];
+  }
+  return null;
+})();
+
+let redirecting = 0, checked = 0;
+const reported = new Set();
+for (const [source, raw] of emitted) {
+  let pathname;
+  if (raw.startsWith('/')) {
+    if (raw.startsWith('//')) continue;
+    pathname = raw;
+  } else if (origin && raw.startsWith(origin + '/')) {
+    pathname = raw.slice(origin.length);
+  } else if (raw === origin) {
+    pathname = '/';
+  } else {
+    continue;   // external, mailto:, #fragment-only, relative
+  }
+  pathname = pathname.split('#')[0].split('?')[0];
+  if (pathname === '') pathname = '/';
+  checked++;
+  if (!resolves(pathname)) {
+    const key = `${source} -> ${pathname}`;
+    if (reported.has(key)) continue;
+    reported.add(key);
+    const wouldWork = resolves(pathname.endsWith('/') ? pathname : pathname + '/');
+    fail(wouldWork
+      ? `${source} emits ${pathname}, which 301s. Use ${pathname}/`
+      : `${source} emits ${pathname}, which is not in dist/ at all`);
+    redirecting++;
+  }
+}
+if (!redirecting) ok(`${checked} internal URL(s) emitted, every one served directly`);
 
 console.log(failures ? `\n${failures} FAILED\n` : '\nbuild output verified\n');
 process.exit(failures ? 1 : 0);

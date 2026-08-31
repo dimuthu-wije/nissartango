@@ -29,7 +29,7 @@ const rows = occurrences.filter((o) => !o.event.cancelled_at);
           </div>
           <div class="what">
             <span class="type">{TYPE_LABELS[e.type] ?? e.type}</span>
-            <h2><a href={`/evenements/${e.slug}`}>{e.title}</a></h2>
+            <h2><a href={`/evenements/${e.slug}/`}>{e.title}</a></h2>
             <p class="meta">
               {e.location_name}{e.location_name && ', '}{e.city}
               {price && <> · {price}</>}

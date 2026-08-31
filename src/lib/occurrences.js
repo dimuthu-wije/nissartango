@@ -100,6 +100,9 @@ function occurrence(event, start, tz, byDate) {
     return {
       event, start: movedStart, dateKey: localDateKey(movedStart, tz),
       cancelled: false, moved: true, note: x.note ?? null,
+      // The date this occurrence WOULD have fallen on. schema.org's
+      // previousStartDate wants it, and it is the only place it still exists.
+      previousStart: start,
     };
   }
   return {

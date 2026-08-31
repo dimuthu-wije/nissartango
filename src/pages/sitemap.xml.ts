@@ -2,6 +2,10 @@ import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 
 /**
+ * Every <loc> is the trailing-slash form, which is what the server returns 200
+ * for. Submitting URLs that redirect wastes crawl budget and muddies which URL
+ * is the real one.
+ *
  * Hand-rolled rather than @astrojs/sitemap: the URL set here is small and
  * known, and lastmod should come from the database's updated_at rather than
  * from build time -- otherwise every daily rebuild claims every page changed,
@@ -13,7 +17,7 @@ export const GET: APIRoute = async ({ site }) => {
   const urls = [
     { loc: new URL('/', site).href, lastmod: null as string | null, priority: '1.0' },
     ...events.map((e) => ({
-      loc: new URL(`/evenements/${e.data.slug}`, site).href,
+      loc: new URL(`/evenements/${e.data.slug}/`, site).href,
       lastmod: (e.data.updated_at ?? e.data.created_at ?? null)?.slice(0, 10) ?? null,
       priority: '0.8',
     })),

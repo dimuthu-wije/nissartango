@@ -25,16 +25,22 @@ const organizer = organizers.get(e.organizer_id);
 const exceptions = exceptionsByEvent.get(e.id) ?? [];
 
 const tz = e.timezone || 'Europe/Paris';
-const when = nextDate(e, exceptions);
+const now = new Date();
 const recurrenceLabel = RECURRENCE_LABELS[e.recurrence];
 const price = priceSummary(e);
 const cancelled = Boolean(e.cancelled_at);
 
+// One expansion feeds both the visible list and the markup. Google's rule for
+// structured data is that it must describe what the page actually shows, so
+// the two are derived from the same array rather than computed twice.
+const allOccurrences = expand(e, exceptions, { now });
+const futureOccurrences = allOccurrences.filter((o) => o.start >= now);
+
 // Upcoming dates worth listing on a series page, cancellations included so a
 // reader can see which week is off.
-const dates = e.recurrence === 'none'
-  ? []
-  : expand(e, exceptions).filter((o) => o.start >= new Date()).slice(0, 8);
+const dates = e.recurrence === 'none' ? [] : futureOccurrences.slice(0, 8);
+
+const when = nextDate(e, exceptions, { now });
 
 // Images are downloaded into src/assets/events by scripts/fetch-content.mjs,
 // so Astro can optimise them and Cloudflare can serve them. The glob is how a
@@ -45,65 +51,112 @@ const image = e.image_file
   ? images[`../../assets/events/${e.image_file}`]?.default
   : undefined;
 
-const canonical = new URL(`/evenements/${e.slug}`, Astro.site).href;
+// Trailing slash: the page is served at /evenements/<slug>/ and the no-slash
+// form 301s to it. A canonical, a sitemap entry or a JSON-LD url pointing at
+// the redirecting form declares one URL and serves another.
+const canonical = new URL(`/evenements/${e.slug}/`, Astro.site).href;
 const description =
   `${TYPE_LABELS[e.type] ?? e.type} le ${fmtFull(when, tz)} à ` +
   `${e.location_name ? e.location_name + ', ' : ''}${e.city}.`;
 
 // --- schema.org ------------------------------------------------------------
+// A recurring series gets ONE Event item PER DATE, not a single item with an
+// eventSchedule: Google does not consume eventSchedule/exceptDate, and it asks
+// that the markup describe what the page visibly says. So the items are
+// exactly the dates rendered under "Prochaines dates", each with its own
+// startDate and its own eventStatus -- which is how a cancelled 22 October is
+// announced as cancelled instead of disappearing behind a Scheduled 3
+// September.
+//
 // startDate carries the real offset (+02:00 in summer, +01:00 in winter);
 // a floating local time or a UTC instant both mislead aggregators.
-// No offers on a cancelled event: eventStatus says Cancelled, and an Offer
+const ldOccurrences = dates.length
+  ? dates
+  : [futureOccurrences[0] ?? allOccurrences[0]].filter(Boolean);
+
+// Each date is addressable: the list items below carry the matching id, so a
+// result that deep-links to one date lands on the line that describes it.
+const urlFor = (o: any) =>
+  ldOccurrences.length > 1 ? `${canonical}#date-${o.dateKey}` : canonical;
+
+// No offers on a date that is off: eventStatus says Cancelled, and an Offer
 // with availability InStock alongside it is a contradiction aggregators can
 // and do act on.
-const offers = (!cancelled && (e.price_full != null || e.price_member != null))
-  ? [e.price_full != null && {
+function offersFor(o: any) {
+  const off = cancelled || o.cancelled;
+  if (off || (e.price_full == null && e.price_member == null)) return undefined;
+  const url = e.signup_url ?? urlFor(o);
+  return [
+    e.price_full != null && {
       '@type': 'Offer', price: String(e.price_full), priceCurrency: 'EUR',
-      availability: 'https://schema.org/InStock', url: e.signup_url ?? canonical,
+      availability: 'https://schema.org/InStock', url,
     },
     e.price_member != null && {
       '@type': 'Offer', name: 'Tarif adhérent/réduit',
       price: String(e.price_member), priceCurrency: 'EUR',
-      availability: 'https://schema.org/InStock', url: e.signup_url ?? canonical,
-    }].filter(Boolean)
-  : undefined;
+      availability: 'https://schema.org/InStock', url,
+    },
+  ].filter(Boolean);
+}
 
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Event',
-  name: e.title,
-  url: canonical,
-  startDate: isoWithOffset(when, tz),
-  ...(e.duration_minutes
-    ? { endDate: isoWithOffset(new Date(when.getTime() + e.duration_minutes * 60000), tz) }
-    : {}),
-  eventStatus: cancelled
-    ? 'https://schema.org/EventCancelled'
-    : 'https://schema.org/EventScheduled',
-  eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-  ...(e.body ? { description: e.body.replace(/\s+/g, ' ').trim().slice(0, 300) } : {}),
-  location: {
-    '@type': 'Place',
-    name: e.location_name ?? e.city,
-    address: {
-      '@type': 'PostalAddress',
-      ...(e.location_address ? { streetAddress: e.location_address } : {}),
-      addressLocality: e.city,
-      ...(e.location_postal_code ? { postalCode: e.location_postal_code } : {}),
-      addressCountry: 'FR',
-    },
+function eventStatusFor(o: any) {
+  if (cancelled || o.cancelled) return 'https://schema.org/EventCancelled';
+  if (o.moved) return 'https://schema.org/EventRescheduled';
+  return 'https://schema.org/EventScheduled';
+}
+
+const place = {
+  '@type': 'Place',
+  name: e.location_name ?? e.city,
+  address: {
+    '@type': 'PostalAddress',
+    ...(e.location_address ? { streetAddress: e.location_address } : {}),
+    addressLocality: e.city,
+    ...(e.location_postal_code ? { postalCode: e.location_postal_code } : {}),
+    addressCountry: 'FR',
   },
-  ...(organizer ? {
-    organizer: {
-      '@type': 'Organization',
-      name: organizer.name,
-      ...(organizer.website ? { url: organizer.website } : {}),
-    },
-  } : {}),
-  ...(e.teachers.length ? { performer: e.teachers.map((n: string) => ({ '@type': 'Person', name: n })) } : {}),
-  ...(offers ? { offers } : {}),
-  ...(image ? { image: [new URL(image.src, Astro.site).href] } : {}),
 };
+
+function eventNode(o: any) {
+  const url = urlFor(o);
+  const offers = offersFor(o);
+  return {
+    '@type': 'Event',
+    '@id': url,
+    name: e.title,
+    url,
+    startDate: isoWithOffset(o.start, tz),
+    ...(e.duration_minutes
+      ? { endDate: isoWithOffset(new Date(o.start.getTime() + e.duration_minutes * 60000), tz) }
+      : {}),
+    eventStatus: eventStatusFor(o),
+    // A moved date keeps a pointer to the slot it left, so an aggregator that
+    // already indexed the old one can retire it rather than show both.
+    ...(o.moved && o.previousStart
+      ? { previousStartDate: isoWithOffset(o.previousStart, tz) }
+      : {}),
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    ...(e.body ? { description: e.body.replace(/\s+/g, ' ').trim().slice(0, 300) } : {}),
+    location: place,
+    ...(organizer ? {
+      organizer: {
+        '@type': 'Organization',
+        name: organizer.name,
+        ...(organizer.website ? { url: organizer.website } : {}),
+      },
+    } : {}),
+    ...(e.teachers.length ? { performer: e.teachers.map((n: string) => ({ '@type': 'Person', name: n })) } : {}),
+    ...(offers ? { offers } : {}),
+    ...(image ? { image: [new URL(image.src, Astro.site).href] } : {}),
+  };
+}
+
+const nodes = ldOccurrences.map(eventNode);
+// @graph rather than a bare array: one script, one @context, and every node
+// keeps its own @id. A bare array is legal too; this is easier to extend.
+const jsonLd = nodes.length === 1
+  ? { '@context': 'https://schema.org', ...nodes[0] }
+  : { '@context': 'https://schema.org', '@graph': nodes };
 ---
 
 <Layout
@@ -174,7 +227,7 @@ const jsonLd = {
       <h2>Prochaines dates</h2>
       <ul>
         {dates.map((o) => (
-          <li class={o.cancelled ? 'off' : undefined}>
+          <li id={`date-${o.dateKey}`} class={o.cancelled ? 'off' : undefined}>
             {fmtFull(o.start, tz)}
             {o.cancelled && <> — annulé{o.note ? ` (${o.note})` : ''}</>}
             {o.moved && <> — déplacé{o.note ? ` (${o.note})` : ''}</>}

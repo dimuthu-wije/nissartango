@@ -9,8 +9,11 @@
 # matching happens on the encoded or the decoded path, and both forms reach
 # this file from a real browser. Trailing-slash variants too, since Astro
 # builds directories and either form resolves.
+#
+# Destinations carry the trailing slash. Without it the asset router adds a
+# SECOND redirect to reach the real path, so the old URL took two hops.
 
-/evenements/2026-08-24-milonga-pr%C3%A9c%C3%A9d%C3%A9e-d-une-pr%C3%A0ctica-jeudi-c-est-permis-%C3%A0-la-casita   /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita   301
-/evenements/2026-08-24-milonga-pr%C3%A9c%C3%A9d%C3%A9e-d-une-pr%C3%A0ctica-jeudi-c-est-permis-%C3%A0-la-casita/  /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita   301
-/evenements/2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita    /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita   301
-/evenements/2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita/   /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita   301
+/evenements/2026-08-24-milonga-pr%C3%A9c%C3%A9d%C3%A9e-d-une-pr%C3%A0ctica-jeudi-c-est-permis-%C3%A0-la-casita   /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita/   301
+/evenements/2026-08-24-milonga-pr%C3%A9c%C3%A9d%C3%A9e-d-une-pr%C3%A0ctica-jeudi-c-est-permis-%C3%A0-la-casita/  /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita/   301
+/evenements/2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita    /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita/   301
+/evenements/2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita/   /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita/   301
