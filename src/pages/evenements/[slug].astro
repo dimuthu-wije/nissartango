@@ -36,9 +36,13 @@ const cancelled = Boolean(e.cancelled_at);
 const allOccurrences = expand(e, exceptions, { now });
 const futureOccurrences = allOccurrences.filter((o) => o.start >= now);
 
-// Upcoming dates worth listing on a series page, cancellations included so a
-// reader can see which week is off.
-const dates = e.recurrence === 'none' ? [] : futureOccurrences.slice(0, 8);
+// Every upcoming date, cancellations included so a reader can see which week
+// is off. No cap of its own: the agenda and this page both list what expand()
+// returns inside its 6-month horizon, so the two cannot disagree about which
+// dates exist. A cap here was an arbitrary 8, which meant the agenda listed
+// dates through late November that the series page stopped short of -- and,
+// because the markup follows this list, dates the markup never mentioned.
+const dates = e.recurrence === 'none' ? [] : futureOccurrences;
 
 const when = nextDate(e, exceptions, { now });
 

@@ -22,7 +22,8 @@ const rows = occurrences.filter((o) => !o.event.cancelled_at);
       const organizer = organizers.get(e.organizer_id);
       const price = priceSummary(e);
       return (
-        <li class={o.cancelled ? 'cancelled' : undefined}>
+        <li class={o.cancelled ? 'cancelled' : undefined}
+            data-event={e.slug} data-date={o.dateKey}>
           <div class="when">
             <span class="date">{fmtDay(o.start, e.timezone)}</span>
             <span class="time">{fmtTime(o.start, e.timezone)}</span>

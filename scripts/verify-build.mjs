@@ -326,5 +326,69 @@ for (const [source, raw] of emitted) {
 }
 if (!redirecting) ok(`${checked} internal URL(s) emitted, every one served directly`);
 
+// 9. The agenda and the detail pages must agree about which dates exist.
+//
+//    They are built from the same expansion, so this should be structurally
+//    true -- which is exactly why it is worth asserting. It is the invariant
+//    that a cap, a filter or a differently-sized horizon on one side would
+//    break silently: the agenda would advertise a date whose own page never
+//    mentions it, in the visible list or in the markup.
+//
+//    Direction matters. The detail page may list MORE (it shows dates a
+//    reader is looking for; the agenda is a shared list), but never fewer.
+const agendaRows = [];
+if (index) {
+  const home = await readFile(index, 'utf8');
+  for (const m of home.matchAll(/<li\b[^>]*>/g)) {
+    const slug = /data-event="([^"]+)"/.exec(m[0])?.[1];
+    const date = /data-date="([^"]+)"/.exec(m[0])?.[1];
+    if (slug && date) agendaRows.push({ slug, date });
+  }
+}
+if (!agendaRows.length) {
+  fail('the agenda emitted no data-event/data-date rows — this check would pass vacuously');
+} else {
+  let orphans = 0;
+  const cache = new Map();
+  for (const { slug, date } of agendaRows) {
+    if (!cache.has(slug)) {
+      const f = eventPages.find((p) => path.basename(path.dirname(rel(p))) === slug);
+      if (!f) { cache.set(slug, null); }
+      else {
+        const text = await readFile(f, 'utf8');
+        const m = text.match(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/);
+        let starts = new Set(), anchors = new Set();
+        if (m) {
+          try {
+            for (const n of ldEvents(JSON.parse(m[1]))) {
+              if (n.startDate) starts.add(String(n.startDate).slice(0, 10));
+            }
+          } catch { /* check 5 already failed on this */ }
+        }
+        for (const a of text.matchAll(/id="date-(\d{4}-\d{2}-\d{2})"/g)) anchors.add(a[1]);
+        cache.set(slug, { starts, anchors });
+      }
+    }
+    const page = cache.get(slug);
+    if (!page) {
+      fail(`the agenda lists ${slug} on ${date}, but /evenements/${slug}/ was not built`);
+      orphans++;
+      continue;
+    }
+    if (!page.starts.has(date)) {
+      fail(`the agenda lists ${slug} on ${date}, but that page's JSON-LD does not mention it`);
+      orphans++;
+    }
+    // If the page renders a dated list at all, the agenda's date must be in it.
+    if (page.anchors.size && !page.anchors.has(date)) {
+      fail(`the agenda lists ${slug} on ${date}, but that page's "Prochaines dates" stops short of it`);
+      orphans++;
+    }
+  }
+  if (!orphans) {
+    ok(`${agendaRows.length} agenda row(s), every date present on its own page`);
+  }
+}
+
 console.log(failures ? `\n${failures} FAILED\n` : '\nbuild output verified\n');
 process.exit(failures ? 1 : 0);
