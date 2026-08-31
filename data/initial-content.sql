@@ -8,13 +8,20 @@
 --
 -- Safe to run twice: every insert is ON CONFLICT DO NOTHING.
 --
--- WHY THE SLUGS ARE SPELLED OUT: these are the URLs nissartango.fr already
--- serves, including the accented one and including the fact that the date
--- prefix does not match the event date (Sveltia generated the slug on the day
--- the file was created, not the day of the event). The insert trigger only
--- generates a slug when none is supplied, so passing them keeps every existing
--- link and search result working. This is exactly the case the "generated once,
--- then frozen" rule was written for.
+-- WHY THE SLUGS ARE SPELLED OUT: they carry over from the Sveltia era, and the
+-- date prefix does not match the event date (Sveltia generated the slug on the
+-- day the file was created, not the day of the event). The insert trigger only
+-- generates a slug when none is supplied, so passing them keeps the shape the
+-- old site had. This is the case the "generated once, then frozen" rule exists
+-- for.
+--
+-- ONE EXCEPTION, taken deliberately: the Casita milonga's slug had accents,
+-- which made its URL percent-encoded everywhere it appeared. Those URLs were
+-- never public on the old site, so nothing was owed stability, and it is
+-- folded here to the ASCII form slugify() would have produced. Existing
+-- projects are brought into line by data/fold-accented-slugs.sql, and
+-- public/_redirects 301s the old path. Both were needed because the accented
+-- page WAS live and indexable for the hour between deploy and decision.
 --
 -- Decisions taken while porting, so nobody has to re-derive them later:
 --   * El Gato Tanguero becomes an organizer in its own right; Pierre Gabrielli
@@ -81,7 +88,7 @@ from (values
   -- Jeudi c'est permis. Weekly until 26 November -- which means this series
   -- crosses the 25 October changeover, so it is the real-world case the DST
   -- tests were written for: 20:00 stays 20:00 on both sides.
-  ('2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita',
+  ('2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita',
    E'MILONGA précédée d''une Pràctica "Jeudi c''est permis !" à la Casita', 'milonga',
    timestamptz '2026-08-27 20:00+02', 180,
    'weekly', date '2026-11-26',
@@ -114,7 +121,7 @@ insert into public.event_exceptions (event_id, occurrence_date, kind, note)
 select id, date '2026-10-22', 'cancelled', null   -- a reason here would show
                                                  -- on the agenda; optional
   from public.events
- where slug = '2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita'
+ where slug = '2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita'
 on conflict do nothing;
 
 -- --- what you should see ----------------------------------------------------

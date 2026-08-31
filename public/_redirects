@@ -1,0 +1,16 @@
+# Served by Cloudflare Workers static assets. Order matters; first match wins.
+#
+# The Casita milonga's slug carried accents from the Sveltia era, so its URL
+# was percent-encoded. It was folded to ASCII in data/fold-accented-slugs.sql.
+# The page was live and indexable in between, so the old path is treated as
+# possibly crawled and 301s rather than 404s.
+#
+# Both spellings are listed because Cloudflare's docs do not say whether
+# matching happens on the encoded or the decoded path, and both forms reach
+# this file from a real browser. Trailing-slash variants too, since Astro
+# builds directories and either form resolves.
+
+/evenements/2026-08-24-milonga-pr%C3%A9c%C3%A9d%C3%A9e-d-une-pr%C3%A0ctica-jeudi-c-est-permis-%C3%A0-la-casita   /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita   301
+/evenements/2026-08-24-milonga-pr%C3%A9c%C3%A9d%C3%A9e-d-une-pr%C3%A0ctica-jeudi-c-est-permis-%C3%A0-la-casita/  /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita   301
+/evenements/2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita    /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita   301
+/evenements/2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita/   /evenements/2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita   301

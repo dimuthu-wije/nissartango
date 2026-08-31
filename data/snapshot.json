@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-08-29T05:56:53.648Z",
+  "fetched_at": "2026-08-31T10:33:39.257Z",
   "events": [
     {
       "id": "725aca92-09df-47fa-b318-77d8eb279b26",
@@ -61,7 +61,7 @@
     },
     {
       "id": "3f654224-4139-42b0-b599-a4410fdde0e0",
-      "slug": "2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita",
+      "slug": "2026-08-24-milonga-precedee-d-une-practica-jeudi-c-est-permis-a-la-casita",
       "title": "MILONGA précédée d'une Pràctica \"Jeudi c'est permis !\" à la Casita",
       "type": "milonga",
       "starts_at": "2026-08-27T18:00:00+00:00",
@@ -84,7 +84,7 @@
       "cancelled_at": null,
       "cancellation_note": null,
       "created_at": "2026-08-28T23:44:48.956886+00:00",
-      "updated_at": "2026-08-28T23:44:48.956886+00:00",
+      "updated_at": "2026-08-31T10:32:10.243961+00:00",
       "image_file": null
     },
     {

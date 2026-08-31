@@ -168,5 +168,28 @@ else {
   }
 }
 
+// 7. Every redirect destination must actually exist. A 301 into a 404 is
+//    worse than no redirect: it launders a dead link into a live-looking one,
+//    and search engines follow it before discovering the page is gone.
+const redirectsFile = files.find((f) => rel(f) === '_redirects');
+if (redirectsFile) {
+  const lines = (await readFile(redirectsFile, 'utf8'))
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('/'));
+
+  let bad = 0;
+  for (const line of lines) {
+    const [, dest] = line.split(/\s+/);
+    if (!dest || !dest.startsWith('/')) continue;
+    const target = decodeURIComponent(dest.replace(/\/$/, ''));
+    const exists = target === ''
+      || files.some((f) => rel(f) === path.join(target.slice(1), 'index.html')
+                        || rel(f) === target.slice(1));
+    if (!exists) { fail(`_redirects points at ${dest}, which is not in dist/`); bad++; }
+  }
+  if (!bad) ok(`${lines.length} redirect(s), all pointing at pages that exist`);
+}
+
 console.log(failures ? `\n${failures} FAILED\n` : '\nbuild output verified\n');
 process.exit(failures ? 1 : 0);

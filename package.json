@@ -14,7 +14,8 @@
     "test": "TZ=UTC node --test tests/*.test.js workers/cron/test/*.test.js",
     "verify:build": "node scripts/verify-build.mjs",
     "check": "npm run build && npm run verify:build",
-    "deploy:cron": "wrangler deploy --config workers/cron/wrangler.jsonc"
+    "deploy:cron": "wrangler deploy --config workers/cron/wrangler.jsonc",
+    "seed:real": "bash scripts/seed-real.sh"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.3",
