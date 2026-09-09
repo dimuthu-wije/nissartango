@@ -50,16 +50,68 @@ and if it is TRACKED rather than merely staged, it is already in history --
 stop, and rotate what it contains before doing anything else."
 fi
 
-# --- 2. .gitignore must still ignore .env ----------------------------------
-# This is the check that would have caught both clobbers. It runs on every
-# commit, not only when a .env is staged, because the dangerous window is the
-# one where .gitignore is broken and nobody has created a .env yet.
+# --- 2. .env must be untrackable, and untracked ---------------------------
+# Two different states with two different remedies, and an earlier version of
+# this hook conflated them.
+#
+# `git check-ignore` returns NON-ZERO for a file that is already TRACKED --
+# tracked files are exempt from .gitignore entirely. So testing check-ignore
+# alone reports "gitignore is broken" in a repo where the real and much worse
+# problem is that .env is in history. In that repo it also fires on every
+# single commit, which is how a hook gets bypassed instead of heeded.
+#
+# Order matters: tracked is the more serious finding, so it is tested first.
+if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+
+  # One special case first, or this check appears to block its own remedy.
+  #
+  # `git commit <path>` builds a TEMPORARY index from HEAD plus the worktree
+  # state of the named paths -- so after `git rm --cached .env`, running
+  # `git commit .env -m ...` silently re-adds .env and discards the removal.
+  # Git itself reports "nothing to commit, working tree clean" and changes
+  # nothing; the hook sees .env tracked in that temporary index and refuses.
+  #
+  # The refusal is right -- that command does not remediate anything -- but
+  # the generic message below would send someone to re-run the step they have
+  # already done. So: if the REAL index (not the temporary one this hook is
+  # reading) has the removal staged, say what is actually wrong.
+  if env -u GIT_INDEX_FILE git diff --cached --name-status -- .env 2>/dev/null | grep -q '^D'; then
+    die "You have staged the removal of .env, but this commit would undo it.
+
+\`git commit <path>\` rebuilds a temporary index from HEAD plus the WORKTREE
+state of the paths you named -- so naming .env re-adds it and throws the
+removal away. Without this hook git would have said \"nothing to commit,
+working tree clean\" and left .env in history, which is worse than refusing.
+
+Commit the removal without naming a path:
+
+    git commit -m 'stop tracking .env'"
+  fi
+
+  die ".env is TRACKED — it is in this repository's history.
+
+.gitignore does not apply to files git is already tracking, so nothing will
+warn you again. If it has ever held a real credential, that credential is
+compromised and on a PUBLIC repo it cannot be un-published.
+
+    1. Rotate everything in it. See 'Rotating credentials' in
+       supabase/PROJECT_SETUP.md.
+    2. Stop tracking it, keeping the file on disk:
+           git rm --cached .env
+    3. Confirm .gitignore still carries the rule, then commit that removal.
+
+This hook refuses EVERY commit until step 2 is done. That is deliberate."
+fi
+
+# The rule itself, for the ordinary case where .env is not tracked. This runs
+# on every commit, not only when a .env is staged, because the dangerous window
+# is the one where the rule is missing and no .env exists yet. It has happened
+# twice here, both times an agent writing a file it could not read.
 if ! git check-ignore -q .env 2>/dev/null; then
   die ".gitignore no longer ignores .env
 
 This is how a credential gets committed by accident: the file stops being
-ignored, someone runs 'git add -A', and nothing objects. It has happened
-twice in this repo.
+ignored, someone runs 'git add -A', and nothing objects.
 
 Restore the rule before committing anything:
 

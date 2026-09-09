@@ -1,5 +1,12 @@
 {
-  "fetched_at": "2026-08-31T11:27:01.948Z",
+  "fetched_at": "2026-09-09T19:53:48.227Z",
+  "project_ref": "eqcgeqzzuzcwrflwasjo",
+  "checksum": "ad26d21eda570bfa64053315e94cda9b",
+  "counts": {
+    "events": 4,
+    "organizers": 3,
+    "exceptions": 1
+  },
   "events": [
     {
       "id": "725aca92-09df-47fa-b318-77d8eb279b26",
