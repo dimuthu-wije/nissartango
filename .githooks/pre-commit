@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# Refuse to commit secrets. Installed via core.hooksPath -- see .githooks/README.md.
+#
+# WHY THIS EXISTS, specifically. .env is about to hold DEV_DB_URL and
+# PROD_DB_URL: full database credentials for a live project, in a PUBLIC
+# repository. And .gitignore has been overwritten twice in this repo's short
+# life -- both times by an agent writing a file it could not read, both times
+# caught by luck rather than by a control.
+#
+# .gitignore says "please don't". This says "no". They are not the same, and
+# only one of them survives being clobbered -- because check 2 below fails
+# LOUDLY if .gitignore ever stops ignoring .env, which is the exact state both
+# incidents produced.
+#
+# A commit refused here has cost you ten seconds. A push not refused costs a
+# password rotation, and on a public repo the old one is public forever: force
+# pushing does not unpublish it, forks keep copies, unreachable objects stay
+# addressable.
+set -uo pipefail
+
+RED=''; BOLD=''; OFF=''
+if [ -t 2 ]; then RED=$'\033[31m'; BOLD=$'\033[1m'; OFF=$'\033[0m'; fi
+die() { printf '\n%s%sCOMMIT REFUSED%s  (.githooks/pre-commit)\n\n%s\n\n' "$RED" "$BOLD" "$OFF" "$1" >&2; exit 1; }
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+# --- 1. no .env file may be staged, ever -----------------------------------
+# Matches at any depth: .env, .env.local, config/.env.production, ...
+# .env.example is the one allowed exception -- it is a template with no values.
+offenders=""; paths=""
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+  base="${path##*/}"
+  case "$base" in
+    .env.example) continue ;;
+    .env|.env.*)  offenders="${offenders}    ${path}"$'\n'; paths="${paths}${path} " ;;
+  esac
+done <<< "$staged"
+
+if [ -n "$offenders" ]; then
+  die "An environment file is staged:
+
+${offenders}
+That file holds credentials. .env.example is the only one that may be
+committed. Unstage it:
+
+    git restore --staged ${paths}
+
+and if it is TRACKED rather than merely staged, it is already in history --
+stop, and rotate what it contains before doing anything else."
+fi
+
+# --- 2. .gitignore must still ignore .env ----------------------------------
+# This is the check that would have caught both clobbers. It runs on every
+# commit, not only when a .env is staged, because the dangerous window is the
+# one where .gitignore is broken and nobody has created a .env yet.
+if ! git check-ignore -q .env 2>/dev/null; then
+  die ".gitignore no longer ignores .env
+
+This is how a credential gets committed by accident: the file stops being
+ignored, someone runs 'git add -A', and nothing objects. It has happened
+twice in this repo.
+
+Restore the rule before committing anything:
+
+    git show HEAD:.gitignore | grep -n '^\.env'
+    # then put the missing line back"
+fi
+
+# --- 3. no secret-shaped strings in staged content -------------------------
+# Deliberately NARROW: only shapes that cannot be anything else. Connection
+# URIs are not matched, because .env.example and PROJECT_SETUP.md legitimately
+# document their form -- and a hook with false positives is a hook people
+# learn to pass --no-verify to, which is worse than no hook.
+bad=""
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+  [ "${path##*/}" = ".env.example" ] && continue
+  hits="$(git show ":$path" 2>/dev/null \
+    | grep -nE 'sb_secret_[A-Za-z0-9_-]{6,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' \
+    | cut -d: -f1 | tr '\n' ',' | sed 's/,$//')"
+  [ -n "$hits" ] && bad="${bad}    ${path}  line(s) ${hits}"$'\n'
+done <<< "$staged"
+
+if [ -n "$bad" ]; then
+  die "A secret key shape appears in staged content:
+
+${bad}
+sb_secret_... is a Supabase SECRET key; eyJ....... is a JWT, which may be a
+service_role token. Neither belongs in this repository, which is public.
+
+If it is genuinely a placeholder, rename it so it is obviously not a key."
+fi
+
+exit 0

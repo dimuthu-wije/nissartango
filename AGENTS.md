@@ -161,6 +161,27 @@ file) rather than shipping a whole file over it, and show me the diff.
 This matters most for files whose job is to prevent something. A clobbered
 `.gitignore` looks like nothing until a secret is committed.
 
+**And verify after writing, not only read before.** A third incident had a
+different cause and the same shape: a test created a zero-byte
+`supabase/tests/grants_check.sql` in the agent's container because an `mv` that
+was meant to stash the real file failed silently — `2>/dev/null` on a file that
+was never there — and the `touch` after it created an empty one. Nothing was
+overwritten and nothing was assumed; a command just did not do what it looked
+like it did.
+
+So after any file operation — write, move, delete, unpack, patch — check the
+result: does the file exist, is it a plausible size, does it still contain the
+markers it should. `wc -c`, `wc -l`, a `grep` for a known line. Ten seconds,
+and it is the only thing that catches a silent failure in the middle of a
+pipeline. `set -e` does not help when the failure is `2>/dev/null`.
+
+**None of this is why `.env` is safe.** Rules describe intentions; the control
+is `.githooks/pre-commit`, which refuses any commit that stages a `.env`, that
+carries a secret key shape, or — the check aimed squarely at the two incidents
+above — that is made while `.gitignore` has stopped ignoring `.env`. Read
+`.githooks/README.md`. If you are working in a fresh clone, `npm install` wires
+it up; `npm run hooks:install` does it on demand.
+
 ### Measure platform claims against this project before recording them
 
 Twice a confident, well-sourced, general claim about Supabase turned out not to

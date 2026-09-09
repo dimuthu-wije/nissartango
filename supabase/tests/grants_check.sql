@@ -16,8 +16,19 @@
 with checks as (
 
   -- ---- the entire anon surface --------------------------------------------
+  --
+  -- content_checksum is the fourth deliberately. The rebuild poller in
+  -- workers/cron reads it every ten minutes with the publishable key, so anon
+  -- must have SELECT on it. It is safe to expose: the view returns an md5 and
+  -- three counts, computed over the three _public views -- i.e. a digest of
+  -- content that is already public, and nothing that is not. Added by
+  -- 20260831120000_content_checksum.sql.
+  --
+  -- This expectation was stale from the day that migration was written and
+  -- only surfaced on 2026-09-11, the first time this file was ever run. See
+  -- `npm run check:db`, which exists so that does not happen twice.
   select 1 as n, 'anon: table/view privileges in public' as check_name,
-         'event_exceptions_public:SELECT events_public:SELECT organizers_public:SELECT' as expected,
+         'content_checksum:SELECT event_exceptions_public:SELECT events_public:SELECT organizers_public:SELECT' as expected,
          coalesce(string_agg(distinct table_name || ':' || privilege_type, ' '
                              order by table_name || ':' || privilege_type), 'none') as actual
     from information_schema.role_table_grants

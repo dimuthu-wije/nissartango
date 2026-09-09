@@ -27,8 +27,41 @@ There is, today, **no dev/prod separation**: one project holds everything and
 it is live. The brief asked for an MCP connector pointed at a development
 branch rather than production, and that constraint is currently unmet — not
 violated, since no Supabase MCP connector is attached, but unmet. Making
-`hjsekipqryfuwdkhxuks` real is `supabase link` + `db push` + `npm run seed:real`
-against it; the migrations and the seed script already work unchanged.
+`hjsekipqryfuwdkhxuks` real is `supabase link` + `db push`, then the content
+step below.
+
+### Seeding a HOSTED project — not `npm run seed:real`
+
+**`npm run seed:real` cannot target a hosted project, and it will not tell you
+so.** `scripts/seed-real.sh` calls `require_local`, which refuses anything but
+loopback. The dangerous part is what happens when it does *not* refuse: if a
+local stack happens to be running, the guard passes, the script seeds **local**,
+prints its usual success, and the hosted project you meant stays empty. An
+earlier version of this runbook said to run it against dev; it would have
+silently done nothing to dev.
+
+`data/initial-content.sql` says it itself, at the top of the file:
+
+> NOT a migration. Migrations are schema; this is content, and it is run ONCE
+> by hand against whichever project the public site builds from:
+> Dashboard → SQL Editor → paste → Run. Safe to run twice: every insert is
+> ON CONFLICT DO NOTHING.
+
+So, for dev or any hosted project:
+
+```bash
+# either paste data/initial-content.sql into that project's SQL editor, or:
+psql "$DEV_DB_URL" -f data/initial-content.sql
+```
+
+Both are the same thing; `psql` is preferable only because it leaves a record
+in your shell history rather than in a browser tab. Idempotent either way.
+
+**Do not reach for `ALLOW_NON_LOCAL=1`.** It exists, and it would technically
+work — but `seed-real.sh` runs `db_clear_content` *before* applying the
+content, so on a hosted project with real content that override is a five-second
+countdown in front of a delete. It is there for a deliberate, considered
+operation, not for seeding.
 
 Everything in `supabase/migrations/` travels with the repo. **These do not.**
 They are set per project in the dashboard, and nothing in a `git clone` will
