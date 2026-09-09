@@ -31,8 +31,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
+import {
+  projectRef, productionRef, snapshotFileFor, currentSnapshotPath, POINTER,
+} from '../src/lib/snapshot-path.mjs';
+
 const ROOT = path.resolve(import.meta.dirname, '..');
-const SNAPSHOT = path.join(ROOT, 'data', 'snapshot.json');
+const DATA_DIR = path.join(ROOT, 'data');
 const IMAGE_DIR = path.join(ROOT, 'src', 'assets', 'events');
 
 const fromSnapshot =
@@ -133,6 +137,25 @@ kept out of git, and out of the built output -- npm run verify:build fails if
 a JWT-shaped string reaches dist/.`);
   }
 
+  // The checksum is read FIRST, before the content, and the ordering is the
+  // whole point.
+  //
+  // The poller compares this recorded value against the database's current
+  // one. If content changed between the two reads, then recording the LATER
+  // checksum would describe content this build never saw: the poller would
+  // see no drift and the site would stay stale until the daily rebuild.
+  // Recording the EARLIER one describes content at most as new as what was
+  // built, so the same race produces one extra rebuild instead. Both orders
+  // are wrong under a race; only one of them is wrong in the safe direction.
+  const [summary] = await rest('content_checksum?select=*');
+  if (!summary?.checksum) {
+    die(`content_checksum returned nothing.
+
+That view is how the rebuild poller knows whether the deployed site is
+current. Building without it would publish a build-info.json with a null
+checksum, which the poller reads as permanent drift.`);
+  }
+
   const events = await rest(
     'events_public?select=*&order=starts_at.asc');
   const organizers = await rest(
@@ -158,14 +181,34 @@ The view is supposed to filter to approved only.`);
     }
   }
 
-  return { fetched_at: new Date().toISOString(), events, organizers, exceptions };
+  // Counts are cheap corroboration: if the digest was computed over a
+  // different row set than the one fetched, this is where it shows.
+  if (Number(summary.n_events) !== events.length) {
+    log(`WARNING: content changed mid-fetch (checksum saw ${summary.n_events} ` +
+        `events, the fetch got ${events.length}). The next poll will rebuild.`);
+  }
+
+  return {
+    fetched_at: new Date().toISOString(),
+    // Which project this content came from, recorded so the deployed site can
+    // be ASKED rather than assumed. A poller pointed at a different project
+    // than the build would see drift that no rebuild can ever resolve.
+    project_ref: projectRef(SUPABASE_URL),
+    checksum: summary.checksum,
+    counts: {
+      events: summary.n_events,
+      organizers: summary.n_organizers,
+      exceptions: summary.n_exceptions,
+    },
+    events, organizers, exceptions,
+  };
 }
 
 // --- images ----------------------------------------------------------------
 /** `0a00…/e000…/affiche.jpg` -> `0a00…-e000…-affiche.jpg` */
 const flatten = (storagePath) => storagePath.replace(/[^a-zA-Z0-9._-]+/g, '-');
 
-async function downloadImages(events) {
+async function downloadImages(events, { prune = true } = {}) {
   await mkdir(IMAGE_DIR, { recursive: true });
   const wanted = new Map();
 
@@ -175,8 +218,13 @@ async function downloadImages(events) {
   }
 
   // Remove files for images that are no longer referenced, so a deleted flyer
-  // does not linger in the repo forever.
-  for (const existing of await readdir(IMAGE_DIR).catch(() => [])) {
+  // does not linger forever.
+  //
+  // Only a PRODUCTION build prunes. src/assets/events is one directory shared
+  // by every project, and a dev build pruning it would delete the flyers the
+  // `--from-snapshot` emergency path needs -- an emergency deploy that comes
+  // out without its images. Adding is harmless; deleting is not.
+  for (const existing of prune ? await readdir(IMAGE_DIR).catch(() => []) : []) {
     if (existing !== '.gitkeep' && !wanted.has(existing)) {
       await unlink(path.join(IMAGE_DIR, existing));
       log(`removed unused image ${existing}`);
@@ -204,10 +252,12 @@ The bucket is private and readable via an anon policy; if this is a 400 or
 
 // --- main ------------------------------------------------------------------
 let snapshot;
+let readFrom = null;   // set when building --from-snapshot
 
 if (fromSnapshot) {
-  if (!existsSync(SNAPSHOT)) die('--from-snapshot, but data/snapshot.json does not exist.');
-  snapshot = JSON.parse(await readFile(SNAPSHOT, 'utf8'));
+  readFrom = currentSnapshotPath(ROOT);
+  if (!existsSync(readFrom)) die(`--from-snapshot, but ${path.relative(ROOT, readFrom)} does not exist.`);
+  snapshot = JSON.parse(await readFile(readFrom, 'utf8'));
   log(`building from the snapshot of ${snapshot.fetched_at} — NOT live data`);
 } else {
   try {
@@ -224,11 +274,33 @@ deliberately with:
     npm run build -- --from-snapshot
 `);
   }
-  await mkdir(path.dirname(SNAPSHOT), { recursive: true });
-  await writeFile(SNAPSHOT, JSON.stringify(snapshot, null, 2) + '\n');
+  // Named after the project it came from. data/snapshot.json is PRODUCTION's
+  // and is committed; every other project writes data/snapshot.<ref>.json,
+  // which .gitignore covers. So a build against dev cannot overwrite the
+  // backup of production's content, and there is no flag to remember.
+  await mkdir(DATA_DIR, { recursive: true });
 }
 
-const files = await downloadImages(snapshot.events).catch((err) => {
+// Where this build's content belongs, and the pointer that tells the rest of
+// the build which file to read. The pointer is gitignored, so a fresh clone --
+// and any `--from-snapshot` that has never fetched -- falls back to
+// production's committed snapshot, which is the right default for the
+// emergency path.
+const SNAPSHOT_FILE = readFrom
+  ? path.basename(readFrom)
+  : snapshotFileFor(snapshot.project_ref, ROOT);
+const SNAPSHOT = path.join(DATA_DIR, SNAPSHOT_FILE);
+const IS_PRODUCTION = SNAPSHOT_FILE === 'snapshot.json';
+if (!fromSnapshot) {
+  await writeFile(SNAPSHOT, JSON.stringify(snapshot, null, 2) + '\n');
+  await writeFile(path.join(DATA_DIR, POINTER), SNAPSHOT_FILE + '\n');
+  if (!IS_PRODUCTION) {
+    log(`project ${snapshot.project_ref} is not production (${productionRef(ROOT)}); ` +
+        `wrote data/${SNAPSHOT_FILE}, leaving data/snapshot.json alone`);
+  }
+}
+
+const files = await downloadImages(snapshot.events, { prune: IS_PRODUCTION }).catch((err) => {
   if (fromSnapshot) {
     log(`WARNING: images not refreshed (${err.message})`);
     return new Map();

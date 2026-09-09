@@ -1,11 +1,13 @@
 import { defineCollection, z } from 'astro:content';
 import type { Loader } from 'astro/loaders';
 import { readFile } from 'node:fs/promises';
-import path from 'node:path';
+import { currentSnapshotPath } from './lib/snapshot-path.mjs';
 
 /**
- * Collections are loaded from data/snapshot.json, which scripts/fetch-content.mjs
- * writes from Supabase before every build.
+ * Collections are loaded from the snapshot scripts/fetch-content.mjs writes
+ * from Supabase before every build — data/snapshot.json for production, and
+ * data/snapshot.<ref>.json for any other project, so a build against dev
+ * cannot overwrite production's committed backup. See src/lib/snapshot-path.mjs.
  *
  * Why the indirection instead of fetching here: one place talks to the
  * database, the snapshot that place produces IS the backup, and the build
@@ -13,7 +15,7 @@ import path from 'node:path';
  * special code path — it is just skipping the fetch.
  */
 
-const SNAPSHOT = path.resolve('./data/snapshot.json');
+const SNAPSHOT = currentSnapshotPath();
 
 function snapshotLoader(
   key: 'events' | 'organizers' | 'exceptions',

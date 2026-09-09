@@ -1,0 +1,11 @@
+# Served by Cloudflare Workers static assets.
+#
+# build-info.json is the deployed site's statement of what it was built from.
+# The rebuild poller fetches it every ten minutes and compares its checksum
+# against the database. If Cloudflare were allowed to cache it, the poller
+# would compare the live database against a stale answer, see drift that had
+# already been fixed, and fire the deploy hook every ten minutes for as long
+# as the cache lived -- which is precisely the free-tier build minutes this
+# whole mechanism is supposed to spend carefully.
+/build-info.json
+  Cache-Control: no-store

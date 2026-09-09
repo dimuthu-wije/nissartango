@@ -38,3 +38,10 @@ supabase/.temp/
 # flyers backed up in git alongside data/snapshot.json.
 src/assets/events/*
 !src/assets/events/.gitkeep
+
+# Snapshots from any project that is NOT production. data/snapshot.json is
+# production's and IS committed -- it is the backup for content hand-entered
+# over years, and what `--from-snapshot` publishes in an emergency. Which ref
+# is production is one line in data/production-ref.
+data/snapshot.*.json
+data/.snapshot-current

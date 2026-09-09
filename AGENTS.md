@@ -141,17 +141,41 @@ public/admin/index.html       CMS entry point
 Be objective and disagree with me when I'm wrong. Point out design problems
 before writing code. I'll paste build logs and file contents; tell me exactly
 what to change rather than having me experiment.
+
+### Never write a file you have not read in this session
+
+Twice an agent working from a cloud container appended to `.gitignore` using a
+copy that did not exist on its side, and shipped a file containing only the
+appended block — deleting the rules that keep `.env`, `dist/` and
+`node_modules/` out of git. Neither time was it forgetfulness. Both times the
+agent could not see this repo's copy and wrote anyway.
+
+So: **no whole-file write to a path whose current contents you have not read in
+this session.** "I know what's in it" is the failure, not the fix.
+
+For an addition to a file you cannot read — `.gitignore`, `.env`, anything
+outside a connected folder — hand me the lines to paste. When you *can* read
+it, edit in place where it lives (a `python` read-modify-write over the real
+file) rather than shipping a whole file over it, and show me the diff.
+
+This matters most for files whose job is to prevent something. A clobbered
+`.gitignore` looks like nothing until a secret is committed.
 ## Supabase
 
 Schema lives in `supabase/migrations/` and is applied with the CLI, never
 through the dashboard or an MCP connector. As of the first `db push` to the
-dev project those files are history: **append new migrations, never edit an
+hosted project those files are history: **append new migrations, never edit an
 applied one.**
 
 Project settings that live in the dashboard and do NOT travel with this repo
-are written down in **`supabase/PROJECT_SETUP.md`** — read it before creating
-the production project. Short version: Data API on, automatically-expose-new-
-tables off, automatic RLS on. A mistake should deny, not expose.
+are written down in **`supabase/PROJECT_SETUP.md`** — read it before pushing to
+any project. Short version: Data API on, automatically-expose-new-tables off,
+automatic RLS on. A mistake should deny, not expose.
+
+That file also says **which project is which**, and the names mislead:
+`eqcgeqzzuzcwrflwasjo` ("dimuthu-wije's Project") is production and holds
+everything; `hjsekipqryfuwdkhxuks` ("nissartango-dev") is empty and referenced
+nowhere. There is currently no dev/prod separation. Check before you push.
 
 Verification:
 

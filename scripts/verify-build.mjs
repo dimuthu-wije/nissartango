@@ -9,6 +9,7 @@
  */
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { currentSnapshotPath } from '../src/lib/snapshot-path.mjs';
 
 const DIST = path.resolve('dist');
 let failures = 0;
@@ -47,7 +48,7 @@ stage 3. Whatever is in there, it is not what this repo builds now.
 }
 
 const index = files.find((f) => path.relative(DIST, f) === 'index.html');
-const snapshotPath = path.resolve('data/snapshot.json');
+const snapshotPath = currentSnapshotPath();
 try {
   const [built, fetched] = await Promise.all([stat(index), stat(snapshotPath)]);
   if (built.mtimeMs < fetched.mtimeMs) {
@@ -387,6 +388,124 @@ if (!agendaRows.length) {
   }
   if (!orphans) {
     ok(`${agendaRows.length} agenda row(s), every date present on its own page`);
+  }
+}
+
+// 10. build-info.json is load-bearing, and so is its cache header.
+//
+//     The rebuild poller compares this file's checksum against the database
+//     every ten minutes. A null checksum reads as permanent drift; a cacheable
+//     copy reads as drift that has already been fixed. Both failure modes burn
+//     the month's build minutes ten minutes at a time, and neither is visible
+//     from looking at the site.
+const infoFile = files.find((f) => rel(f) === 'build-info.json');
+if (!infoFile) {
+  fail('no build-info.json — the rebuild poller has nothing to compare against');
+} else {
+  let info;
+  try { info = JSON.parse(await readFile(infoFile, 'utf8')); }
+  catch { fail('build-info.json is not valid JSON'); }
+
+  if (info) {
+    if (!/^[0-9a-f]{32}$/.test(info.checksum ?? '')) {
+      fail(`build-info.json checksum is not an md5: ${JSON.stringify(info.checksum)}. ` +
+           'Has 20260831120000_content_checksum.sql been applied to this project?');
+    } else {
+      let snap = null;
+      try { snap = JSON.parse(await readFile(currentSnapshotPath(), 'utf8')); } catch {}
+      // Which project built this. The poller refuses to rebuild when this
+      // disagrees with its own SUPABASE_URL, so it has to be here to be read.
+      if (!/^[a-z0-9]{8,}$|^local$/.test(info.project_ref ?? '')) {
+        fail(`build-info.json has no usable project_ref: ${JSON.stringify(info.project_ref)}`);
+      } else if (snap && snap.project_ref && snap.project_ref !== info.project_ref) {
+        fail('build-info.json names a different project than the snapshot');
+      } else if (snap && snap.checksum && snap.checksum !== info.checksum) {
+        fail('build-info.json does not carry the snapshot\'s checksum — the site would ' +
+             'advertise content it was not built from');
+      } else {
+        ok(`build-info.json carries checksum ${info.checksum} from project ${info.project_ref}`);
+      }
+    }
+  }
+
+  // The header rule lives in _headers, which the asset router applies and the
+  // endpoint's own Cache-Control cannot be relied on to survive.
+  const headersFile = files.find((f) => rel(f) === '_headers');
+  const headerText = headersFile ? await readFile(headersFile, 'utf8') : '';
+  const block = headerText.split(/\n(?=\S)/).find((b) => b.trimStart().startsWith('/build-info.json'));
+  if (!block || !/cache-control:\s*no-store/i.test(block)) {
+    fail('_headers does not mark /build-info.json no-store — a cached copy makes the ' +
+         'poller rebuild every ten minutes forever');
+  } else {
+    ok('/build-info.json is marked no-store');
+  }
+}
+
+// 11. The privacy boundary, asserted a SECOND time against the artefact that
+//     is actually permanent.
+//
+//     fetch-content.mjs already dies if organizers_public returns an email or
+//     phone column. That check lives in the script that does the fetching,
+//     which means it disappears the moment someone rewrites that script — and
+//     this repository is PUBLIC. A leak into dist/ is a bad afternoon; a leak
+//     into data/snapshot.json is a commit, and a commit to a public repo
+//     cannot be un-published. Forks keep copies and unreachable objects stay
+//     addressable, so the only remedy is rotating something that cannot be
+//     rotated: somebody's phone number.
+//
+//     So it is checked again here, against the written file, by a different
+//     script that has no reason to be edited at the same time as the other.
+const FORBIDDEN_ORGANIZER_FIELDS = ['email', 'phone', 'address', 'notes'];
+let snapshotForPrivacy = null;
+try { snapshotForPrivacy = JSON.parse(await readFile(currentSnapshotPath(), 'utf8')); } catch {}
+
+if (!snapshotForPrivacy) {
+  fail('no snapshot to check for leaked contact fields — this check would pass vacuously');
+} else {
+  const organizers = snapshotForPrivacy.organizers ?? [];
+  if (!organizers.length) {
+    fail('the snapshot has no organizers — the privacy check would pass vacuously');
+  } else {
+    const leaked = [];
+    for (const o of organizers) {
+      for (const f of FORBIDDEN_ORGANIZER_FIELDS) {
+        if (f in o) leaked.push(`organizer "${o.slug ?? o.id}" carries a "${f}" field`);
+      }
+    }
+    if (leaked.length) {
+      leaked.forEach((l) => fail(
+        `${l} — organizers_public is the privacy boundary and this file gets COMMITTED ` +
+        'to a public repository. Do not publish, and do not commit.'));
+    } else {
+      ok(`${organizers.length} organizer(s), none carrying ${FORBIDDEN_ORGANIZER_FIELDS.join('/')}`);
+    }
+  }
+
+  // And a WARNING, deliberately not a failure: contact details a person typed
+  // into a free-text field. An organizer may legitimately put an email in an
+  // event description, so failing the build here would block correct content
+  // on a policy nobody has decided yet. Stage 5 has to decide it -- warn,
+  // point at the decision, do not pretend it is settled.
+  const CONTACT = [
+    [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, 'an email address'],
+    [/(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}/g, 'a French phone number'],
+  ];
+  const notices = [];
+  for (const e of snapshotForPrivacy.events ?? []) {
+    for (const field of ['body', 'price_note', 'location_address']) {
+      const text = e[field];
+      if (typeof text !== 'string') continue;
+      for (const [re, what] of CONTACT) {
+        const m = text.match(re);
+        if (m) notices.push(`${e.slug} .${field} contains ${what} (${m[0].slice(0, 6)}…)`);
+      }
+    }
+  }
+  if (notices.length) {
+    console.log(`  WARN  ${notices.length} free-text field(s) look like contact details:`);
+    notices.slice(0, 5).forEach((n) => console.log(`        ${n}`));
+    console.log('        This file is committed to a PUBLIC repo, and git history is forever.');
+    console.log('        Not a build failure: see "Still to decide (stage 5)" in supabase/PROJECT_SETUP.md.');
   }
 }
 

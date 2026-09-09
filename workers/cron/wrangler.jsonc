@@ -4,25 +4,41 @@
 	"main": "src/index.mjs",
 	"compatibility_date": "2026-08-29",
 
-	// UTC. Cloudflare cron triggers have no timezone option, so these drift
-	// against Paris by an hour across the changeovers. At 03:15 and 09:15 UTC
-	// that is irrelevant -- see the note in src/index.mjs.
+	// UTC. Cloudflare cron triggers have no timezone option.
+	//
+	// The ten-minute poll is the rebuild trigger AND the keep-alive: it reads
+	// Supabase 144 times a day, which is 143 more than a free-tier project
+	// needs to stay unpaused. The separate 09:15 keep-alive cron is gone
+	// because it was doing a job this one cannot skip.
+	//
+	// 03:15 stays, and is the one job the poll cannot replace: events falling
+	// into the past change the agenda and move no checksum.
 	"triggers": {
 		"crons": [
-			"15 3 * * *", // rebuild + keep-alive
-			"15 9 * * *"  // keep-alive only, at a different hour so one bad
-			              // run cannot take out both jobs on the same day
+			"*/10 * * * *", // poll: compare deployed checksum against the database
+			"15 3 * * *"    // daily rebuild: for the change no checksum can see
 		]
 	},
 
-	// Both of these are PUBLIC by design: the publishable key is the one that
-	// ships in browsers, and RLS is what protects the data. The deploy hook URL
-	// is the actual secret here, and it is set with:
+	// All three are PUBLIC by design. The publishable key is the one that ships
+	// in browsers and RLS is what protects the data; the site URL is the site.
+	// The deploy hook URL is the only secret, and it is set with:
 	//     npx wrangler secret put DEPLOY_HOOK_URL
 	"vars": {
 		"SUPABASE_URL": "https://eqcgeqzzuzcwrflwasjo.supabase.co",
-		"SUPABASE_ANON_KEY": "sb_publishable_skzfneinpRaYYqrpLvgYMw_rhaPUQ5E"
+		"SUPABASE_ANON_KEY": "sb_publishable_skzfneinpRaYYqrpLvgYMw_rhaPUQ5E",
+		"SITE_URL": "https://nissartango.fr"
 	},
+
+	// Holds one key: when the deploy hook was last fired, for which checksum,
+	// and how many times that same checksum has failed to clear. It is a cache,
+	// not a source of truth -- losing it costs at most one extra build.
+	//
+	// Create it once, then paste the id here:
+	//     npx wrangler kv namespace create REBUILD_STATE
+	"kv_namespaces": [
+		{ "binding": "REBUILD_STATE", "id": "PASTE_THE_KV_NAMESPACE_ID_HERE" }
+	],
 
 	"observability": {
 		"enabled": true
