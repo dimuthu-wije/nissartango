@@ -8,33 +8,63 @@ A tick means a person did the thing and wrote down what they did. Nothing here
 can be verified from the repo — that is exactly why it has to be written down,
 and why the record is a line in a diff rather than a flag you retype.
 
+Three states:
+
+    - [ ]   not done.  `npm run deploy:cron` refuses.
+    - [x]   done.      Passes silently.
+    - [!]   DEFERRED.  Passes, and the deploy SHOUTS about it every time.
+
+`[!]` exists because "not yet" is sometimes the correct engineering answer, and
+pretending otherwise just teaches people to tick boxes. It costs three fields,
+all required, and it expires:
+
+    - [!] **Title**
+          deferred: 2026-09-09
+          compensating: what is running INSTEAD, specifically
+          review: 2026-10-09
+
+A deferral without a compensating control is an untick with better
+handwriting, and the deploy refuses it. A `review:` date in the past also
+refuses — a deferral nobody revisits is just a decision made silently. Extend
+it deliberately, as an edit someone can question, or do the thing.
+
 ---
 
 ## Required before the first deploy
 
-- [ ] **Build-failure notifications have DELIVERED A MESSAGE.** Not "are
-      configured", not "deployed cleanly" — an email about a real failed build
-      has arrived in your inbox and you have read it.
+- [!] **Build-failure notifications have DELIVERED A MESSAGE.**
+      deferred: 2026-09-09
+      compensating: daily external fetch of https://nissartango.fr/build-info.json comparing built_at against the previous day, running OUTSIDE Cloudflare
+      review: 2026-10-09
 
-      Set up `workers/build-notifier/` (Email Routing destination verified, two
-      queues created, `npm run deploy:notifier`, event subscription pointed at
-      the queue), then run the acceptance test in its README: break the build
-      deliberately, confirm the mail arrives, put it back, confirm success is
-      silent.
+      Deferred deliberately, with the reasoning on the record because it is the
+      kind that looks like a corner being cut and is not.
 
-      This is the Worker's whole safety story. Its failure mode is: a build
-      fails, drift persists, the cooldown quietly retries at 30 → 60 → 120 →
-      240 → 360 minutes, and none of it is visible from outside because the
-      previous deployment keeps serving a correct-looking site. The loop is
-      designed to be quiet when nothing is wrong, which means it is also quiet
-      when everything is wrong. The alert is the difference — and a notifier
-      that has never delivered a message is a decoration. Subscription, queue,
+      **The silent-failure risk predates the poller.** The daily 03:15 rebuild
+      has run unwatched since 31 August. Deploying `nissartango-cron` does not
+      add exposure — it reduces staleness. Blocking the deploy on the notifier
+      would preserve the risk and withhold the mitigation, which is the worst
+      of both.
+
+      The compensating check is the dead-man's-switch recorded below as
+      unclosed, now chosen and running. It is strictly broader than the
+      notifier it stands in for: `built_at` standing still catches a failing
+      build, a cron Worker that has stopped being invoked, AND a paused
+      database — the notifier catches only the first, because a Worker that
+      never runs emits no build events.
+
+      What it does NOT catch, and why the notifier is still wanted: latency. A
+      daily check finds within 24 hours what an email finds in two minutes.
+
+      Closing it means DELIVERY, not configuration: subscription, queue,
       binding, verified destination and the far end's spam filter each fail
-      silently and independently; only receipt tests all five.
+      silently and independently, and only receipt tests all five. Set up
+      `workers/build-notifier/`, run the acceptance test in its README, then
+      replace this block with the delivery record.
 
-      Record: `delivered YYYY-MM-DD, subject "[nissartango] build FAILED on ..."`, to:
+      Record on closing: `delivered YYYY-MM-DD, subject "[nissartango] build FAILED on ..."`, to:
 
-- [ ] **The two halves name one project.** After the site deploy, before this
+- [x] **The two halves name one project.** After the site deploy, before this
       one:
 
           curl -s https://nissartango.fr/build-info.json
@@ -44,16 +74,18 @@ and why the record is a line in a diff rather than a flag you retype.
       poller will refuse to rebuild rather than loop — but a Worker that
       refuses to do its job is not a deployment worth making.
 
-      Record: `checked YYYY-MM-DD, both read <ref>`, to:
+      Record: checked 2026-09-09 — `wrangler.jsonc` and the live
+      `build-info.json` both read `eqcgeqzzuzcwrflwasjo`.
 
-- [ ] **`wrangler secret list` holds exactly one secret**, `DEPLOY_HOOK_URL`.
+- [x] **`wrangler secret list` holds exactly one secret**, `DEPLOY_HOOK_URL`.
       Two strays named after deploy hook URLs were created by a mistyped
       `wrangler secret put` and want deleting:
 
           npx wrangler secret list --config workers/cron/wrangler.jsonc
           npx wrangler secret delete "<the stray name>" --config workers/cron/wrangler.jsonc
 
-      Record: `checked YYYY-MM-DD`, to:
+      Record: checked 2026-09-09 — exactly one secret, `DEPLOY_HOOK_URL`.
+      The two strays named after deploy hook URLs are deleted.
 
 ---
 

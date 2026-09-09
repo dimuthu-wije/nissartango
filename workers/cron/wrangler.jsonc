@@ -37,7 +37,7 @@
 	// Create it once, then paste the id here:
 	//     npx wrangler kv namespace create REBUILD_STATE
 	"kv_namespaces": [
-		{ "binding": "REBUILD_STATE", "id": "PASTE_THE_KV_NAMESPACE_ID_HERE" }
+		{ "binding": "REBUILD_STATE", "id": "f1460de9040647418d808df52d29d6b7" }
 	],
 
 	"observability": {

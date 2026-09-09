@@ -29,7 +29,7 @@
 --
 -- The purpose of this file is that the repo describes what production actually
 -- runs. The body between the markers below is a VERBATIM capture of
--- public.rls_auto_enable from eqcgeqzzuzcwrflwasjo, taken on 2026-09-11 with:
+-- public.rls_auto_enable from eqcgeqzzuzcwrflwasjo, taken on 2026-09-09 with:
 --
 --     psql "$PROD_DB_URL" -At -c \
 --       "select pg_get_functiondef('public.rls_auto_enable'::regproc)"

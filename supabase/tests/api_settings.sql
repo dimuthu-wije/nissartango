@@ -158,7 +158,7 @@ select
   'service_role_on_base_tables',
   count(*) || ' of ' || (select count(*) from _base_tables) || ' base table(s)',
   null,
-  'informational, no verdict. MEASURED 2026-09-11: 5 of 5 on BOTH projects, '
+  'informational, no verdict. MEASURED 2026-09-09: 5 of 5 on BOTH projects, '
   || 'like-for-like with this file. An earlier version of this line predicted '
   || 'that a project born fail-open would differ from one born fail-closed; '
   || 'its own measurement contradicted that, so the prediction is gone and the '
