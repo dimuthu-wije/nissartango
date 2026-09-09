@@ -1,0 +1,57 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "nissartango-build-notifier",
+	"main": "src/index.mjs",
+	"compatibility_date": "2026-09-11",
+
+	// Deployed with `npx wrangler deploy --config workers/build-notifier/wrangler.jsonc`.
+	// NOT a GitHub-connected Cloudflare application: a notifier that is itself
+	// built by the build system it watches has a failure mode where the thing
+	// that breaks is the thing that would have told you.
+
+	// The consumer half of the Workers Builds event subscription. The queue is
+	// created once with:
+	//     npx wrangler queues create nissartango-build-events
+	//     npx wrangler queues create nissartango-build-events-dlq
+	//
+	// max_batch_size 1 on purpose. Build events arrive a few times a day, so
+	// batching buys nothing, and it makes the retry semantics trivial to reason
+	// about: one message, one invocation, one outcome.
+	"queues": {
+		"consumers": [
+			{
+				"queue": "nissartango-build-events",
+				"max_batch_size": 1,
+				"max_batch_timeout": 5,
+				"max_retries": 5,
+				// Where a message goes when it cannot be delivered. Without this
+				// a permanently-failing send is silently discarded after the
+				// last retry, which is the exact failure this Worker exists to
+				// prevent -- one level up.
+				"dead_letter_queue": "nissartango-build-events-dlq"
+			}
+		]
+	},
+
+	// Cloudflare Email Routing. destination_address pins the binding to one
+	// recipient at the platform level, so a bug here cannot turn this into a
+	// way to send mail to anyone else. The address must be a VERIFIED
+	// destination in Email Routing before this will send.
+	"send_email": [
+		{
+			"name": "EMAIL",
+			"destination_address": "dimuthu.wije@outlook.com"
+		}
+	],
+
+	// Both are public. The from address must be on a domain onboarded to
+	// Email Routing, or send() throws E_SENDER_NOT_VERIFIED.
+	"vars": {
+		"NOTIFY_TO": "dimuthu.wije@outlook.com",
+		"NOTIFY_FROM": "builds@nissartango.fr"
+	},
+
+	"observability": {
+		"enabled": true
+	}
+}
