@@ -160,6 +160,33 @@ file) rather than shipping a whole file over it, and show me the diff.
 
 This matters most for files whose job is to prevent something. A clobbered
 `.gitignore` looks like nothing until a secret is committed.
+
+### Measure platform claims against this project before recording them
+
+Twice a confident, well-sourced, general claim about Supabase turned out not to
+describe these projects:
+
+- *"The fail-closed default landed for new projects on 30 May 2026, and both
+  projects were created on 28 August, therefore both are fail-closed."*
+  Dev was fail-open on all three settings, with `anon=arwdDxtm` — insert,
+  update and delete — on every new table.
+- *"`create event trigger` requires superuser, and the migration role is not
+  one, therefore automatic RLS cannot be versioned."*
+  The migration role created and dropped one on both projects, and
+  production's `ensure_rls` is owned by `postgres`.
+
+Both claims were true of something. Neither was true here. A release note tells
+you what a default **was**; documentation tells you what the platform
+**usually** does. Neither is evidence about the project in front of you.
+
+So: **a platform claim gets measured against this project before it is written
+down as a fact about it** — and where the measurement is cheap, the probe goes
+in `supabase/tests/` so the next person measures instead of inheriting my
+conclusion. `can_a_migration_install_automatic_rls` exists because the second
+claim above was wrong; it now answers the question per project, for good.
+
+Where a claim cannot be measured, record it as a claim, with its source and the
+date, not as a property of the project.
 ## Supabase
 
 Schema lives in `supabase/migrations/` and is applied with the CLI, never
