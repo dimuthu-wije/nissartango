@@ -68,7 +68,7 @@ with evidence, not with silence.
 
 ```bash
 # 0. Record what the site currently says. This is the baseline for step 6.
-curl -s https://nissartango.fr/build-info.json
+curl -s "https://nissartango.fr/build-info.json?t=$(date +%s)"
 #    -> note built_at
 
 # 1. Break the build deliberately. Cloudflare dashboard -> site Worker ->
@@ -88,7 +88,7 @@ curl -s https://nissartango.fr/build-info.json
 # 5. Put SUPABASE_URL back. Trigger another build.
 
 # 6. Confirm the revert TOOK, positively:
-curl -s https://nissartango.fr/build-info.json
+curl -s "https://nissartango.fr/build-info.json?t=$(date +%s)"
 #    -> built_at MUST have moved past the value from step 0,
 #       and project_ref must still read eqcgeqzzuzcwrflwasjo.
 
@@ -104,8 +104,27 @@ the notifier has also stopped working". If you leave the acceptance test after
 step 5 having seen no mail, you may have left production broken and disabled
 its alarm in the same sitting.
 
-`/build-info.json` is served `no-store` (see `public/_headers`), so curl gets
-the live value rather than a cached one.
+### Your reader may be lying, and it lies in a known direction
+
+`/build-info.json` is served `no-store` (see `public/_headers`), and
+`verify-build.mjs` fails the build if that rule ever disappears. That binds
+caches which honour it. On 13–14 September one did not: a caching proxy
+returned pre-deploy content for a day and a half and manufactured the
+appearance of a poller outage that had not happened. Distinct cache-busting
+URLs did not defeat it either — it was not keying on the full URL.
+
+This does not weaken the test, because of the direction of the error:
+
+    A stale cache can only ever return an OLDER built_at, never a newer one.
+
+So **step 6 is safe as written**: it demands that `built_at` has MOVED, and no
+cache can invent a timestamp that does not exist yet. A move is conclusive.
+
+It is the negative reading that is unreliable. If `built_at` has NOT moved,
+you have learned "either the build did not deploy, or my reader is cached" —
+and before concluding the former, fetch once from a different network. The
+`?t=` above is worth keeping anyway; it is free and it works against
+well-behaved caches. It is simply not what makes this trustworthy.
 
 Step 7 still matters on its own: a notifier that mails on success is one you
 will filter within a fortnight.

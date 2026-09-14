@@ -126,13 +126,46 @@ id is still a placeholder, so this cannot be half-done.
 
 ## Checking it works
 
-Confirm both halves name one project — this is the check that catches
-permanent drift before it starts:
+### The acceptance test: a real content change, observed reaching the site
 
-    curl -s https://nissartango.fr/build-info.json
+**This is the only check that means anything, and it cannot be automated away
+— it needs a real content change.** Everything below it is diagnostics.
+
+    1. Note the live checksum:
+         curl -s "https://nissartango.fr/build-info.json?t=$(date +%s)"
+    2. Change something in Supabase — edit an event's title, then put it back.
+    3. Confirm the database checksum has moved:
+         psql "$PROD_DB_URL" -c "select checksum from public.content_checksum"
+    4. Watch: npx wrangler tail nissartango-cron
+    5. Within ten minutes the tail must show the drift branch and a POST, and
+       within about two more the live checksum must equal the database's.
+
+Observed on 2026-09-14: invocation at 08:00:05Z logged drift and POSTed, build
+ran 08:01:15, deployed 08:01:17, site served the new checksum. **Two minutes
+end to end, from a cold KV key.**
+
+Still unexercised: the **cooldown branch**, which only engages when a POST
+succeeded and the drift persisted — which happens only when the build itself
+fails. Reaching it therefore requires a deliberately broken build, which is
+the same experiment as the notifier's acceptance test in
+`workers/build-notifier/README.md`. Do them as one run.
+
+### Diagnostics
+
+Confirm both halves name one project — this catches permanent drift before it
+starts:
+
+    curl -s "https://nissartango.fr/build-info.json?t=$(date +%s)"
 
 `project_ref` there is what Cloudflare's build actually used. It must match
 `vars.SUPABASE_URL` in `wrangler.jsonc`.
+
+A `built_at` or `checksum` that looks stale may be your reader, not the site:
+on 13–14 September a caching proxy returned pre-deploy content for a day and a
+half and manufactured a poller outage that had not happened. A stale cache can
+only return an OLDER value, never a newer one — so a value that HAS moved is
+conclusive, and one that has not means "investigate, starting with your own
+network".
 
 Locally, without waiting:
 
@@ -143,7 +176,13 @@ The logic is covered by tests that need no network:
 
     npm test
 
-Thirty-five of them. The ones that matter: a mismatched project fires nothing;
+Thirty-five of them — and be clear about what they are worth. They stub
+`fetch` and inject a fake KV, so they prove the handler is self-consistent with
+the author's beliefs about the world and nothing whatever about the deployed
+Worker. This feature passed all thirty-five while never once having polled
+successfully. Treat them as a regression net for the logic, never as evidence
+the thing works; that is what the acceptance test above is for. The ones that
+matter: a mismatched project fires nothing;
 a failing build does not re-trigger every ten minutes; new content published
 during that cooldown is *not* made to wait; an unreachable database deploys
 nothing but still lets the daily rebuild through.

@@ -34,7 +34,7 @@ it deliberately, as an edit someone can question, or do the thing.
 
 - [!] **Build-failure notifications have DELIVERED A MESSAGE.**
       deferred: 2026-09-09
-      compensating: daily external fetch of https://nissartango.fr/build-info.json comparing built_at against the previous day, running OUTSIDE Cloudflare
+      compensating: daily external fetch of https://nissartango.fr/build-info.json?t=<epoch-ms> comparing built_at against the previous day, running OUTSIDE Cloudflare
       review: 2026-10-09
 
       Deferred deliberately, with the reasoning on the record because it is the
@@ -55,6 +55,33 @@ it deliberately, as an edit someone can question, or do the thing.
 
       What it does NOT catch, and why the notifier is still wanted: latency. A
       daily check finds within 24 hours what an email finds in two minutes.
+
+      **Why this control is defensible even though its input can be stale.**
+      On 13–14 September a caching proxy in front of one reader's
+      `build-info.json` fetches returned pre-deploy content for a day and a
+      half, and manufactured the appearance of a 19-hour poller outage that
+      had not happened. The poller was correct throughout; the instrument was
+      not. Distinct cache-busting URLs did NOT defeat that proxy — it was not
+      keying on the full URL — so a cache-buster is worth adding and is not
+      what makes this control trustworthy.
+
+      What makes it trustworthy is the direction of the error:
+
+          A stale cache can only ever return an OLDER built_at, never a
+          newer one. So this failure mode can make the watchdog cry wolf;
+          it cannot produce a false all-clear.
+
+      That asymmetry is the whole argument. A watchdog whose failure mode is
+      a false alarm is an acceptable compensating control, because the thing
+      it is guarding against — silence while something is broken — is exactly
+      the outcome it cannot produce. Treat a `built_at` that HAS moved as
+      conclusive, and a `built_at` that has NOT moved as "investigate",
+      starting with whether your own reader is being served from a cache:
+      compare against a fetch from a different network before concluding
+      anything is wrong with the site.
+
+      Add `?t=<epoch-ms>` regardless. It is free and it works against caches
+      that behave; it simply is not load-bearing here.
 
       Closing it means DELIVERY, not configuration: subscription, queue,
       binding, verified destination and the far end's spam filter each fail
