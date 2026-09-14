@@ -46,12 +46,24 @@ dead-letter queue.
 Workers & Pages → your site Worker → Settings → Builds → event subscriptions,
 publishing to `nissartango-build-events`.
 
-> This is the one step in this file I could not verify against documentation —
-> the exact dashboard path for creating an event subscription was not in the
-> pages I could reach. Follow the UI, or Cloudflare's own
-> `workers-builds-notifications-template`, which exists precisely for this and
-> ships with a Deploy button. If the path differs from what is written here,
-> the file is wrong; fix it.
+> This was the one step in this file I could not verify against documentation,
+> and it is exactly where the bug was. Two subscriptions existed and were
+> publishing into `build-failure-notifications` — a queue with **no consumer**.
+> Build events had been going nowhere since 9 September. Verify the wiring
+> rather than assuming it.
+
+**Verify the subscription, and do not use `wrangler queues list` to do it.**
+
+    npx wrangler queues subscription list nissartango-build-events
+
+`wrangler queues list` has a `producers` column, and **it does not count event
+subscriptions**. It read `0` while two subscriptions were actively publishing.
+A queue can therefore look completely unused while events pour into it, and —
+the case that actually happened — events can pour into a *different* queue that
+has no consumer, with nothing anywhere reading `0` to tell you.
+
+Check both directions: the subscription names the queue you expect, and that
+queue is the one `workers/build-notifier/wrangler.jsonc` consumes.
 
 **5. Do the acceptance test below.** Not optional — see why.
 
@@ -78,6 +90,11 @@ curl -s "https://nissartango.fr/build-info.json?t=$(date +%s)"
 #    Supabase" -- a realistic failure, on the real path.
 
 # 2. Trigger a build (push, or POST the deploy hook).
+#    NOTE: saving the variable in step 1 ALREADY triggered one. Cloudflare
+#    rebuilds on a build-variable change, so steps 1 and 5 each cause a build
+#    on their own and you will see TWO failure emails, not one. That is
+#    correct behaviour, not a duplicate-send bug — observed 2026-09-14 as
+#    f5116ffa (the variable change) and 8c421f1c (the poller).
 
 # 3. EXPECT AN EMAIL within a minute or two:
 #        [nissartango] build FAILED on main — <your commit subject>
@@ -85,7 +102,8 @@ curl -s "https://nissartango.fr/build-info.json?t=$(date +%s)"
 # 4. Confirm the site is UNCHANGED and still serving. A failed build must
 #    change nothing; that is the whole design.
 
-# 5. Put SUPABASE_URL back. Trigger another build.
+# 5. Put SUPABASE_URL back. Saving it triggers a build by itself; you do
+#    not need to trigger a second one.
 
 # 6. Confirm the revert TOOK, positively:
 curl -s "https://nissartango.fr/build-info.json?t=$(date +%s)"

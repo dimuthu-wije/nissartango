@@ -144,11 +144,23 @@ Observed on 2026-09-14: invocation at 08:00:05Z logged drift and POSTed, build
 ran 08:01:15, deployed 08:01:17, site served the new checksum. **Two minutes
 end to end, from a cold KV key.**
 
-Still unexercised: the **cooldown branch**, which only engages when a POST
-succeeded and the drift persisted — which happens only when the build itself
-fails. Reaching it therefore requires a deliberately broken build, which is
-the same experiment as the notifier's acceptance test in
-`workers/build-notifier/README.md`. Do them as one run.
+The **cooldown branch** was exercised on 2026-09-14 in the same run as the
+notifier's acceptance test, by deliberately breaking the build so that a
+successful POST left the drift in place:
+
+    20:10:05  drift -> rebuild queued (8c421f1c), attempt 1
+    20:20:05  holding off — same checksum still drifting after 1 attempt(s),
+              21 min of backoff left
+    20:50:05  new checksum -> rebuild queued (ad78d0b5), bypassing the backoff
+    21:00:05  no drift
+
+That third line is the property the design turns on and the one a mocked test
+could never have shown: **new content published during a cooldown is not made
+to wait.** The backoff holds off a checksum that has already failed; it does
+not hold off a different one.
+
+Both halves of the acceptance criterion are now met — a cold KV key
+(2026-09-14, two minutes) and a warm one with the cooldown engaged.
 
 ### Diagnostics
 

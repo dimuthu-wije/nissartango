@@ -32,64 +32,25 @@ it deliberately, as an edit someone can question, or do the thing.
 
 ## Required before the first deploy
 
-- [!] **Build-failure notifications have DELIVERED A MESSAGE.**
-      deferred: 2026-09-09
-      compensating: daily external fetch of https://nissartango.fr/build-info.json?t=<epoch-ms> comparing built_at against the previous day, running OUTSIDE Cloudflare
-      review: 2026-10-09
+- [x] **Build-failure notifications have DELIVERED A MESSAGE.**
 
-      Deferred deliberately, with the reasoning on the record because it is the
-      kind that looks like a corner being cut and is not.
+      Record: delivered 2026-09-14 — two emails, for builds `f5116ffa` and
+      `8c421f1c`, both real failures, both read. Subject
+      `[nissartango] build FAILED on main — …`. No email for the successful
+      build that followed, which is the other half of the requirement.
 
-      **The silent-failure risk predates the poller.** The daily 03:15 rebuild
-      has run unwatched since 31 August. Deploying `nissartango-cron` does not
-      add exposure — it reduces staleness. Blocking the deploy on the notifier
-      would preserve the risk and withhold the mitigation, which is the worst
-      of both.
+      Deferred 2026-09-09 and closed five days later; the deferral and its
+      compensating control are deleted rather than left as history, because a
+      checklist that accumulates resolved items stops being read. What is worth
+      keeping from it is one line: **the silent-failure risk predated the
+      poller**, so blocking the poller's deploy on the notifier would have
+      preserved the risk and withheld the mitigation.
 
-      The compensating check is the dead-man's-switch recorded below as
-      unclosed, now chosen and running. It is strictly broader than the
-      notifier it stands in for: `built_at` standing still catches a failing
-      build, a cron Worker that has stopped being invoked, AND a paused
-      database — the notifier catches only the first, because a Worker that
-      never runs emits no build events.
-
-      What it does NOT catch, and why the notifier is still wanted: latency. A
-      daily check finds within 24 hours what an email finds in two minutes.
-
-      **Why this control is defensible even though its input can be stale.**
-      On 13–14 September a caching proxy in front of one reader's
-      `build-info.json` fetches returned pre-deploy content for a day and a
-      half, and manufactured the appearance of a 19-hour poller outage that
-      had not happened. The poller was correct throughout; the instrument was
-      not. Distinct cache-busting URLs did NOT defeat that proxy — it was not
-      keying on the full URL — so a cache-buster is worth adding and is not
-      what makes this control trustworthy.
-
-      What makes it trustworthy is the direction of the error:
-
-          A stale cache can only ever return an OLDER built_at, never a
-          newer one. So this failure mode can make the watchdog cry wolf;
-          it cannot produce a false all-clear.
-
-      That asymmetry is the whole argument. A watchdog whose failure mode is
-      a false alarm is an acceptable compensating control, because the thing
-      it is guarding against — silence while something is broken — is exactly
-      the outcome it cannot produce. Treat a `built_at` that HAS moved as
-      conclusive, and a `built_at` that has NOT moved as "investigate",
-      starting with whether your own reader is being served from a cache:
-      compare against a fetch from a different network before concluding
-      anything is wrong with the site.
-
-      Add `?t=<epoch-ms>` regardless. It is free and it works against caches
-      that behave; it simply is not load-bearing here.
-
-      Closing it means DELIVERY, not configuration: subscription, queue,
-      binding, verified destination and the far end's spam filter each fail
-      silently and independently, and only receipt tests all five. Set up
-      `workers/build-notifier/`, run the acceptance test in its README, then
-      replace this block with the delivery record.
-
-      Record on closing: `delivered YYYY-MM-DD, subject "[nissartango] build FAILED on ..."`, to:
+      The daily `build-info.json` check that stood in for it is no longer
+      load-bearing, but it remains the only thing that detects the cron Worker
+      simply ceasing to be invoked. It is a scheduled task in Dimuthu's Claude
+      session, **not in this repository**, and nothing here would report its
+      absence — see the single point of failure below.
 
 - [x] **The two halves name one project.** After the site deploy, before this
       one:
@@ -139,22 +100,45 @@ nothing in observability. What happens instead:
 a Worker that never runs triggers no builds, so it emits no events. An absence
 of mail is what a healthy quiet week looks like too.
 
-Two ways to close it, neither built:
+### What is running today, and where it lives
 
-1. **Glance at `built_at`.** `curl -s https://nissartango.fr/build-info.json`
-   once a week or so; the daily rebuild means it should never be more than ~24
-   hours old. Free, immediate, and depends on a person remembering — which is
-   the class of control this project has otherwise been removing.
+A daily check does exist: it fetches `build-info.json` and compares `built_at`
+against the previous day. **It is a scheduled task in Dimuthu's Claude session.
+It is not in this repository.**
+
+That distinction is the point, so do not lose it:
+
+- **Nothing here would report its absence.** If that scheduled task is
+  deleted, disabled, or silently stops firing, no file in this repo changes,
+  no test fails, `npm run check` stays green and `npm run deploy:cron` still
+  passes. The watchdog can die and the repo will go on looking healthy.
+- **Verifying it means checking the scheduled tasks list** in that Claude
+  session. There is no command in this project that can do it for you, and
+  reading this file is not evidence that it ran.
+- It reads `build-info.json`, so the staleness asymmetry above applies: it can
+  cry wolf, it cannot give a false all-clear.
+
+**Replacing it with something owned by the project is open work.** The control
+is real and it is working, but it is held outside the repository by one person,
+which makes it the least durable thing in this design — every other control
+here is a file that travels with a clone. A `_to_do`, not a `done`.
+
+The two shapes a project-owned replacement could take, neither built:
+
+1. **A committed script plus a scheduler you can see.** Same logic, living in
+   `scripts/`, run by something whose configuration is in git. Moves the logic
+   in-repo; the *scheduling* still has to live somewhere, which is the hard
+   half.
 2. **An external dead-man's-switch.** A third-party monitor that expects a ping
    and alerts on its *absence* — the cron Worker pings it after each successful
-   run, and the monitor shouts when the ping stops. This is the only option
-   that detects "nothing happened", because the check lives outside the thing
-   being checked. Cost: a third-party account and one more URL to hold, on a
-   project that has deliberately avoided both.
+   run, and the monitor shouts when the ping stops. Still the only option that
+   detects "nothing happened", because the check lives outside the thing being
+   checked. Cost: a third-party account and one more URL to hold, on a project
+   that has deliberately avoided both.
 
-The honest summary: everything here alerts on things going wrong, and nothing
-alerts on things stopping. That is a real gap, it is written down, and it is
-not closed.
+The honest summary: everything in this repository alerts on things going wrong,
+nothing in it alerts on things stopping, and the one control that does is not
+in this repository.
 
 ## Once it is running
 
