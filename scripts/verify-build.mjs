@@ -9,7 +9,7 @@
  */
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { currentSnapshotPath } from '../src/lib/snapshot-path.mjs';
+import { currentSnapshotPath, projectRef } from '../src/lib/snapshot-path.mjs';
 
 const DIST = path.resolve('dist');
 let failures = 0;
@@ -49,6 +49,116 @@ stage 3. Whatever is in there, it is not what this repo builds now.
 
 const index = files.find((f) => path.relative(DIST, f) === 'index.html');
 const snapshotPath = currentSnapshotPath();
+
+// --- is this output from the project we are pointed at? --------------------
+//
+// ORDER MATTERS, AND THIS IS DELIBERATELY FIRST. The three guards here run
+// identity -> recency -> currency:
+//
+//   this one   the artefact is from a DIFFERENT PROJECT, so nothing below
+//              would be a statement about the build being verified
+//   next one   the artefact is from the right project but TOO OLD to mean
+//              anything
+//   mtime      the artefact is right and recent but SUPERSEDED: content was
+//              refreshed after it was built
+//
+// Each subsumes the one after it, so a more fundamental fault must not be
+// reported with a narrower message. The ordering also makes each one testable
+// on its own -- see the note on the age check below.
+//
+// WHY THIS EXISTS. The mtime guard asks only whether dist is OLDER than the
+// snapshot. When both are stale it has nothing to compare and says nothing,
+// which is the common local case and the one that happened on 2026-09-17: a
+// shell quoting error meant fetch-content never ran, data/.snapshot-current
+// still named an earlier project's file, and the run compared a stale dist
+// against a stale snapshot, found them consistent, and printed
+// "build output verified".
+//
+// BASELINE, captured on exactly that configuration before this check existed:
+//
+//   $ SUPABASE_URL=https://hjsekipqryfuwdkhxuks.supabase.co npm run verify:build
+//     ok    build-info.json carries checksum 3642812f23d0dc2c9c33a8c0325126ff
+//           from project eqcgeqzzuzcwrflwasjo
+//   build output verified
+//   exit=0
+//
+// Twelve ok and exit 0, with the disagreeing ref printed on the ok line.
+//
+// This is not a new measurement. Check 10 already reads project_ref out of
+// build-info.json and announces it; this is a comparison between two facts the
+// run already holds, which is why the message names both without looking
+// anything up.
+//
+// SUPABASE_URL is the only thing here that describes THIS invocation rather
+// than the last one. Unset (the local stack) makes projectRef null and skips
+// the check; on Cloudflare the two always agree.
+//
+// TEST:
+//     SUPABASE_URL=https://hjsekipqryfuwdkhxuks.supabase.co npm run verify:build
+// against a dist built from production. Expect exit 1, NO ok lines at all, and
+// both refs named. Twelve ok and exit 0 is the pre-change answer above.
+const envRef = process.env.SUPABASE_URL ? projectRef(process.env.SUPABASE_URL) : null;
+if (envRef) {
+  const infoForRef = files.find((f) => path.relative(DIST, f) === 'build-info.json');
+  let builtRef = null;
+  if (infoForRef) {
+    try { builtRef = JSON.parse(await readFile(infoForRef, 'utf8')).project_ref ?? null; }
+    catch { /* check 10 reports a missing or malformed build-info.json */ }
+  }
+  if (builtRef && builtRef !== envRef) {
+    console.error(`dist/ was built from project ${builtRef}, but SUPABASE_URL names ${envRef}.
+
+These pages are not the output of the build you are verifying, so nothing
+below would be a statement about it.
+
+    npm run build && npm run verify:build
+`);
+    process.exit(1);
+  }
+}
+
+// --- is this output recent enough to mean anything? ------------------------
+//
+// "Newer than" cannot express "recent". This site's output is a function of
+// content AND the current date: the agenda lists upcoming dates, so a build
+// from last week publishes past events as upcoming even when the content never
+// changed. Staleness is wrong independently of difference, and no relative
+// comparison can see it.
+//
+// 24 hours is read off the system rather than chosen: the 03:15 rebuild means
+// any production build older than that has already been replaced.
+//
+// PLACED BEFORE THE MTIME GUARD ON PURPOSE. Backdating dist/index.html also
+// makes it older than data/snapshot.json, so with the old ordering the mtime
+// guard fired first and this check was never reached -- both exit 1, and only
+// the message distinguishes them. A test that cannot tell you which check
+// fired is the same family as a check that passes over no data. Running this
+// first removes the confound instead of documenting it.
+//
+// TEST (BSD touch; -d is GNU and this machine is not):
+//     touch -t "$(date -v-25H +%Y%m%d%H%M.%S)" dist/index.html
+//     npm run verify:build; echo "exit=$?"
+// Expect exit 1 and "built 25 hours ago". Then `touch dist/index.html` and
+// re-run: this check and the one above both silent.
+//
+// HOW IT WAS TESTED, stated because it is weaker evidence than it looks: the
+// failing case was produced by moving a timestamp, not by waiting a day. That
+// demonstrates the comparison works. It says nothing about whether 24 hours is
+// the right number.
+const MAX_BUILD_AGE_MS = 24 * 60 * 60 * 1000;
+if (index) {
+  const ageMs = Date.now() - (await stat(index)).mtimeMs;
+  if (ageMs > MAX_BUILD_AGE_MS) {
+    console.error(`dist/index.html was built ${Math.round(ageMs / 3600000)} hours ago.
+
+A verification of output this old is a statement about nothing.
+
+    npm run build && npm run verify:build
+`);
+    process.exit(1);
+  }
+}
+
 try {
   const [built, fetched] = await Promise.all([stat(index), stat(snapshotPath)]);
   if (built.mtimeMs < fetched.mtimeMs) {
