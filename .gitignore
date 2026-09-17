@@ -46,3 +46,4 @@ src/assets/events/*
 data/snapshot.*.json
 data/.snapshot-current
 Claude outputs/
+data/snapshot.json
