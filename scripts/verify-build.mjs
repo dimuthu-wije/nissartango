@@ -294,7 +294,14 @@ for (const f of eventPages) {
     for (const o of n.offers ?? []) if (o.url) ldUrls.push([rel(f), o.url]);
   }
 }
-ok(`${eventPages.length} event page(s), ${ldNodeCount} Event node(s), offsets and statuses checked`);
+// Guarded, because line ~239 already FAILED about this same zero. Unguarded,
+// a build with no events printed both `FAIL no event detail pages were
+// generated` and `ok 0 event page(s), 0 Event node(s), ...` -- the second
+// reading as a pass for the thing the first had just refused. fail() does not
+// return, so suppressing the ok is the only way to stop the pair.
+if (eventPages.length) {
+  ok(`${eventPages.length} event page(s), ${ldNodeCount} Event node(s), offsets and statuses checked`);
+}
 
 // 6. Sitemap covers every event page.
 //
@@ -600,10 +607,29 @@ if (!snapshotForPrivacy) {
     [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, 'an email address'],
     [/(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}/g, 'a French phone number'],
   ];
+
+  // ALL EIGHT organizer-typed fields, widened 2026-09-17 from
+  // ['body', 'price_note', 'location_address'].
+  //
+  // The old three closed three of eight doors: a phone number in `title`, or in
+  // `cancellation_note` ("annulé, appelez-moi"), went unnoticed. Widening was
+  // deliberately NOT done earlier, because until 2026-09-17 the Cloudflare
+  // build command was `npm run build` and this script had never run on a
+  // deploy -- widening a check nobody runs is how this repo got an eleven-day
+  // stale grants_check.
+  //
+  // `teachers` is an array. The old loop skipped anything that was not a
+  // string, so adding it without this join would have added a field name and
+  // checked nothing -- a check that cannot report, again.
+  const TYPED = [
+    'title', 'location_name', 'location_address', 'teachers',
+    'signup_url', 'price_note', 'body', 'cancellation_note',
+  ];
   const notices = [];
   for (const e of snapshotForPrivacy.events ?? []) {
-    for (const field of ['body', 'price_note', 'location_address']) {
-      const text = e[field];
+    for (const field of TYPED) {
+      const raw = e[field];
+      const text = Array.isArray(raw) ? raw.join(' ') : raw;
       if (typeof text !== 'string') continue;
       for (const [re, what] of CONTACT) {
         const m = text.match(re);

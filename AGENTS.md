@@ -38,7 +38,7 @@ Live at **https://nissartango.fr**
 | Framework | Astro 7.2.4 (static output, Cloudflare adapter) |
 | Host | Cloudflare Workers with static assets |
 | Repo | GitHub `dimuthu-wije/nissartango`, auto-deploys on push to `main` |
-| CMS | Sveltia CMS at `/admin/`, git-backed, PAT auth (no OAuth worker) |
+| CMS | None. Content lives in Supabase; the site builds from `data/snapshot.<ref>.json`. Sveltia was removed and `/admin/` 404s. |
 | Domain | OVH registrar, Cloudflare DNS |
 | Local | macOS, Node 22 via nvm, project at `~/dev/nissartango` |
 
@@ -65,8 +65,8 @@ src/data/site.ts              SITE_ORGANIZER_ID
 src/layouts/Layout.astro      shell, global CSS vars, OG tags
 src/pages/index.astro         agenda listing
 src/pages/evenements/[...slug].astro   event detail
-public/admin/config.yml       Sveltia form definition
-public/admin/index.html       CMS entry point
+src/content.config.ts         collections, all built from the snapshot
+scripts/fetch-content.mjs     fetches Supabase -> snapshot
 ```
 
 ## Decisions made, and why
@@ -91,13 +91,20 @@ public/admin/index.html       CMS entry point
 
 ## Gotchas learned the hard way
 
-1. **Sveltia writes `""` for blank optional fields.** Zod's `.optional()`
+1. **Blank optional fields arrive as `""`, not as absent.** Zod's `.optional()`
    rejects empty strings, which fails the build. All optional fields use
    `z.preprocess` helpers (`optionalString`, `optionalUrl`, `optionalDate`)
-   that convert `""` to `undefined`.
-2. **`content.config.ts` and `config.yml` must agree field-for-field.** A field
-   in the CMS but not the schema is silently discarded — no error, data just
-   vanishes. A field in the schema but not the CMS can never be set.
+   that convert `""` to `undefined`. Written for Sveltia; still true of anything
+   that submits an empty form field, so it stays.
+2. **THE SVELTIA SECTIONS OF THIS FILE WERE STALE AND ARE STRUCK.**
+   `public/admin/config.yml` does not exist and `https://nissartango.fr/admin/`
+   404s. Every collection is built from the snapshot via `snapshotLoader` in
+   `src/content.config.ts`, and `fetch-content.mjs` never writes to
+   `src/content/`. Six tracked files under `src/content/events/` and
+   `src/content/organizers/` were dead Sveltia-era content that nothing loaded
+   and that had drifted from the database — the tracked
+   `2026-09-01-practica-mardi.md` said `location: "Salle à confirmer"` and
+   `price: "10€"` where the snapshot's row said neither. Deleted 2026-09-17.
 3. **A failed build doesn't take the site down.** Cloudflare keeps the last good
    deployment. This means broken deploys are silent — check the deploy status
    after adding events via the CMS.

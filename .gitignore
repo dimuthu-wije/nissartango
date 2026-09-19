@@ -34,16 +34,33 @@ supabase/.branches/
 supabase/.temp/
 
 # Event images are pulled from Supabase Storage on every build; Storage is
-# their source of truth. Delete these two lines if you would rather have the
-# flyers backed up in git alongside data/snapshot.json.
+# their source of truth, and deliverable 1b -- an object sync -- is what will
+# back them up. Delete these two lines if you would rather have the flyers in
+# git; note that data/snapshot.json no longer is, as of 2026-09-17.
 src/assets/events/*
 !src/assets/events/.gitkeep
 
-# Snapshots from any project that is NOT production. data/snapshot.json is
-# production's and IS committed -- it is the backup for content hand-entered
-# over years, and what `--from-snapshot` publishes in an emergency. Which ref
-# is production is one line in data/production-ref.
+# Snapshots are NOT committed. data/snapshot.json was until 2026-09-17, and
+# this comment used to call it "the backup for content hand-entered over years,
+# and what `--from-snapshot` publishes in an emergency".
+#
+# Measured the day it left the index: the committed copy was EIGHT DAYS STALE.
+# fetched_at 2026-09-09, checksum ad26d21e...; production read 3642812f..., and
+# a row's updated_at had moved on 14 September. fetch-content.mjs rewrites the
+# file on every build, but only a human running a LOCAL build AND committing
+# the result ever landed it in git -- CI rewrites it and commits nothing. So it
+# updated when someone happened to, which since 9 September was never. A clone
+# taken on 15 September would have republished 9 September's content silently.
+#
+# The backup is now a private repo, proven by a restore into dev and a diff.
+# See supabase/ops/restore-content.sql and the rehearsal sequence.
+#
+# THE BARE NAME NEEDS ITS OWN LINE: `data/snapshot.*.json` does NOT match
+# `data/snapshot.json` -- that glob wants a second dot. Without the first line
+# below, the file returns as untracked after the next build and one `git add -A`
+# commits it straight back. Which ref is production is one line in
+# data/production-ref.
+data/snapshot.json
 data/snapshot.*.json
 data/.snapshot-current
 Claude outputs/
-data/snapshot.json

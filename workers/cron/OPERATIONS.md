@@ -75,6 +75,36 @@ it deliberately, as an edit someone can question, or do the thing.
       Record: checked 2026-09-09 — exactly one secret, `DEPLOY_HOOK_URL`.
       The two strays named after deploy hook URLs are deleted.
 
+- [ ] **The Cloudflare build command runs `verify:build`, and a deploy has
+      shown it running.** Until 2026-09-17 the command was `npm run build`
+      alone, so `verify-build.mjs` had never executed on a deploy — every check
+      it contains, including the contact-detail warning and the three content
+      floors, existed and had never run anywhere but a laptop.
+
+      Measured 2026-09-17 against an empty dev project: `npm run build` exits 0
+      and publishes an empty agenda; `verify:build` exits 1 with 8 FAILED. So
+      the floors work and the deploy simply never asked them.
+
+      Set it to `npm run build && npm run verify:build`, with deploy as a
+      separate step. Not `npm run check`: that pulls in `check:db`, which needs
+      a `DB_URL` the build box does not have.
+
+      Confirm from the build LOG, not from the dashboard field — the string to
+      look for is `build output verified`, which only `verify-build.mjs` emits:
+
+          Cloudflare → Workers & Pages → nissartango → the latest deployment →
+          Build log → search for "verifying" and "build output verified"
+
+      Two guards added the same day run BEFORE any check and exit 1 on their
+      own, so watch for them in the first CI log too: a project-ref mismatch
+      between `SUPABASE_URL` and `dist/build-info.json`, and a `dist/index.html`
+      older than 24 hours. Both should stay silent on a fresh CI build, where
+      the clone and the build are new every time. **If neither has ever fired
+      anywhere, they are checks that have only ever been silent** — fire each
+      once locally before trusting them.
+
+      Record: ____________
+
 ---
 
 ## Known single point of failure: nobody watches the watcher

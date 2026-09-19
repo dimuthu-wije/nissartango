@@ -1,6 +1,35 @@
 import type { APIRoute } from 'astro';
+import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { currentSnapshotPath } from '../lib/snapshot-path.mjs';
+
+/**
+ * Which commit produced this deployment.
+ *
+ * Production builds fire through a deploy hook, and Cloudflare's deployment
+ * record for a hook-triggered build carries an EMPTY commit_hash -- so until
+ * now nothing anywhere said which code was live. The dashboard cannot answer
+ * it and neither could the site.
+ *
+ * `git rev-parse HEAD` is asked first because it describes the tree actually
+ * being built. CF_PAGES_COMMIT_SHA is the fallback and is empty on exactly the
+ * hook-triggered builds this exists for. `source` is recorded so that a null
+ * is diagnosable rather than mute: a field that can be absent for three
+ * different reasons and says which is worth four extra bytes.
+ */
+function commitInfo(): { commit: string | null; source: string } {
+  try {
+    const sha = execFileSync('git', ['rev-parse', 'HEAD'], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (sha) return { commit: sha, source: 'git' };
+  } catch {
+    // no git, or no .git directory in the build box
+  }
+  const env = process.env.CF_PAGES_COMMIT_SHA?.trim();
+  if (env) return { commit: env, source: 'CF_PAGES_COMMIT_SHA' };
+  return { commit: null, source: 'unavailable' };
+}
 
 /**
  * What this deployment was built from. Read every ten minutes by the rebuild
@@ -16,9 +45,12 @@ export const prerender = true;
 
 export const GET: APIRoute = async () => {
   const snap = JSON.parse(await readFile(currentSnapshotPath(), 'utf8'));
+  const { commit, source } = commitInfo();
 
   const body = {
     project_ref: snap.project_ref ?? null,
+    commit,
+    commit_source: source,
     checksum: snap.checksum ?? null,
     counts: snap.counts ?? {
       events: snap.events?.length ?? 0,

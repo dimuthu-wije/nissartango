@@ -8,7 +8,25 @@ round. Read this before pushing anything anywhere:
 | ref | name in the dashboard | what it actually is |
 |---|---|---|
 | `eqcgeqzzuzcwrflwasjo` | `dimuthu-wije's Project` | **production.** Every migration, all the content, the key the site builds with, the key the cron Worker reads. West EU (Ireland). |
-| `hjsekipqryfuwdkhxuks` | `nissartango-dev` | **empty.** No migrations, no content, referenced nowhere in this repo. West EU (Paris). |
+| `hjsekipqryfuwdkhxuks` | `nissartango-dev` | **dev, and real.** Measured 2026-09-17: the same eight migrations as production, with an identical column signature on all five base tables. Empty of content by policy -- truncated before each restore rehearsal and again after. Deliberately fail-open on `automatic_rls`; production's `ensure_rls` event trigger is not installed here on purpose, so a migration that forgets `enable row level security` fails visibly instead of being silently corrected. That makes it the canary for defective migrations and the target `supabase/ops/restore-content.sql` rehearses into. Referenced by `.env.example`, `scripts/check-db.sh`, this file, `AGENTS.md`, and the ops files in the backup deliverable. West EU (Paris). |
+
+**The row above said "empty. No migrations, no content, referenced nowhere in
+this repo." All three are struck, measured 2026-09-17.** Dev reported the same
+eight migrations as production. It held 4 events, 3 organizers and 1 exception
+from `data/initial-content.sql`. And the dev ref appeared in four tracked files
+before the backup deliverable added any -- `.env.example` and
+`scripts/check-db.sh` carry it in a connection string and a skip banner.
+
+That last clause took three passes to get right, and it is worth saying why:
+every specific in the original row was written from memory about a project
+nobody had measured, and each correction to it needed correcting in turn.
+Whatever replaces it carries its measurement date inline for that reason.
+
+One thing measured and not explained: dev's three `organizers` rows were
+byte-identical to production's, including `id` and both timestamps. `id`
+defaults to `gen_random_uuid()` and the timestamps to `now()`, so two
+independent runs of the seed cannot produce that. Those rows moved between the
+projects by some path, direction unknown.
 
 So the project called "dev" is the empty one and the default-named one is
 production. That is an accident waiting to happen at 23:00 in six months,
@@ -23,10 +41,23 @@ which `.gitignore` covers. `data/production-ref` holds the one fact that cannot
 be derived. So a build against dev cannot overwrite production's backup, and no
 flag is involved — see `src/lib/snapshot-path.mjs`.
 
-There is, today, **no dev/prod separation**: one project holds everything and
-it is live. The brief asked for an MCP connector pointed at a development
-branch rather than production, and that constraint is currently unmet — not
-violated, since no Supabase MCP connector is attached, but unmet. Making
+Dev and production are now separated in the way this section asked for.
+Measured 2026-09-17: `hjsekipqryfuwdkhxuks` carries the same eight migrations as
+production and an identical column signature on all five base tables. The
+`supabase link` + `db push` this paragraph used to describe as pending has
+happened.
+
+What has not happened is a dev/prod split in **operation**: production is still
+the only project holding content, still live, still restored by hand.
+
+The MCP-connector constraint the brief set — a connector pointed at a
+development branch rather than production — remains unmet rather than violated.
+No Supabase MCP connector is attached as far as this repo shows: there is no
+`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json` or `.claude/settings.json`
+tracked here. A user-level config would not appear in the repo, so that is
+evidence and not proof.
+
+The original text of this paragraph, struck: making
 `hjsekipqryfuwdkhxuks` real is `supabase link` + `db push`, then the content
 step below.
 
@@ -398,12 +429,36 @@ that matters once one of them is production:
 ./scripts/compare-projects.sh supabase/tests/grants_check.sql "$DEV_DB_URL" "$PROD_DB_URL"
 ```
 
-**Expect the `grants_check` diff to be non-empty, and read it as the finding
-rather than the problem.** Dev takes seven migrations applied cleanly in one
-go. Production took them incrementally, plus `data/fold-accented-slugs.sql`,
-plus whatever the dashboard did along the way. A difference in content is by
-design; a difference in grants, RLS or default privileges is the thing this
-comparison exists to surface, and it has never been run before.
+**An earlier version of this paragraph predicted a non-empty `grants_check`
+diff** and told you to read it as the finding rather than the problem,
+reasoning that dev took its migrations cleanly in one go while production took
+them incrementally, plus `data/fold-accented-slugs.sql`, plus whatever the
+dashboard did along the way. **Measured 2026-09-17, on the first run this
+comparison has ever had, that was false.** The two projects agreed on every
+line: 13 rows, 12 PASS and 1 INFO, exit 0.
+
+The inference is struck rather than softened. The path taken made no difference
+to what this file checks, because what it checks is the *result* of explicit
+`revoke` and `grant` statements, and those converge on the same end state
+regardless of the order they arrived in. An incremental history leaves no
+residue in a privilege bitmap.
+
+The one asymmetry that is real between these projects — production's
+`ensure_rls` event trigger, which nothing in this repo installs — is outside
+this file's scope. `api_settings.sql` measures it, in the `rls_event_triggers`
+row.
+
+**The comparison got sharper, not weaker.** An IDENTICAL baseline means any
+future grants change shows against silence. The old expectation required
+spotting a new difference inside a diff that was supposed to be non-empty
+anyway — the same shape as a warning nobody reads.
+
+Corrected in the same measurement: this paragraph said dev takes **seven**
+migrations. Both projects reported the same **eight**, `20260828181000` through
+`20260831120000`.
+
+A difference in content is still by design; a difference in grants, RLS or
+default privileges is the thing this comparison exists to surface.
 
 Connection strings: Project Settings → Database → Connection string → URI.
 They carry the database password, so keep them out of shell history
@@ -490,39 +545,131 @@ arrives with no grants at all.
   `127.0.0.1:3000`. The hosted projects need the real editor-app origin, or
   magic links will redirect to localhost.
 
-### Decide this BEFORE building the form
+### DECIDED: `data/snapshot.json` stops being committed
 
-The editor area gives other people write access to a table whose contents are
-committed to a **public** repository. That has not been true of any stage so
-far, and it is much cheaper to decide now than after the form exists.
+Decided 2026-09-14, before the editor form existed, which is the only reason it
+could be decided cheaply. Recorded here with the measurement, because the
+measurement is what made one option available and it will not be available
+again.
 
-Site content can be corrected. Git history cannot. If an organizer types their
-mobile number into an event's `body` — "renseignements au 06 …", which is an
-entirely reasonable thing for them to write — it is world-readable from the
-moment the next build commits `data/snapshot.json`, it stays in the history
-after any correction, and **they will have no idea that happened.** They
-consented to a public listing, not to a permanent public record.
+**The problem.** The editor area gives other people write access to a table
+whose contents are committed to a **public** repository. No stage so far has
+done that. Site content can be corrected; git history cannot. If an organizer
+types their mobile number into an event's `body` — "renseignements au 06 …", an
+entirely reasonable thing to write — it is world-readable from the moment the
+next build commits `data/snapshot.json`, it stays in the history after any
+correction, and **they will have no idea that happened.** They consented to a
+public listing, not to a permanent public record.
 
-Three ways out. Pick one deliberately; do not let the form ship having picked
-none:
+**What was measured, 2026-09-14,** by fetching the repo unauthenticated rather
+than by reading the generator and reasoning:
 
-1. **Warn in the editor UI.** Cheapest. A line under the free-text fields
-   saying what is published and that it cannot be unpublished. Relies on people
-   reading it, which is a weak guarantee for someone else's phone number.
-2. **Omit free-text fields from the snapshot.** Strongest. `body`,
-   `price_note` and `location_address` are fetched at build time and rendered,
-   but excluded from the committed file — the site still shows them, git never
-   sees them. Costs the "snapshot IS the backup" property for exactly those
-   fields, which is the real trade: they would then live only in Supabase, on
-   the free tier, with thin backups.
-3. **Accept it, in writing.** Legitimate if organizers are told plainly at
-   sign-up. Not legitimate as a default nobody chose.
+- `data/snapshot.json` is committed and does carry `body`, `price_note` and
+  `location_address`, non-empty.
+- **No phone number and no email address appears anywhere in the file, or in
+  any commit of it.** The history is clean.
 
-`npm run verify:build` already WARNS (not fails) when a free-text field looks
-like it contains an email or a phone number, and points here. It warns rather
-than fails on purpose: an organizer may have every right to publish a contact
-address, and failing the build would decide this question by accident, which is
-the one outcome this section exists to prevent.
+That second line is the whole decision. Omitting free text from the snapshot
+costs a build change while the history is clean and is worth nothing once it is
+not, because what you would be protecting is by then already addressable in
+GitHub's object store, in every fork and in every cache. The window was open on
+14 September 2026. It does not reopen.
+
+**The decision.** Stop committing `data/snapshot.json`. Not "omit the three
+long-form fields" — the event row also carries `title`, `location_name`,
+`teachers`, `signup_url` and `cancellation_note`, all organizer-typed. A phone
+number in `title`, or in `cancellation_note` ("annulé, appelez-moi"), lands in
+git with all three named fields excluded. That option closed three of eight
+doors and collapses into this decision once you count the other five.
+
+**The deadline is not "before the form is built".** `events_public` filters on
+`status = 'approved'`, so pending and rejected submissions never reach the
+snapshot and never reach git. A human approval already sits between an
+organizer typing and anything being committed. The real deadline is **before
+the first organizer-submitted event is approved.** Approving a listing is not
+auditing it for a phone number, so this is a deadline and not a reprieve.
+
+**Order of operations. This is the part that can go wrong.**
+
+1. **Build the private backup and prove a restore — not a dump.** Until a
+   backup has been restored into `hjsekipqryfuwdkhxuks` and diffed against
+   production, it does not exist. A `pg_dump` that has never been read back is
+   the poller that passed 35 tests without having polled. Done 2026-09-17: see
+   `supabase/ops/restore-content.sql` and the rehearsal sequence. F1 IDENTICAL,
+   F1b PRODUCTION DID NOT MOVE, F2 GRANTS UNCHANGED BY RESTORE.
+2. **Then** `git rm --cached data/snapshot.json` and add it to `.gitignore`.
+   Note that `data/snapshot.*.json` does **not** match `data/snapshot.json`; the
+   bare name needs its own line or the file returns as untracked after the next
+   build.
+3. **No history rewrite.** The committed snapshot is clean — measured, not
+   assumed — so there is nothing to un-publish, and a rewrite would destroy the
+   "verified by fetching it unauthenticated" baseline for no gain.
+4. **Keep the path and the filename.** `src/lib/snapshot-path.mjs`,
+   `--from-snapshot` and `data/production-ref` need no change: the file is
+   simply untracked, and the backup restores to the same place.
+
+   **Nothing is lost, and this item used to say otherwise.** It read: what is
+   lost is that a fresh `git clone` no longer carries one, so the backup must be
+   fetchable by whoever is on call. Measured 2026-09-17, the day the file left
+   the index — the committed copy was **eight days stale**. `fetched_at
+   2026-09-09`, checksum `ad26d21e…`; production read `3642812f…`, and a row's
+   `updated_at` had moved on 14 September. The last commit to touch it was
+   `d037e6e`, 9 September, which was also `origin/main`'s tip.
+
+   The mechanism: `fetch-content.mjs` rewrites the file on every build, but only
+   a human running a **local** build **and committing the result** ever landed
+   it in git. CI rewrites it and commits nothing. So it updated when someone
+   happened to, which since 9 September was never.
+
+   A clone taken on 15 September carried 9 September's content, and
+   `--from-snapshot` would have republished it silently. So what is removed is
+   **not** a backup-in-git property — that property did not exist. It is a file
+   that reads as a backup, is trusted as one, and is not. The
+   `nissartango-backups` dump does not replace something that worked; it
+   replaces something that only looked like it did.
+
+   The on-call requirement stands on its own merits: the backup must be
+   **fetchable by whoever is on call**, not merely archived somewhere.
+5. **Decide what a build does when Supabase is unreachable.** The build must
+   **fail loudly and leave the previous deployment live** rather than publish an
+   empty agenda.
+
+   **The snapshot was never the protection here, and this item used to imply it
+   was.** It read: until now a clean clone carried the snapshot, so a build
+   could fall back to it. A normal build does not — `npm run build` is
+   `fetch-content.mjs && astro build`, which fetches fresh from Supabase and
+   overwrites the file. It is read only by `--from-snapshot`, after something
+   has already gone wrong. The snapshot was the undo, not the prevention, so
+   removing it from git does not create this hazard; it removes a recovery path
+   from a fresh clone, and that path was eight days stale anyway.
+
+   The protection had to be built. Measured 2026-09-17 against an empty dev
+   project: `npm run build` exits 0 and publishes an empty agenda, and
+   `verify:build` exits 1 with 8 FAILED — including the three content floors
+   (`no event detail pages were generated`, `the agenda emitted no
+   data-event/data-date rows`, `the snapshot has no organizers`). So the remedy
+   is not a new check. It is that **the Cloudflare build command must run
+   `verify:build`, with deploy as a separate step.** Until 2026-09-17 it was
+   `npm run build` alone and `verify-build.mjs` had never run on a deploy.
+
+**Two things that should happen regardless.**
+
+- Add `contact_email` and `contact_phone` to the organizer schema, each with an
+  explicit "published publicly, permanently" checkbox. Today there is nowhere
+  sanctioned to put a phone number, which is exactly what drives it into `body`.
+  Note that `public.organizers` already has `email` and `phone`, both PRIVATE
+  and both absent from `organizers_public` — they are not the public fields this
+  asks for.
+- Tell organizers plainly, in French, at sign-up and under the free-text fields,
+  what is published.
+
+**What `npm run verify:build`'s contact-detail check is for afterwards.** It no
+longer guards git. Its remaining job is to tell you that an organizer published
+a contact detail, so you can check they meant to — warning, not failing, because
+an organizer may have every right to publish one. Widened 2026-09-17 from
+`['body', 'price_note', 'location_address']` to all eight organizer-typed
+fields, which was worth doing only once `verify:build` demonstrably ran on a
+deploy.
 
 ## Free plan
 
