@@ -772,11 +772,24 @@ machine — which is not a fix and does not scale to an organizer.
 **The fix is still PKCE**, and it still needs the editor app to hold a verifier.
 See `editor/README.md`.
 
-**Two sessions now exist**, 11:13:18 and 11:35:01. The first is the orphan the
-preload created: nobody holds its tokens, they went to a response the browser
-discarded. Its refresh token is nevertheless live and long-lived. Delete that
-row rather than waiting it out — a credential nobody holds is exactly the thing
-this project does not leave lying around.
+**The orphan session is deleted.** Two sessions existed briefly, 11:13:18 and
+11:35:01. The first was the one the preload created: nobody held its tokens —
+they went to a response the browser discarded — but its refresh token was live
+and long-lived, and a credential nobody holds is exactly what this project does
+not leave lying around.
+
+The logout API was not the route: `POST /auth/v1/logout?scope=global` needs the
+access token, and that token was the thing nobody had. Deleted by primary key
+instead, `auth.sessions` id `3d76d1f7…`, and the refresh token went with it —
+`refresh_tokens_session_id_fkey` is `ON DELETE CASCADE`, which was checked
+before the delete rather than assumed. Afterwards: one session (`1f99f959…`,
+11:35:01), one refresh token pointing at it, and `auth.users` untouched —
+`last_sign_in_at` 11:35:01, `email_confirmed_at` 09:50:02, 1 role, 1
+membership.
+
+Targeting was by id, not by a timestamp comparison. The two rows differed by
+22 minutes and a `where created_at < …` predicate that is right today is a
+loaded gun in a runbook someone reruns next week.
 
 Check `{SUPABASE_URL}/auth/v1/settings` first — it is anon-readable and tells
 you whether the call can work. On 2026-09-19 production read `"email": true`,
