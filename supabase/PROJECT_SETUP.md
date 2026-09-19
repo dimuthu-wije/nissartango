@@ -168,29 +168,91 @@ editor-app origin" while their contents were unknown.
 
 **Read from the dashboard 2026-09-19** — Authentication → URL Configuration:
 
+**Production was reconfigured later the same day, BEFORE the subdomain existed.**
+The table below is the state as measured at 2026-09-19 ~10:40Z:
+
 | | `eqcgeqzzuzcwrflwasjo` (prod) | `hjsekipqryfuwdkhxuks` (dev) | wanted |
 |---|---|---|---|
-| Site URL | `http://localhost:3000` | `http://localhost:3000` | `https://editor.nissartango.fr` |
-| Redirect URLs | *(none)* | *(none)* | `https://editor.nissartango.fr/**`, plus the editor SPA's local dev origin — **port not yet known**, see `config.toml` |
+| Site URL | `https://editor.nissartango.fr` — **changed 2026-09-19** | `http://localhost:3000` (untouched) | `https://editor.nissartango.fr` |
+| Redirect URLs | `https://editor.nissartango.fr/**`, `https://editor.nissartango.fr/auth/callback` | *(none)* | those, plus the editor SPA's local dev origin |
+| Does that host resolve? | **NO — authoritative NXDOMAIN** | n/a | it must, first |
 
-**Production's Auth has never been configured.** `http://localhost:3000` with an
-empty redirect list is the scaffold default. With no additional entries the
-permitted redirect set is just `site_url`, so **no magic link could ever have
-resolved anywhere useful** — consistent with `auth.users` being empty, and safe
-only because it points nowhere.
+The *values* are right. The *ordering* was not, and the consequence is concrete:
+**every magic link this project issues now lands on a hostname that does not
+exist**, and there is no fallback, because `site_url` IS the fallback.
+
+### How to read this configuration back without sending an email
+
+`/auth/v1/settings` does not expose `site_url`, and the dashboard is not
+scriptable. But GoTrue redirects an INVALID token to `redirect_to` when that
+target is allow-listed and to `site_url` when it is not, so one unauthenticated
+GET reveals both. No email, no state change, no row:
+
+    curl -sI --max-redirs 0 \
+      "$SUPABASE_URL/auth/v1/verify?token=probe-invalid&type=magiclink&redirect_to=https%3A%2F%2Fexample.com%2Fnope"
+
+Measured 2026-09-19, raw `location:` headers:
+
+    redirect_to=https://example.com/nope          -> https://editor.nissartango.fr#error=...
+    redirect_to=https://editor…fr/auth/callback   -> https://editor.nissartango.fr/auth/callback#error=...
+    redirect_to=http://localhost:3000             -> https://editor.nissartango.fr#error=...
+
+Line 1 names `site_url`. Line 2 proves the callback is allow-listed. Line 3 is
+the one that matters: **`http://localhost:3000` is no longer allow-listed**, so
+the only destination that could ever have completed a sign-in has been removed.
+The same probe against dev still answers `http://localhost:3000`, which is how
+we know only production was changed.
+
+Resolution, measured from three public resolvers and confirmed authoritative:
+
+    dig @1.1.1.1 editor.nissartango.fr  ->  status: NXDOMAIN   (A and CNAME empty)
+    nissartango.fr NS                   ->  dax/joselyn.ns.cloudflare.com
+
+The zone is live and authoritative; the record simply does not exist. This is
+not propagation lag, and it is not a stale local resolver.
+
+**This is the case the deferral below was written to prevent**, and it is worth
+keeping the reasoning rather than just the outcome:
+
+> **DEFERRED: do not set these until `editor.nissartango.fr` resolves.** An
+> allow-list pointing at a host that does not exist fails as a magic link that
+> goes nowhere, for a real person, once. That is worse than the current default,
+> because localhost fails visibly in development and a dead subdomain fails in
+> someone's inbox. Order: subdomain resolves, then these values, then the first
+> magic link.
+
+**Blast radius is currently small, and only by accident.** The built-in email
+service will send only to organization team members (see the next section), so
+the one address that can receive a link today is the org owner's. That is what
+keeps this a development problem rather than an incident. It stops being true
+the moment custom SMTP is configured — so **create the DNS record before, not
+after.**
+
+**The fix is the DNS record, not more redirect entries.** One `A`/`CNAME` for
+`editor.nissartango.fr` and this configuration becomes correct as it stands.
+Adding `http://localhost:3000/**` back to the allow-list is a legitimate
+separate step if sign-in needs to be exercised before the subdomain exists, but
+it does not repair `site_url`: an un-allow-listed `redirect_to` still falls back
+to a dead host.
 
 The local entry deliberately names no port. The editor SPA has no dev server
-yet, so its origin is unknown; writing `3000` here would contradict the comment
-in `config.toml` that argues the same number is a placeholder nobody has chosen.
+yet, so its origin is unknown; writing `3000` would contradict the comment in
+`config.toml` that argues the same number is a placeholder nobody has chosen.
 Not `4321` either — that is Astro's dev port, i.e. the public site's, and the
 public site never authenticates.
 
-**DEFERRED: do not set these until `editor.nissartango.fr` resolves.** An
-allow-list pointing at a host that does not exist fails as a magic link that
-goes nowhere, for a real person, once. That is worse than the current default,
-because localhost fails visibly in development and a dead subdomain fails in
-someone's inbox. Order: subdomain resolves, then these values, then the first
-magic link.
+### "Email link is invalid or has expired" — what it does and does not tell you
+
+That exact string, with `error_code=otp_expired`, is what GoTrue returns for a
+token that is expired, **already consumed**, or malformed. It does not
+distinguish them, so it is not by itself evidence of expiry.
+
+It also arrives in the URL **fragment at the destination**, which means the
+destination has to load for anyone to see it. While `editor.nissartango.fr`
+is NXDOMAIN the browser fails at DNS and shows its own "can't reach this site"
+error instead — so a report of *"invalid or expired"* describes a click that
+landed somewhere that loaded, i.e. before the `site_url` change, not after it.
+Two different failures that are easy to merge into one bug report.
 
 **What the origin does NOT block.** GoTrue creates the `auth.users` row when the
 OTP is *requested*, not when the link is clicked — Supabase's reference is
@@ -712,11 +774,16 @@ which is worth remembering before anyone blocks an RLS test on a working editor.
   is a prerequisite for deliverable 3. See "Auth, per project" above — the three
   cells that were *(unread)* when this bullet was written are now filled in.
   Still genuinely unread: the hosted Email OTP Expiration per project.
-- The editor origin. `wrangler.jsonc` already fixes the shape: the public site
-  has no `main` and is static assets only, so the editor is a separate
-  deployment, not a route on `nissartango`. The URL configuration that depends
-  on it is deliberately deferred — see "Auth, per project" for why a dead
-  allow-list entry is worse than the scaffold default.
+- **The editor origin — now the single blocking item.** `wrangler.jsonc` already
+  fixes the shape: the public site has no `main` and is static assets only, so
+  the editor is a separate deployment, not a route on `nissartango`. The URL
+  configuration was *deferred* until the host resolved and was then **set
+  anyway, on 2026-09-19, while the host was still NXDOMAIN** — so production's
+  `site_url` now points at a hostname that does not exist, and
+  `http://localhost:3000` was dropped from the allow-list in the same change.
+  The values are right and the ordering was not. One DNS record repairs it; see
+  "Auth, per project" for the probe that reads the live configuration back
+  without sending an email.
 
 Three things this list said on 2026-09-19, struck the same day because they were
 wrong or have been superseded. Kept, because each one is a different way of
