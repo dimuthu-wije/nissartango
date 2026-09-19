@@ -137,6 +137,53 @@ what keeps RLS the enforcement rather than something a Worker has to remember.
 authentication surface at all: a bug here cannot take the agenda down, and
 nothing here can widen what `anon` reads.
 
+## The approval queue — `/queue/`
+
+Opened for the first time on 2026-09-19, and used the same day. Before that,
+`user_roles` and `organizer_members` were empty on production, so `is_admin()`
+was false for everyone and every admin policy was unreachable.
+
+**The first moderation decisions this project has ever executed outside a test:**
+
+    15:53:12   TEST — approbation   pending -> rejected, note "No need"
+    15:53:23   MILONGA … Casita     needs_review true -> false (mark reviewed)
+
+### Two things the first real use taught us
+
+**1. The queue must not filter to `status = 'pending'` alone.** It does not, and
+that turned out to matter immediately: the Casita event was `approved` AND
+flagged `needs_review`, and had been sitting that way, unseen, for as long as
+nobody could open the queue. A pending-only query would have hidden the one item
+somebody had actually asked to have looked at again. `needs_review` is a
+separate axis from `status`, not a finer grade of it.
+
+**2. A moderation action can trigger a rebuild without changing anything
+public.** Clearing that flag left `events_public` at four rows — the event was
+approved before and after — and yet `content_checksum` moved from `f457b6a3…`
+to `9973f564…`, and the poller republished.
+
+The reason is that `updated_at` is a column IN `events_public`, and
+`content_checksum` is an md5 over that view's rows as text. So *touching* a
+published row is indistinguishable from *changing* one. That is the same
+property that made the `legacy_slugs` migration move the checksum twice, and it
+is not a fault: the view's content genuinely changed, and a checksum that tried
+to be cleverer would have to decide which columns "count", which is exactly the
+judgement it exists to avoid. Expect a rebuild after any decision that touches a
+published event.
+
+### A correction, on the record
+
+The `needs_review` flag was first attributed here to the `legacy_slugs`
+backfill, on the strength of `updated_at` matching it to the second. That was
+wrong, and reading the trigger refuted it: `events_flag_review` sets the flag
+only when `old.status = 'approved' AND content_changed`, and `content_changed`
+compares an explicit tuple of columns that does **not** include `legacy_slugs`.
+The backfill bumped `updated_at` — `t40_events_set_updated_at` fires on any
+update — and nothing else. The flag predated it, set by some earlier edit that
+nothing now records; `auth.audit_log_entries` is empty and always has been.
+
+A timestamp that matches is a correlation. The trigger is the mechanism.
+
 ## Not done here
 
 - No editor UI, no reads, no writes.
