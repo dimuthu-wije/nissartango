@@ -74,6 +74,47 @@ in"; the raw token answers nothing a person needs to read.
 them: an expired link, an **already-consumed** link, and a malformed token. A
 link opened twice reports the same error as one left overnight.
 
+### The single-use token loses a race with the browser. Measured 2026-09-19.
+
+A link requested at 11:08:59Z and clicked well inside its hour showed
+`otp_expired` on screen. The database said the opposite:
+
+    recovery_sent_at   11:08:59.393   the request
+    last_sign_in_at    11:13:18.721   a sign-in SUCCEEDED
+    auth.sessions      1 row, user_agent Chrome/151 macOS, French residential IP
+
+So the token **was** redeemed, once, successfully — and the click the person
+actually made was the *second* use of it. Both requests carried the same user
+agent and the same IP, which is what makes this so hard to see: the successful
+consumer looks exactly like the person, because it was their own browser
+preloading the link before they clicked it.
+
+Do not read `otp_expired` as "expired". Check `last_sign_in_at` and
+`auth.sessions` first. If a session exists, the flow worked and the display is
+the only thing that failed.
+
+**The real fix is PKCE, and it needs the editor app.** In the implicit flow the
+link alone is the credential, so anything that fetches it — a preloading
+browser, a mail scanner, a corporate link-rewriter — spends it. With
+`flow_type: 'pkce'` the link carries a `code` that is worthless without the
+verifier held in the browser that *started* the sign-in, so a prefetch cannot
+complete it. That requires a real sign-in form to store the verifier, which is
+the next piece of work and not something these two static pages can do.
+
+Until then, a magic link should be **copied and pasted**, not clicked.
+
+An earlier handover recorded link-scanner prefetch as "ruled out, not merely
+doubted", on the strength of one link that worked. One success does not rule
+out a race; it only means the race was won that time.
+
+### `auth.audit_log_entries` is empty and has always been empty
+
+Zero rows on production, ever — checked 2026-09-19 while trying to see the two
+verify attempts above. Whatever it is for, it is not a record of what happened
+here, and reasoning that reaches for it will find nothing and may read that
+absence as "no events". Use `auth.sessions`, `auth.refresh_tokens` and the
+timestamp columns on `auth.users` instead.
+
 ## Deliberate constraints
 
 **No third-party script, and a CSP that enforces it.** `public/_headers` sets
