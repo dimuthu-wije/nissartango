@@ -44,30 +44,53 @@ Live at **https://nissartango.fr**
 
 ## Content model
 
-Two collections, defined in `src/content.config.ts`:
+Three collections, defined in `src/content.config.ts`, all built from the
+snapshot. The field names are the database's, in snake_case. Checked against the
+schema 2026-09-19; the camelCase list that used to be here was the markdown era
+and matched nothing in the code.
 
-**`events`** — `title`, `type` (enum: cours/practica/milonga/stage/demo/festival),
-`date`, `endDate`, `recurrence` (none/weekly/biweekly/monthly), `recurrenceEnd`,
-`exceptions` (array of dates), `location`, `city`, `organizer` (reference),
-`teachers`, `price`, `signupUrl`, `image`
+**`events`** — `db_id`, `slug`, `title`, `type` (enum:
+cours/practica/milonga/stage/demo/festival), `starts_at`, `duration_minutes`,
+`timezone`, `recurrence` (none/weekly/biweekly/monthly), `recurrence_end`,
+`location_name`, `location_address`, `location_postal_code`, `city`,
+`organizer_id`, `teachers` (array), `price_full`, `price_member`, `price_note`,
+`signup_url`, `image_path`, `image_file`, `body`, `cancelled_at`,
+`cancellation_note`, `created_at`, `updated_at`
 
-**`organizers`** — `name`, `website`, `instagram`, `facebook`, `tiktok`,
-`email`, `phone`
+**`organizers`** — `db_id`, `name`, `slug`, `website`, `instagram`, `facebook`,
+`tiktok`, `created_at`, `updated_at`.
+
+**There is no `email` and no `phone` here.** They are absent from the public
+view as well as from this schema, and that absence is the boundary keeping
+organizer contact details out of a public build and a public repo. They exist in
+production and in the private `nissartango-backups` repo, nowhere else. This
+file previously listed both as organizer fields, which described the boundary
+backwards.
+
+**`exceptions`** — `event_id`, `occurrence_date`, `kind` (cancelled/moved),
+`note`, `moved_starts_at`
 
 ## Key files
 
 ```
 astro.config.mjs              site URL + i18n (fr default, en prefixed)
 wrangler.jsonc                workers_dev false, preview_urls true, custom domains
-src/content.config.ts         both collection schemas
-src/lib/events.ts             expand() / upcoming() / nextDate() / RECURRENCE_LABELS
+src/content.config.ts         all three collection schemas, built from the snapshot
+src/lib/occurrences.js        expand() / upcoming() / nextDate() / RECURRENCE_LABELS
+src/lib/content.ts            loadAgenda() / socialLinks() / priceSummary() / formatters
+src/lib/snapshot-path.mjs     which snapshot file a build reads, keyed by project ref
 src/data/site.ts              SITE_ORGANIZER_ID
 src/layouts/Layout.astro      shell, global CSS vars, OG tags
 src/pages/index.astro         agenda listing
-src/pages/evenements/[...slug].astro   event detail
-src/content.config.ts         collections, all built from the snapshot
+src/pages/evenements/[slug].astro      event detail
+src/pages/build-info.json.ts  the deploy's own receipt: ref, commit, counts
 scripts/fetch-content.mjs     fetches Supabase -> snapshot
 ```
+
+Every path above was confirmed to exist on 2026-09-19. The list previously named
+`src/lib/events.ts` and `src/pages/evenements/[...slug].astro`; neither has ever
+existed under those names in this layout, and `src/content.config.ts` was listed
+twice.
 
 ## Decisions made, and why
 
@@ -85,9 +108,15 @@ scripts/fetch-content.mjs     fetches Supabase -> snapshot
 - **Social handles, not URLs.** Store `nissartango`, build the link in template.
 - **Contact info on the organizer, not the event** — avoids the same handle
   being typed (and mistyped) across dozens of events.
-- **Phone deliberately not rendered** on public pages.
-- **Media in `public/uploads/events`**, not `src/assets` — Astro processes and
-  hashes `src/assets`, so CMS-written paths wouldn't resolve.
+- **Email and phone never reach the build.** Not "deliberately not rendered",
+  which is what this line used to say: they are excluded from the public view,
+  so the build never receives them and no template mistake can leak them.
+- **Media would go in `public/uploads/events`**, not `src/assets` — Astro
+  processes and hashes `src/assets`, so a path stored as a plain string (by the
+  old CMS then, by `image_path` in the database now) wouldn't resolve. Recorded
+  as a decision, not as a description: `public/uploads/` does not exist, and as
+  of 2026-09-19 those two AGENTS.md lines were the only references to it
+  anywhere in the repo. Nothing serves `/uploads/events/...` today.
 
 ## Gotchas learned the hard way
 
@@ -104,12 +133,38 @@ scripts/fetch-content.mjs     fetches Supabase -> snapshot
    `src/content/organizers/` were dead Sveltia-era content that nothing loaded
    and that had drifted from the database — the tracked
    `2026-09-01-practica-mardi.md` said `location: "Salle à confirmer"` and
-   `price: "10€"` where the snapshot's row said neither. Deleted 2026-09-17.
+   `price: "10€"` where the snapshot's row said neither. The drift was measured
+   2026-09-17; the files were deleted in `b8abc2b`, committed 2026-09-19.
+
+   That strike was incomplete when it was written. Five further CMS references
+   survived elsewhere in this file — the media decision above, gotchas 3 and 4,
+   and two Outstanding items — and were corrected on 2026-09-19. A fix that
+   lands in one place and declares the file done is the recurring failure in
+   this project; grep the whole file before claiming a section is struck.
 3. **A failed build doesn't take the site down.** Cloudflare keeps the last good
-   deployment. This means broken deploys are silent — check the deploy status
-   after adding events via the CMS.
-4. **Always `git pull` before working.** The CMS commits directly to GitHub, so
-   local falls behind whenever events are added.
+   deployment, so a broken build leaves the site looking perfectly correct while
+   content changes stop reaching it.
+
+   **Broken deploys are no longer silent.** `workers/build-notifier/` emails on
+   build failure, and only on failure. It has actually delivered: two emails for
+   builds `f5116ffa` and `8c421f1c` on 2026-09-14, and no email for the success
+   that followed — recorded in `workers/cron/OPERATIONS.md`.
+
+   But an absence of mail is not proof of health: a Worker that stops running
+   triggers no builds and so emits no events, which looks identical. To confirm
+   a deploy positively, require that `built_at` has MOVED:
+
+       curl -s "https://nissartango.fr/build-info.json?t=$(date +%s)"
+
+   A stale cache can only return an older `built_at`, never a newer one, so a
+   move is conclusive while a non-move is ambiguous. See
+   `workers/build-notifier/README.md` for why that asymmetry is the whole test.
+4. **Always `git pull` before working.** The reason is no longer the CMS —
+   nothing commits to GitHub on its own now. Content lives in Supabase and
+   reaches the site through the poller's deploy hook, which produces a
+   deployment and no commit. The reason now is that this project is worked from
+   more than one session: on 2026-09-19 a session was briefed that HEAD was
+   `aa57a14` and found `main` already one commit past it, pushed and deployed.
 5. **`workers_dev` is false.** `nissartango.fr` is the only production URL. The
    `*.workers.dev` address no longer resolves.
 6. **Astro 7 is past Claude's training cutoff.** Verify Astro API details against
@@ -123,12 +178,15 @@ scripts/fetch-content.mjs     fetches Supabase -> snapshot
 
 **Unverified from the last round:**
 - Confirm no stray `image=` text renders on event pages
-- Upload a flyer via CMS and confirm it resolves at `/uploads/events/...`
+- Decide what `image_path` / `image_file` are supposed to resolve to. Nothing
+  serves `/uploads/events/...` and `public/uploads/` does not exist, so this is
+  an open design question, not a verification step.
 - Confirm organizer social links render on event detail
 
 **Next up:**
-1. Add ~10 real events through the CMS, then report which fields are missing or
-   annoying at volume. Bicilonga should be `weekly` + `recurrenceEnd`.
+1. Add ~10 real events — directly in Supabase until the stage-5 editor exists —
+   then report which fields are missing or annoying at volume. Bicilonga should
+   be `weekly` + `recurrence_end`.
 2. Convert `organizer` city/name free-text drift to selects once real values exist
 3. Past-event archive — currently past events vanish entirely, which is bad for
    SEO and for anyone linking to a past workshop
@@ -229,8 +287,29 @@ automatic RLS on. A mistake should deny, not expose.
 
 That file also says **which project is which**, and the names mislead:
 `eqcgeqzzuzcwrflwasjo` ("dimuthu-wije's Project") is production and holds
-everything; `hjsekipqryfuwdkhxuks` ("nissartango-dev") is empty and referenced
-nowhere. There is currently no dev/prod separation. Check before you push.
+everything; `hjsekipqryfuwdkhxuks` ("nissartango-dev") is dev. **Read the ref,
+never the name.**
+
+Dev is real, not a placeholder. Measured 2026-09-17: the same eight migrations
+as production, with an identical column signature on all five base tables. It is
+referenced by `.env.example`, `scripts/check-db.sh`, `PROJECT_SETUP.md`, this
+file, and the ops files in the backup deliverable. It is empty of *content* by
+policy — truncated before each restore rehearsal and again after — which is not
+the same as unused.
+
+Dev is also deliberately fail-open on `automatic_rls`: production's `ensure_rls`
+event trigger is not installed there on purpose, so a migration that forgets
+`enable row level security` fails visibly instead of being silently corrected.
+**Do not "fix" that** — it is what makes dev the canary for a defective
+migration.
+
+What is still missing is a dev/prod split in **operation**: production remains
+the only project holding content, still live, still restored by hand. This
+section previously said dev was "empty and referenced nowhere" and that there
+was "no dev/prod separation"; both were false when measured on 2026-09-17, and
+`PROJECT_SETUP.md` was corrected then while this file was not.
+
+Check the ref before you push.
 
 Verification:
 
