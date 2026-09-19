@@ -85,6 +85,14 @@ const events = defineCollection({
   schema: z.object({
     db_id: uuid,
     slug: z.string(),
+    // Slugs this event used to be published under, accents and all. The
+    // `_redirects` rules are generated from these by scripts/fetch-content.mjs
+    // before astro runs, so nothing on a page reads this -- it is here because
+    // a schema that omits a column the view returns is a schema that quietly
+    // disagrees with the database. NOT validated against slugify(): a legacy
+    // slug is whatever the URL once was, which is the entire reason it needs
+    // redirecting.
+    legacy_slugs: z.array(z.string()).default([]),
     title: z.string(),
     type: z.enum(['cours', 'practica', 'milonga', 'stage', 'demo', 'festival']),
     starts_at: z.string(),

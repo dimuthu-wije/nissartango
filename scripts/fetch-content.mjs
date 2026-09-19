@@ -34,9 +34,11 @@ import path from 'node:path';
 import {
   projectRef, productionRef, snapshotFileFor, currentSnapshotPath, POINTER,
 } from '../src/lib/snapshot-path.mjs';
+import { renderRedirects } from '../src/lib/redirects.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DATA_DIR = path.join(ROOT, 'data');
+const REDIRECTS = path.join(ROOT, 'public', '_redirects');
 const IMAGE_DIR = path.join(ROOT, 'src', 'assets', 'events');
 
 const fromSnapshot =
@@ -315,5 +317,28 @@ for (const e of snapshot.events) {
 }
 await writeFile(SNAPSHOT, JSON.stringify(snapshot, null, 2) + '\n');
 
+// Legacy URLs come from content now, not from a file somebody maintains.
+//
+// This runs for --from-snapshot too: the rules are derived from
+// snapshot.events either way, so the emergency path publishes the same
+// redirects as a live fetch rather than whatever happened to be on disk.
+//
+// A throw here is correct. renderRedirects only refuses when a rule would be
+// worse than no rule -- a legacy slug shadowing a published event, or two
+// events claiming the same one -- and publishing that is worse than not
+// publishing at all.
+const redirects = renderRedirects(snapshot.events);
+if (redirects) {
+  await writeFile(REDIRECTS, redirects);
+} else {
+  // No legacy slugs anywhere. Remove any file a previous build left, so a
+  // stale rule cannot outlive the content that justified it.
+  await unlink(REDIRECTS).catch(() => {});
+}
+const ruleCount = redirects
+  ? redirects.split('\n').filter((l) => l.trim() && !l.startsWith('#')).length
+  : 0;
+
 log(`${snapshot.events.length} events, ${snapshot.organizers.length} organizers, ` +
-    `${snapshot.exceptions.length} exceptions, ${files.size} images`);
+    `${snapshot.exceptions.length} exceptions, ${files.size} images, ` +
+    `${ruleCount} redirect rule(s)`);
