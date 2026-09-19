@@ -15,13 +15,14 @@
   <p class="lede">Nissartango — accès réservé aux organisateurs.</p>
 
   <!--
-    THIS PAGE IS A MAGIC-LINK DESTINATION, not only a landing page.
+    Sign-in form AND magic-link destination, because it has to be both.
 
-    Supabase Auth's Site URL for the production project is
-    https://editor.nissartango.fr with no path, and nothing yet sets an
-    explicit redirect_to. So a link that does not name a destination lands
-    HERE, at "/", with the token in the fragment -- not at /auth/callback.
-    Both pages therefore run the same handler.
+    The form requests a PKCE link and names /auth/callback as the
+    destination. But Supabase's Site URL is https://editor.nissartango.fr with
+    no path, and site_url is the fallback for any redirect_to that is not
+    allow-listed -- so a link issued anywhere else still lands HERE, at "/".
+    session.js therefore handles ?code=, #access_token= and #error= on both
+    pages rather than assuming which one a browser will reach.
   -->
   <div id="out"></div>
 

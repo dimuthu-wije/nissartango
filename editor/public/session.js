@@ -1,203 +1,221 @@
-// What a magic link actually delivers, and what this page can honestly say
-// about it.
+// What the editor origin does today: sign you in, and say who you are.
 //
-// GoTrue redirects to the destination with everything in the URL **fragment**:
+// Three ways a browser can arrive here, and all three are handled because all
+// three happen:
 //
-//     https://editor.nissartango.fr/#access_token=eyJ…&refresh_token=…
-//                                    &expires_in=3600&token_type=bearer&type=magiclink
+//   ?code=...              PKCE. The flow this page requests. The code is
+//                          useless without the verifier in this browser's
+//                          localStorage, so a preloading browser or a mail
+//                          scanner can fetch the link and gain nothing.
+//   #access_token=...      Implicit. Older links, and anything issued outside
+//                          this form. Still works; noted as the weaker flow.
+//   #error=...             GoTrue's failure, which arrives at the destination
+//                          rather than as an HTTP error.
 //
-// or, when the token was expired, already consumed, or malformed:
-//
-//     https://editor.nissartango.fr/#error=access_denied
-//                                    &error_code=otp_expired
-//                                    &error_description=Email+link+is+invalid+or+has+expired
-//
-// The fragment is never sent to a server -- browsers do not transmit it -- so
-// everything here happens in the tab and nothing is logged anywhere.
-//
-// NO THIRD-PARTY SCRIPT ON THIS PAGE, DELIBERATELY. Any script loaded here can
-// read location.hash, which is to say it can read an access token. supabase-js
-// from a CDN would be the ordinary choice and is the wrong one for the single
-// page in this project that handles a credential. Parsing a fragment and
-// base64-decoding a JWT payload needs no library.
-//
-// WHAT THIS PROVES, AND WHAT IT DOES NOT. Decoding a JWT client-side does not
-// verify it: the signature is not checked here and cannot be, because the
-// verifying key is not ours to hold. So a green result on this page means the
-// token was ISSUED AND DELIVERED to this browser -- which is exactly the thing
-// nothing in this project had shown end to end. It does not mean the token is
-// valid; PostgREST decides that, on every request, and it is the only opinion
-// that counts.
+// The fragment is never sent to a server. The PKCE `code` IS -- it is a query
+// parameter and will appear in logs -- which is safe only because the code
+// alone cannot be redeemed. That asymmetry is the design, not an oversight.
 
-const QS = (s) => document.querySelector(s);
+import { requestLink, exchangeCode, storedSession, signOutLocally, claimsOf } from '/auth.js';
 
-/** Fragment -> plain object. Returns {} when there is no fragment. */
-export function readFragment(hash = window.location.hash) {
-  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
-  if (!raw) return {};
-  const out = {};
-  for (const [k, v] of new URLSearchParams(raw)) out[k] = v;
-  return out;
+const $ = (s) => document.querySelector(s);
+const out = () => $('#out');
+
+const el = (tag, text, cls) => {
+  const n = document.createElement(tag);
+  if (text != null) n.textContent = text;       // textContent: all of this is untrusted
+  if (cls) n.className = cls;
+  return n;
+};
+
+function box(cls, title, detail) {
+  const b = el('div', null, `box ${cls}`);
+  b.appendChild(el('h2', title));
+  if (detail) b.appendChild(el('p', detail));
+  out().replaceChildren(b);
+  return b;
 }
 
-/**
- * Decode a JWT's payload. base64url, and the payload may contain non-ASCII
- * (an organizer's name in a future claim, say), so it is decoded as UTF-8
- * rather than passed straight out of atob().
- */
-export function decodeJwtPayload(jwt) {
-  const part = String(jwt).split('.')[1];
-  if (!part) throw new Error('not a JWT: no payload segment');
-  const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
-  const bytes = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
-  return JSON.parse(new TextDecoder().decode(bytes));
+function rows(into, pairs) {
+  const dl = el('dl');
+  for (const [k, v] of pairs) { dl.appendChild(el('dt', k)); dl.appendChild(el('dd', String(v ?? '—'))); }
+  into.appendChild(dl);
+  return dl;
 }
 
 const fmt = (secs) =>
   secs ? new Date(secs * 1000).toISOString().replace('T', ' ').replace(/\..*/, 'Z') : '—';
 
-function row(label, value) {
-  const dt = document.createElement('dt');
-  dt.textContent = label;
-  const dd = document.createElement('dd');
-  dd.textContent = value; // textContent, not innerHTML: this is untrusted input
-  return [dt, dd];
+/** Take the credential out of the address bar once it has been read. */
+function cleanUrl() {
+  try { history.replaceState(null, '', location.pathname); } catch { /* sandboxed */ }
 }
 
-export function render(into = QS('#out')) {
-  const f = readFragment();
-  into.replaceChildren();
+// --- views -----------------------------------------------------------------
 
-  const say = (cls, title, detail) => {
-    const box = document.createElement('div');
-    box.className = `box ${cls}`;
-    const h = document.createElement('h2');
-    h.textContent = title;
-    box.appendChild(h);
-    if (detail) {
-      const p = document.createElement('p');
-      p.textContent = detail;
-      box.appendChild(p);
-    }
-    into.appendChild(box);
-    return box;
-  };
-
-  // --- nothing at all -------------------------------------------------------
-  if (!f.access_token && !f.error && !f.error_code) {
-    say(
-      'idle',
-      'No authentication response in this URL.',
-      'This page is the destination a magic link redirects to. Opening it ' +
-        'directly is expected to look like this. Request a link, then follow ' +
-        'it from the email.',
-    );
-    return;
-  }
-
-  // --- an error came back ---------------------------------------------------
-  if (f.error || f.error_code) {
-    const box = say('bad', 'The link did not sign you in.');
-    const dl = document.createElement('dl');
-    for (const k of ['error', 'error_code', 'error_description']) {
-      if (f[k]) dl.append(...row(k, f[k]));
-    }
-    box.appendChild(dl);
-
-    if (f.error_code === 'otp_expired') {
-      const p = document.createElement('p');
-      p.className = 'note';
-      p.textContent =
-        'otp_expired covers three different things and does not distinguish ' +
-        'them: a link older than its expiry, a link that was already used, ' +
-        'and a malformed token. A link opened twice reports the same error as ' +
-        'one left overnight — and a mail scanner that follows links will ' +
-        'consume it before you ever click.';
-      box.appendChild(p);
-    }
-    clearFragment();
-    return;
-  }
-
-  // --- a token arrived ------------------------------------------------------
+function showSession(session, how) {
   let claims;
-  try {
-    claims = decodeJwtPayload(f.access_token);
-  } catch (err) {
-    const box = say('bad', 'A token arrived but could not be read.', String(err && err.message));
-    box.classList.add('bad');
-    clearFragment();
+  try { claims = claimsOf(session.access_token); }
+  catch (e) { return showError('A token arrived but could not be read.', String(e.message)); }
+
+  const b = box('good', 'Signed in.');
+  rows(b, [
+    ['user id (sub)', claims.sub],
+    ['email', claims.email],
+    ['role', claims.role],
+    ['issued', fmt(claims.iat)],
+    ['expires', fmt(claims.exp)],
+    ['flow', how],
+  ]);
+
+  const note = el('p', null, 'note');
+  note.textContent =
+    how === 'pkce'
+      ? 'PKCE: the link carried a code that was useless without the verifier ' +
+        'stored in this browser. Anything that fetched the link before you — a ' +
+        'preloading browser, a mail scanner — could not have completed it. The ' +
+        'access token is not shown; it is a bearer credential. These claims are ' +
+        'decoded, NOT verified — PostgREST decides that, on every request.'
+      : 'Implicit flow: the link itself was the credential, so anything that ' +
+        'fetched it first would have spent it. That is what happened on ' +
+        '2026-09-19 at 11:13. Prefer the sign-in form on this site, which uses ' +
+        'PKCE. The access token is not shown, and these claims are decoded, ' +
+        'NOT verified.';
+  b.appendChild(note);
+
+  const signOut = el('button', 'Sign out of this browser');
+  signOut.className = 'btn';
+  signOut.addEventListener('click', () => { signOutLocally(); location.href = '/'; });
+  b.appendChild(signOut);
+
+  const caveat = el('p', null, 'note');
+  caveat.textContent =
+    'Signing out clears this browser only. It does not revoke the session in ' +
+    'the database, and the refresh token stays live until it is used or expires.';
+  b.appendChild(caveat);
+}
+
+function showError(title, detail, extra = []) {
+  const b = box('bad', title, detail);
+  if (extra.length) rows(b, extra);
+  return b;
+}
+
+function showForm(message) {
+  const b = box('idle', 'Sign in', message || 'Enter your email and a sign-in link will be sent.');
+  const form = el('form');
+  form.className = 'signin';
+
+  const label = el('label', 'Email');
+  label.setAttribute('for', 'email');
+  const input = el('input');
+  Object.assign(input, { type: 'email', id: 'email', name: 'email', required: true, autocomplete: 'email' });
+  input.placeholder = 'vous@example.org';
+  const submit = el('button', 'Send me a link');
+  submit.type = 'submit';
+  submit.className = 'btn';
+
+  form.append(label, input, submit);
+  b.appendChild(form);
+
+  const note = el('p', null, 'note');
+  note.textContent =
+    'No account is created from this form. Only an address that already has ' +
+    'one will receive anything — and today, because custom SMTP is not ' +
+    'configured, only members of the Supabase organization can receive mail ' +
+    'at all. Everyone else gets nothing, with no error shown here.';
+  b.appendChild(note);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submit.disabled = true;
+    submit.textContent = 'Sending…';
+    try {
+      await requestLink(input.value.trim());
+      const s = box('good', 'Check your email.',
+        `If ${input.value.trim()} has an account, a link is on its way. It is ` +
+        'valid for one hour and can be used once.');
+      const n = el('p', null, 'note');
+      n.textContent =
+        'Open it in THIS browser. The link is completed with a secret stored ' +
+        'here and nowhere else, so it cannot be finished on another device — ' +
+        'which is also why nothing that merely fetches the link can use it.';
+      s.appendChild(n);
+    } catch (err) {
+      showError('The link could not be requested.', String(err.message));
+      const again = el('button', 'Try again');
+      again.className = 'btn';
+      again.addEventListener('click', () => showForm());
+      out().firstChild.appendChild(again);
+    }
+  });
+
+  input.focus();
+}
+
+// --- routing ---------------------------------------------------------------
+
+async function boot() {
+  if (!out()) return;
+
+  const query = new URLSearchParams(location.search);
+  const frag = new URLSearchParams(location.hash.replace(/^#/, ''));
+
+  // GoTrue can report failure on either side depending on the flow.
+  const errCode = query.get('error_code') || frag.get('error_code');
+  if (errCode || query.get('error') || frag.get('error')) {
+    const pick = (k) => query.get(k) || frag.get(k);
+    const b = showError('The link did not sign you in.', null, [
+      ['error', pick('error')],
+      ['error_code', errCode],
+      ['error_description', pick('error_description')],
+    ]);
+    if (errCode === 'otp_expired') {
+      b.appendChild(el('p',
+        'otp_expired covers three different things and does not distinguish ' +
+        'them: an expired link, an ALREADY-USED link, and a malformed token. ' +
+        'Before assuming expiry, check whether a session was created — an ' +
+        'implicit-flow link spent by a preloading browser reports exactly this.',
+        'note'));
+    }
+    const again = el('button', 'Request a new link');
+    again.className = 'btn';
+    again.addEventListener('click', () => { cleanUrl(); showForm(); });
+    b.appendChild(again);
+    cleanUrl();
     return;
   }
 
-  const box = say('good', 'Signed in — the token reached this browser.');
-  const dl = document.createElement('dl');
-  dl.append(...row('user id (sub)', claims.sub ?? '—'));
-  dl.append(...row('email', claims.email ?? '—'));
-  dl.append(...row('role', claims.role ?? '—'));
-  dl.append(...row('issued', fmt(claims.iat)));
-  dl.append(...row('expires', fmt(claims.exp)));
-  dl.append(...row('flow', f.type ?? '—'));
-  box.appendChild(dl);
-
-  // The access token itself is deliberately NOT displayed. It is a bearer
-  // credential: anything on screen can be photographed, screen-shared, or
-  // pasted into a chat, and pasting one has already cost this project a
-  // revocation. The claims answer "who signed in"; the token answers nothing a
-  // person needs to read.
-  const p = document.createElement('p');
-  p.className = 'note';
-  p.textContent =
-    'The access token is not shown, on purpose — it is a bearer credential. ' +
-    'These claims are decoded, NOT verified: the signature is not checked here ' +
-    'and cannot be. This proves the token was issued and delivered, which is ' +
-    'the thing worth proving today. Whether it is valid is PostgREST’s ' +
-    'decision, on every request.';
-  box.appendChild(p);
-
-  clearFragment();
-}
-
-/**
- * Take the credential out of the address bar once it has been read.
- *
- * It stays in memory for this page's lifetime, which is unavoidable, but it
- * should not sit in a URL that gets copied, screenshotted, or restored by a
- * "reopen last tab". replaceState rather than pushState so Back does not walk
- * into the token again.
- */
-export function clearFragment() {
-  try {
-    history.replaceState(null, '', window.location.pathname + window.location.search);
-  } catch {
-    /* a sandboxed context may refuse; the page still works */
+  const code = query.get('code');
+  if (code) {
+    box('idle', 'Completing sign-in…');
+    try {
+      const session = await exchangeCode(code);
+      cleanUrl();
+      return showSession(session, 'pkce');
+    } catch (err) {
+      cleanUrl();
+      const b = showError('The code could not be exchanged.', String(err.message));
+      const again = el('button', 'Request a new link');
+      again.className = 'btn';
+      again.addEventListener('click', () => showForm());
+      b.appendChild(again);
+      return;
+    }
   }
+
+  if (frag.get('access_token')) {
+    const session = { access_token: frag.get('access_token'), refresh_token: frag.get('refresh_token') };
+    cleanUrl();
+    return showSession(session, frag.get('type') || 'implicit');
+  }
+
+  const existing = storedSession();
+  if (existing) return showSession(existing, 'stored');
+
+  showForm();
 }
 
-// Self-initialising, so neither page needs an inline <script> block. That is
-// the whole reason: it lets the CSP in public/_headers say script-src 'self'
-// with no 'unsafe-inline' and no inline hash to keep in sync. On the one page
-// in this project that receives a bearer credential, a policy that actually
-// forbids injected script is worth a little indirection.
-function boot() {
-  if (QS('#out')) render();
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', boot);
-} else {
-  boot();
-}
-
-// A second link must not show the first link's answer.
-//
-// Found by testing, not by reading: arriving at the same URL with a different
-// fragment does NOT reload the document, so `boot()` never ran again and the
-// page kept displaying the previous result. Follow one link, then follow
-// another, and the second would show the first one's claims -- or worse, show
-// "signed in" after a link that had actually failed.
-//
-// clearFragment() uses replaceState, which deliberately does NOT fire
-// hashchange, so clearing the token cannot retrigger this.
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
 window.addEventListener('hashchange', boot);

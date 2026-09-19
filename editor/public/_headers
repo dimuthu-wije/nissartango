@@ -8,13 +8,20 @@
   # /session.js as a module -- so the policy can forbid inline script outright
   # rather than carry 'unsafe-inline' or a hash that drifts out of date.
   #
-  # connect-src is 'self' ON PURPOSE and is NOT a mistake to "fix" casually.
-  # Nothing here calls Supabase yet. When the editor does, this line must gain
-  # https://eqcgeqzzuzcwrflwasjo.supabase.co and the change should be a visible
-  # edit someone can question, not a wildcard added in advance. A blocked
-  # request fails loudly in the console; a permissive policy fails silently and
-  # forever.
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  # connect-src NAMES ONE ORIGIN. It said 'self' until 2026-09-19, when the
+  # sign-in form started calling /auth/v1/otp and /auth/v1/token -- so this is
+  # the visible edit the earlier comment asked for, rather than a wildcard
+  # added in advance.
+  #
+  # ONE project ref, spelled out. Not https://*.supabase.co, which would let a
+  # compromised script post an access token to any project on the platform.
+  # eqcgeqzzuzcwrflwasjo is PRODUCTION; the names are backwards, so read the
+  # ref (supabase/PROJECT_SETUP.md).
+  #
+  # form-action stays 'none' deliberately even though there is now a form: it
+  # is submitted by fetch(), never by the browser navigating, so nothing should
+  # be able to POST this page anywhere.
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://eqcgeqzzuzcwrflwasjo.supabase.co; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   # frame-ancestors above already covers this for modern browsers; kept for the
   # ones that only honour the header.
   X-Frame-Options: DENY
