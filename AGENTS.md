@@ -35,7 +35,7 @@ Live at **https://nissartango.fr**
 
 | Layer | Choice |
 |---|---|
-| Framework | Astro 7.2.4 (static output, Cloudflare adapter) |
+| Framework | Astro 7.2.4, static output. `@astrojs/cloudflare` is a dependency but is **not** configured in `astro.config.mjs` — checked 2026-09-19. The build is plain static and the adapter is unused; it is presumably being kept for the editor deployment. |
 | Host | Cloudflare Workers with static assets |
 | Repo | GitHub `dimuthu-wije/nissartango`, auto-deploys on push to `main` |
 | CMS | None. Content lives in Supabase; the site builds from `data/snapshot.<ref>.json`. Sveltia was removed and `/admin/` 404s. |
@@ -193,8 +193,12 @@ twice.
 4. Month grouping and type filtering (needed around 30-40 events)
 5. English pages (`/en/`) — UI and practical pages only
 6. Event submission form for other organizers, so I'm the editor rather than the
-   data-entry clerk. This is why we're on Workers rather than Pages: that route
-   gets `export const prerender = false`.
+   data-entry clerk. This line used to say that is why we're on Workers rather
+   than Pages, with the route getting `export const prerender = false`.
+   Superseded: `wrangler.jsonc` now deliberately has no `main`, so the public
+   site is static assets with no runtime code path to Supabase at all, and the
+   editor is a **separate deployment**. Read the comment in `wrangler.jsonc`
+   before reopening this.
 7. Pin Node version (`.node-version` or `engines` in package.json) — Cloudflare
    builds on Node 24, local is 22
 8. Redirect `www` to the naked domain

@@ -536,14 +536,77 @@ arrives with no grants at all.
 5. For a project that will hold real editor accounts, run the HTTP proofs too:
    `ALLOW_NON_LOCAL=1 SUPABASE_URL=… SUPABASE_ANON_KEY=… ./scripts/prove-rls.sh`
 
-## Still to decide (stage 5, auth)
+## Stage 5, auth
+
+### DONE 2026-09-19: production has an admin, and the queue opens
+
+Before this, `user_roles` and `organizer_members` were both empty on production,
+so `is_admin()` and `is_owner()` returned false for everyone. Every admin policy
+was unreachable and the approval queue had nobody who could open it — a complete
+moderation layer, unusable for want of one row.
+
+**Measured, and it changes the ordering.** GoTrue creates the `auth.users` row
+when the magic link is *requested*, not when it is clicked:
+
+    POST {SUPABASE_URL}/auth/v1/otp   {"email": "…", "create_user": true}
+    -> HTTP 200 {}
+    -> auth.users gains one row immediately, email_confirmed_at NULL
+
+Clicking the link is what sets `email_confirmed_at` and mints a session. So
+bootstrapping an admin does **not** depend on the editor origin resolving. The
+plan of record said it did; that was wrong. What the origin blocks is a usable
+browser session, not the row — which means the moderation layer could have been
+unblocked at any point in the preceding week.
+
+Check `{SUPABASE_URL}/auth/v1/settings` first — it is anon-readable and tells
+you whether the call can work. On 2026-09-19 production read `"email": true`,
+`"disable_signup": false`, `"mailer_autoconfirm": false`.
+
+Then, as `postgres` over the session pooler:
+
+    insert into public.user_roles (user_id, role) values (<uid>, 'admin');
+    insert into public.organizer_members (organizer_id, user_id, role)
+      values (<nissartango id>, <uid>, 'owner');
+
+The user id is deliberately not written down here. This is a public repository;
+the id is readable from `auth.users` by anyone who can already reach the
+database, and nothing in the repo needs it.
+
+**Verified by impersonation in-database, with negative controls** — the point
+being that a check which passes for everybody proves nothing:
+
+    set local role authenticated;
+    set local request.jwt.claims = '{"sub":"<uid>","role":"authenticated"}';
+
+    is_admin()                   t    | as a non-existent uid          f
+    is_owner(nissartango)        t    | is_owner(el-gato-tanguero)     f
+    is_member(nissartango)       t    |
+    count(*) from events         4    | as a stranger                  0
+
+The last row answers the original symptom directly: the approval queue opens for
+the admin and stays shut for everyone else. Note that this needs no browser and
+no session — `set local request.jwt.claims` is enough to exercise every policy,
+which is worth remembering before anyone blocks an RLS test on a working editor.
+
+### Still to decide
 
 - Email confirmations: off locally (`config.toml`), which is what lets
-  `create-test-users.sh` work. The hosted projects need a deliberate choice,
-  and magic-link sign-in makes the question mostly moot.
-- `site_url` and `additional_redirect_urls` in `config.toml` still point at
-  `127.0.0.1:3000`. The hosted projects need the real editor-app origin, or
-  magic links will redirect to localhost.
+  `create-test-users.sh` work. The hosted projects need a deliberate choice, and
+  magic-link sign-in makes the question mostly moot.
+- `site_url` and `additional_redirect_urls` in `config.toml` point at
+  `127.0.0.1:3000`, and both look like untouched Supabase defaults rather than
+  decisions: this project's Astro dev server listens on **4321**, and
+  `additional_redirect_urls` specifies `https://` on loopback, which a local dev
+  server does not serve. Whatever the editor origin turns out to be, these two
+  values are wrong today for a reason that has nothing to do with it.
+- The **hosted** projects' `site_url` was reported on 2026-09-19 to point at
+  `127.0.0.1:3000` too. **Not measured** — `/auth/v1/settings` does not expose
+  it and it lives in the dashboard. Recorded as a claim, not as a property of
+  the project.
+- The editor origin itself. `wrangler.jsonc` already fixes the shape: the public
+  site has no `main` and is static assets only, so the editor is a separate
+  deployment, not a route on `nissartango`. AGENTS.md's "Next up" item 6 still
+  describes the superseded plan of a `prerender = false` route on this Worker.
 
 ### DECIDED: `data/snapshot.json` stops being committed
 
