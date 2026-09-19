@@ -83,6 +83,11 @@ function showSession(session, how) {
         'NOT verified.';
   b.appendChild(note);
 
+  const queue = el('a', 'Open the approval queue');
+  queue.href = '/queue/';
+  queue.className = 'btn';
+  b.appendChild(queue);
+
   const signOut = el('button', 'Sign out of this browser');
   signOut.className = 'btn';
   signOut.addEventListener('click', () => { signOutLocally(); location.href = '/'; });

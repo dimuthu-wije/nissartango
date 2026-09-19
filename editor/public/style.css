@@ -158,3 +158,84 @@ a { color: inherit; }
 .btn:hover { opacity: 0.88; }
 
 .btn:disabled { opacity: 0.5; cursor: default; }
+
+/* --- approval queue ----------------------------------------------------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem 1.15rem;
+  margin: 0 0 1rem;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+}
+
+.card h3 { font-size: 1.02rem; margin: 0; }
+
+.tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+.tag {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tag-pending  { color: var(--idle); border-color: currentColor; }
+.tag-approved { color: var(--good); border-color: currentColor; }
+.tag-rejected { color: var(--bad);  border-color: currentColor; }
+.tag-flag     { color: var(--bad);  border-color: currentColor; }
+
+.note-input {
+  font: inherit;
+  width: 100%;
+  margin-top: 0.85rem;
+  padding: 0.5rem 0.65rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.note-input:focus-visible { outline: 2px solid var(--idle); outline-offset: 2px; }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.actions .btn { margin-top: 0; }
+
+.btn-quiet {
+  color: var(--fg);
+  background: transparent;
+  border-color: var(--line);
+}
+
+a.btn { text-decoration: none; display: inline-block; }
+
+.decided { list-style: none; padding: 0; margin: 0.9rem 0 0; }
+.decided li { padding: 0.25rem 0; font-size: 0.9rem; }
+.muted { color: var(--muted); }
+
+.linkish {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}

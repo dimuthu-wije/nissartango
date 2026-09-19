@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File d'attente — Nissartango</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>File d'attente</h1>
+  <p class="lede">Événements en attente de décision.</p>
+
+  <!--
+    Nothing on this page decides what you may see or do. It asks is_admin()
+    and it renders what PostgREST returns, and PostgREST asks the database,
+    which evaluates RLS against the caller's own JWT on every row of every
+    request. Editing this file cannot widen any of that.
+
+    `authenticated` holds SELECT and DELETE on events and NO UPDATE, so a
+    status change is not expressible as a table write at all -- it has to go
+    through approve_event / reject_event, which check is_admin() themselves.
+  -->
+  <div id="out"></div>
+
+  <footer>
+    <a href="/">Retour</a> · <button id="signout" class="linkish" type="button">Se déconnecter</button>
+  </footer>
+</main>
+
+<script type="module" src="/queue.js"></script>
+</body>
+</html>

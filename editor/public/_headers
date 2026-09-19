@@ -39,3 +39,13 @@
 
 /auth/callback/
   Cache-Control: no-store, must-revalidate
+
+/queue
+  # The queue lists events that are NOT published -- pending submissions, and
+  # anything flagged. None of it is public content, so no intermediary should
+  # keep a copy. The data itself is still gated by RLS on every request; this
+  # only stops a cache holding the rendered result.
+  Cache-Control: no-store, must-revalidate
+
+/queue/
+  Cache-Control: no-store, must-revalidate
