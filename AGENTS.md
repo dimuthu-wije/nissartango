@@ -49,7 +49,7 @@ snapshot. The field names are the database's, in snake_case. Checked against the
 schema 2026-09-19; the camelCase list that used to be here was the markdown era
 and matched nothing in the code.
 
-**`events`** — `db_id`, `slug`, `title`, `type` (enum:
+**`events`** — `db_id`, `slug`, `legacy_slugs` (array), `title`, `type` (enum:
 cours/practica/milonga/stage/demo/festival), `starts_at`, `duration_minutes`,
 `timezone`, `recurrence` (none/weekly/biweekly/monthly), `recurrence_end`,
 `location_name`, `location_address`, `location_postal_code`, `city`,
@@ -79,6 +79,8 @@ src/content.config.ts         all three collection schemas, built from the snaps
 src/lib/occurrences.js        expand() / upcoming() / nextDate() / RECURRENCE_LABELS
 src/lib/content.ts            loadAgenda() / socialLinks() / priceSummary() / formatters
 src/lib/snapshot-path.mjs     which snapshot file a build reads, keyed by project ref
+src/lib/redirects.mjs         public/_redirects, generated from events.legacy_slugs
+scripts/db-push.sh            migrations to a HOSTED project, naming the ref first
 src/data/site.ts              SITE_ORGANIZER_ID
 src/layouts/Layout.astro      shell, global CSS vars, OG tags
 src/pages/index.astro         agenda listing
@@ -173,6 +175,19 @@ twice.
    the `@astrojs/cloudflare/entrypoints/server` main path are both current-form.
 7. **Run `npm run build` locally before every push.** Faster than reading
    Cloudflare build logs.
+8. **`supabase db push` targets whatever is LINKED, and that is production.**
+   `supabase/.temp/project-ref` read `eqcgeqzzuzcwrflwasjo` on 2026-09-19, so
+   intending "try it on dev first" and typing the obvious command would have
+   migrated production and reported success. The project names are backwards
+   too, so nothing on screen would have contradicted you. Use
+   `./scripts/db-push.sh dev|prod`, which pushes by `--db-url` and prints the
+   ref — read out of the connection string, not out of the argument — before it
+   touches anything.
+9. **`public/_redirects` is generated and gitignored.** It comes from
+   `events.legacy_slugs` via `scripts/fetch-content.mjs` on every build. Do not
+   edit it and do not commit it: the copy on disk is output. It was hand-written
+   until 2026-09-19, when it turned out that rejecting the one event it pointed
+   at would have failed `verify-build.mjs` check 7 and frozen the site.
 
 ## Outstanding
 
