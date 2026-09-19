@@ -1,0 +1,34 @@
+# Headers for the editor origin. This deployment receives an access token in a
+# URL fragment, so it gets a stricter policy than the public site.
+#
+# Cloudflare serves this file as configuration, not as content.
+
+/*
+  # No inline script anywhere in this deployment -- both pages load
+  # /session.js as a module -- so the policy can forbid inline script outright
+  # rather than carry 'unsafe-inline' or a hash that drifts out of date.
+  #
+  # connect-src is 'self' ON PURPOSE and is NOT a mistake to "fix" casually.
+  # Nothing here calls Supabase yet. When the editor does, this line must gain
+  # https://eqcgeqzzuzcwrflwasjo.supabase.co and the change should be a visible
+  # edit someone can question, not a wildcard added in advance. A blocked
+  # request fails loudly in the console; a permissive policy fails silently and
+  # forever.
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  # frame-ancestors above already covers this for modern browsers; kept for the
+  # ones that only honour the header.
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Cross-Origin-Opener-Policy: same-origin
+  # This origin should never have been reachable over plain HTTP, but say so.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+/auth/callback
+  # The URL that carries the token. Never let an intermediary keep a copy of
+  # the response, and never let a bfcache restore repaint a page whose
+  # fragment has already been cleared.
+  Cache-Control: no-store, must-revalidate
+
+/auth/callback/
+  Cache-Control: no-store, must-revalidate

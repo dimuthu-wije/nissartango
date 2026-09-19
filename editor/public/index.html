@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nissartango — espace éditeur</title>
+<!-- Not a public page. Nothing here should be indexed or previewed. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Espace éditeur</h1>
+  <p class="lede">Nissartango — accès réservé aux organisateurs.</p>
+
+  <!--
+    THIS PAGE IS A MAGIC-LINK DESTINATION, not only a landing page.
+
+    Supabase Auth's Site URL for the production project is
+    https://editor.nissartango.fr with no path, and nothing yet sets an
+    explicit redirect_to. So a link that does not name a destination lands
+    HERE, at "/", with the token in the fragment -- not at /auth/callback.
+    Both pages therefore run the same handler.
+  -->
+  <div id="out"></div>
+
+  <footer>
+    Cette page existe pour recevoir un lien de connexion. L'éditeur lui-même
+    n'est pas encore construit.
+  </footer>
+</main>
+
+<script type="module" src="/session.js"></script>
+</body>
+</html>

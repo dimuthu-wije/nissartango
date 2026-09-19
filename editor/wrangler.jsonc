@@ -1,0 +1,40 @@
+{
+	"$schema": "../node_modules/wrangler/config-schema.json",
+	"name": "nissartango-editor",
+
+	// No "main", for the same reason the public site has none: this is static
+	// assets and nothing else, so there is no server-side code path that could
+	// hold a Supabase key. The editor talks to Supabase from the BROWSER, with
+	// the publishable key and the caller's own JWT, which is what makes RLS the
+	// enforcement rather than something a Worker has to remember.
+	//
+	// A SEPARATE deployment from `nissartango`, deliberately. The public site
+	// must keep having no authentication surface at all: a bug in the editor
+	// cannot take the agenda down, and nothing here can widen what anon reads.
+	"compatibility_date": "2026-09-19",
+
+	"workers_dev": false,
+	"preview_urls": true,
+
+	"assets": {
+		"directory": "./public"
+	},
+
+	// THIS LINE IS THE DNS RECORD.
+	//
+	// `custom_domain: true` makes wrangler provision the record and the
+	// certificate on deploy, exactly as it did for nissartango.fr and
+	// www.nissartango.fr. Do NOT hand-add an A or CNAME for `editor` in the
+	// Cloudflare dashboard: Workers custom domains are managed here, and a
+	// manual record conflicts with the one wrangler creates.
+	//
+	// Until this is deployed, editor.nissartango.fr is NXDOMAIN — which is the
+	// state Supabase Auth's Site URL was pointed at on 2026-09-19.
+	"routes": [
+		{ "pattern": "editor.nissartango.fr", "custom_domain": true }
+	],
+
+	"observability": {
+		"enabled": true
+	}
+}

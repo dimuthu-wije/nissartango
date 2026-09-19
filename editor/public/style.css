@@ -1,0 +1,112 @@
+/* Deliberately one small stylesheet and no framework. This deployment exists
+   to resolve a hostname and receive a token; it is not the editor yet. */
+
+:root {
+  color-scheme: light dark;
+  --bg: #fbfaf8;
+  --fg: #1d1b18;
+  --muted: #5f5b55;
+  --line: #e2ddd6;
+  --card: #ffffff;
+  --good: #1f6b3f;
+  --good-bg: #edf7f0;
+  --bad: #8c2f2f;
+  --bad-bg: #fbeeee;
+  --idle: #4a5a70;
+  --idle-bg: #eef2f7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171614;
+    --fg: #ece8e2;
+    --muted: #a39d94;
+    --line: #322e29;
+    --card: #1f1d1a;
+    --good: #7fd1a0;
+    --good-bg: #16261d;
+    --bad: #e79a9a;
+    --bad-bg: #2a1a1a;
+    --idle: #a8bcd6;
+    --idle-bg: #1a2029;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 2.5rem 1rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+main { max-width: 42rem; margin: 0 auto; }
+
+h1 {
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.25rem;
+}
+
+.lede { color: var(--muted); margin: 0 0 2rem; }
+
+.box {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 1.1rem 1.25rem;
+  margin: 0 0 1.25rem;
+}
+
+.box h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
+
+.box.good { border-left-color: var(--good); background: var(--good-bg); }
+.box.good h2 { color: var(--good); }
+.box.bad { border-left-color: var(--bad); background: var(--bad-bg); }
+.box.bad h2 { color: var(--bad); }
+.box.idle { border-left-color: var(--idle); background: var(--idle-bg); }
+.box.idle h2 { color: var(--idle); }
+
+.box p { margin: 0.5rem 0 0; }
+
+dl {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0.9rem 0 0;
+}
+
+@media (max-width: 30rem) {
+  dl { grid-template-columns: 1fr; gap: 0.1rem; }
+  dd { margin-bottom: 0.6rem; }
+}
+
+dt { color: var(--muted); font-size: 0.85rem; }
+
+dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.87rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+  margin-top: 1rem !important;
+}
+
+footer {
+  color: var(--muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+  margin-top: 2.5rem;
+}
+
+a { color: inherit; }

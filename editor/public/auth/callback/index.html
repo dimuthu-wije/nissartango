@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion — Nissartango</title>
+<meta name="robots" content="noindex, nofollow">
+<!--
+  no-referrer matters more here than on the landing page. This URL carries an
+  access token in its fragment. Fragments are not sent in the Referer header by
+  any current browser, but the header is the one place a URL leaks without
+  anybody doing anything, so it is switched off rather than reasoned about.
+-->
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Retour de connexion</h1>
+  <p class="lede">
+    Cette page lit la réponse d'authentification contenue dans l'URL.
+  </p>
+
+  <!--
+    The explicitly allow-listed callback:
+      https://editor.nissartango.fr/auth/callback
+
+    It is served from auth/callback/index.html, so Cloudflare's asset router
+    answers /auth/callback with a 301 to /auth/callback/. That is safe for this
+    purpose: a browser carries the fragment across a redirect itself, because
+    it never sends the fragment to the server in the first place. The token
+    survives the extra hop.
+
+    Nothing sets redirect_to yet, so in practice links land on "/" instead.
+    This page exists so that the allow-list entry is not a URL that 404s, and
+    so the future editor has a destination to name.
+  -->
+  <div id="out"></div>
+
+  <footer>
+    <a href="/">Retour</a>
+  </footer>
+</main>
+
+<script type="module" src="/session.js"></script>
+</body>
+</html>

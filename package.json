@@ -19,7 +19,8 @@
     "deploy:cron": "node scripts/check-cron-config.mjs && wrangler deploy --config workers/cron/wrangler.jsonc",
     "seed:real": "bash scripts/seed-real.sh",
     "hooks:install": "git config core.hooksPath .githooks && echo \"hooks: core.hooksPath -> .githooks\"",
-    "deploy:notifier": "wrangler deploy --config workers/build-notifier/wrangler.jsonc"
+    "deploy:notifier": "wrangler deploy --config workers/build-notifier/wrangler.jsonc",
+    "deploy:editor": "wrangler deploy --config editor/wrangler.jsonc"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.3",
