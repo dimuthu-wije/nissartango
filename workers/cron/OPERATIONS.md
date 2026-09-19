@@ -75,7 +75,7 @@ it deliberately, as an edit someone can question, or do the thing.
       Record: checked 2026-09-09 — exactly one secret, `DEPLOY_HOOK_URL`.
       The two strays named after deploy hook URLs are deleted.
 
-- [ ] **The Cloudflare build command runs `verify:build`, and a deploy has
+- [x] **The Cloudflare build command runs `verify:build`, and a deploy has
       shown it running.** Until 2026-09-17 the command was `npm run build`
       alone, so `verify-build.mjs` had never executed on a deploy — every check
       it contains, including the contact-detail warning and the three content
@@ -103,7 +103,25 @@ it deliberately, as an edit someone can question, or do the thing.
       anywhere, they are checks that have only ever been silent** — fire each
       once locally before trusting them.
 
-      Record: ____________
+      Record: confirmed 2026-09-19, from the build log — not from the dashboard
+      field. Build `edaff01d-b6a8-4091-8cd4-39ef40a3b5f5`, triggered by a push
+      of `b8abc2b` to `main`, outcome success, 07:57:45–07:58:23 UTC. The build
+      command read `npm run build && npm run verify:build` and the deploy was a
+      separate `npx wrangler deploy`. The log carries `build output verified`,
+      the string only `verify-build.mjs` emits, preceded by its `ok` lines. So
+      the checks now demonstrably run on a real deploy, which is the thing this
+      box was ever about.
+
+      **The two staleness guards are still checks that have only ever been
+      silent.** A fresh CI clone is exactly where they are *supposed* to say
+      nothing, so their absence from this log is not evidence either way. Fire
+      each once locally — a project-ref mismatch and a >24h `dist/index.html` —
+      before trusting them. Unticked work, deliberately left visible here rather
+      than folded into the tick above.
+
+      One thing read off the same log, unrelated to this box: Cloudflare built
+      on `nodejs@24.18.0` while local is 22. AGENTS.md "Next up" item 7 asks for
+      a pinned Node version; it is now measured rather than assumed.
 
 ---
 

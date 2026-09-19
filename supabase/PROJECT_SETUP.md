@@ -157,6 +157,74 @@ is the one with two consumers that are easy to miss — the Cloudflare build
 variable and the cron Worker's `vars` — and a stale one there fails the build
 loudly rather than silently, which is the correct direction.
 
+## Auth, per project — the settings that do not travel in the repo
+
+Dashboard settings. `api_settings.sql` does not measure them, `config.toml`
+governs only the local stack, and until 2026-09-19 nobody had read what the two
+hosted projects held. This file said "the hosted projects need the real
+editor-app origin" while their contents were unknown.
+
+### URL configuration
+
+**Read from the dashboard 2026-09-19** — Authentication → URL Configuration:
+
+| | `eqcgeqzzuzcwrflwasjo` (prod) | `hjsekipqryfuwdkhxuks` (dev) | wanted |
+|---|---|---|---|
+| Site URL | `http://localhost:3000` | `http://localhost:3000` | `https://editor.nissartango.fr` |
+| Redirect URLs | *(none)* | *(none)* | `https://editor.nissartango.fr/**`, plus the editor SPA's local dev origin — **port not yet known**, see `config.toml` |
+
+**Production's Auth has never been configured.** `http://localhost:3000` with an
+empty redirect list is the scaffold default. With no additional entries the
+permitted redirect set is just `site_url`, so **no magic link could ever have
+resolved anywhere useful** — consistent with `auth.users` being empty, and safe
+only because it points nowhere.
+
+The local entry deliberately names no port. The editor SPA has no dev server
+yet, so its origin is unknown; writing `3000` here would contradict the comment
+in `config.toml` that argues the same number is a placeholder nobody has chosen.
+Not `4321` either — that is Astro's dev port, i.e. the public site's, and the
+public site never authenticates.
+
+**DEFERRED: do not set these until `editor.nissartango.fr` resolves.** An
+allow-list pointing at a host that does not exist fails as a magic link that
+goes nowhere, for a real person, once. That is worse than the current default,
+because localhost fails visibly in development and a dead subdomain fails in
+someone's inbox. Order: subdomain resolves, then these values, then the first
+magic link.
+
+**What the origin does NOT block.** GoTrue creates the `auth.users` row when the
+OTP is *requested*, not when the link is clicked — Supabase's reference is
+explicit that `signInWithOtp()` signs the user up if they do not exist, and that
+the destination URL is determined by `SITE_URL`. So the origin governs whether a
+session can be established, not whether the row exists. The moderation layer
+(`user_roles`, `organizer_members`) is therefore **not** blocked on this
+subdomain, and RLS work can be tested by in-database impersonation with no
+editor origin at all. An earlier version of the stage-5 ordering argued the
+opposite and was wrong.
+
+### Email sender — UNMEASURED, and the next thing to read
+
+`[auth.email.smtp]` is commented out in `config.toml` in its entirety, so the
+local stack uses the built-in test server and the **hosted** projects fall back
+to Supabase's built-in email service, which is rate-limited and documented as
+being for development only. A site where organizers request their own magic
+links cannot run on it.
+
+Read Authentication → Emails → SMTP Settings on both projects and record here:
+
+| | `eqcgeqzzuzcwrflwasjo` (prod) | `hjsekipqryfuwdkhxuks` (dev) | wanted |
+|---|---|---|---|
+| Custom SMTP | *(unread)* | *(unread)* | a real sender on the nissartango.fr domain |
+| Sender address | *(unread)* | *(unread)* | |
+| Rate limit, emails/hour | *(unread)* | *(unread)* | above the built-in default |
+
+**A 200 from `POST /auth/v1/otp` is not a delivered email.** It means GoTrue
+accepted the request and attempted a send. Until a message has been observed
+arriving, the sending path is exercised as far as a status code and no further —
+the same cannot-report shape as a check that prints `ok` over no data. Establish
+delivery before the flow is offered to anyone, and record the date it was
+observed, not the date it was configured.
+
 ## The three settings, per project
 
 Record them here as they are confirmed. "Confirmed" means the output of
@@ -593,20 +661,36 @@ which is worth remembering before anyone blocks an RLS test on a working editor.
 - Email confirmations: off locally (`config.toml`), which is what lets
   `create-test-users.sh` work. The hosted projects need a deliberate choice, and
   magic-link sign-in makes the question mostly moot.
-- `site_url` and `additional_redirect_urls` in `config.toml` point at
-  `127.0.0.1:3000`, and both look like untouched Supabase defaults rather than
-  decisions: this project's Astro dev server listens on **4321**, and
-  `additional_redirect_urls` specifies `https://` on loopback, which a local dev
-  server does not serve. Whatever the editor origin turns out to be, these two
-  values are wrong today for a reason that has nothing to do with it.
-- The **hosted** projects' `site_url` was reported on 2026-09-19 to point at
-  `127.0.0.1:3000` too. **Not measured** — `/auth/v1/settings` does not expose
-  it and it lives in the dashboard. Recorded as a claim, not as a property of
-  the project.
-- The editor origin itself. `wrangler.jsonc` already fixes the shape: the public
-  site has no `main` and is static assets only, so the editor is a separate
-  deployment, not a route on `nissartango`. AGENTS.md's "Next up" item 6 still
-  describes the superseded plan of a `prerender = false` route on this Worker.
+- **The email sender, which is now the live question.** See "Auth, per project"
+  above: `[auth.email.smtp]` is commented out in its entirety, so the hosted
+  projects fall back to Supabase's built-in service — rate-limited and
+  documented as development-only. Three cells in that table are *(unread)*.
+- The editor origin. `wrangler.jsonc` already fixes the shape: the public site
+  has no `main` and is static assets only, so the editor is a separate
+  deployment, not a route on `nissartango`. The URL configuration that depends
+  on it is deliberately deferred — see "Auth, per project" for why a dead
+  allow-list entry is worse than the scaffold default.
+
+Three things this list said on 2026-09-19, struck the same day because they were
+wrong or have been superseded. Kept, because each one is a different way of
+being wrong and the pattern is the point:
+
+- *"The hosted projects' `site_url` was reported to point at `127.0.0.1:3000`.
+  Not measured."* Now measured, and the value was different: both projects hold
+  `http://localhost:3000`, with an **empty** redirect list. Recording a
+  second-hand figure as an unmeasured claim was the right move; it is also what
+  made the correction cheap when the measurement arrived.
+- *"`additional_redirect_urls` specifies `https://` on loopback."* True, and now
+  fixed. But the reason offered beside it — that the right local value is
+  Astro's **4321** — was wrong. 4321 is the *public* site's dev port, and the
+  public site never authenticates. The correct value is the editor SPA's dev
+  origin, which does not exist yet, so 4321 would have been wrong in the same
+  way 3000 is. See the comment above `site_url` in `config.toml`.
+- *"AGENTS.md's Next up item 6 still describes the superseded `prerender =
+  false` route."* It was corrected in `56b86f3` — the same commit that wrote
+  this sentence — so the sentence was false on arrival. A fix that reached one
+  file and a note that reached another, in one commit, about exactly that
+  failure.
 
 ### DECIDED: `data/snapshot.json` stops being committed
 

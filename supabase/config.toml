@@ -155,13 +155,36 @@ max_indexes = 5
 
 [auth]
 enabled = true
+# BOTH VALUES BELOW ARE PROVISIONAL PLACEHOLDERS, NOT DECIDED SETTINGS.
+#
+# The correct local value is the EDITOR SPA's dev origin, and that server does
+# not exist yet. Do not "fix" this to 4321: that is Astro's dev port, i.e. the
+# PUBLIC site's, and the public site never authenticates -- wrangler.jsonc has
+# no `main` on purpose and the editor is a separate deployment. Setting 4321
+# would look like a fix and be wrong the same way 3000 is.
+#
+# Nothing consumes site_url locally today: email confirmations are off in this
+# file, which is what lets create-test-users.sh work, so the local magic-link
+# path is not exercised either. Changing the number now would be cosmetic.
+# Recording why it is unsettled is not.
+#
+# The scheme mismatch below WAS real and is fixed: site_url said http:// and
+# additional_redirect_urls said https:// for the same loopback host, which a dev
+# server does not serve. That the two disagreed is the evidence neither line had
+# ever been edited.
+#
+# This file governs the LOCAL stack only. The hosted projects' Site URL and
+# Redirect URLs are a dashboard setting that does not travel in the repo; see
+# supabase/PROJECT_SETUP.md, which records what they currently hold and when
+# they may be set.
+#
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
 site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+additional_redirect_urls = ["http://127.0.0.1:3000"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.

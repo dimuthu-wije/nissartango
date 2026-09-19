@@ -329,6 +329,78 @@ reset role;
 reset request.jwt.claim.sub;
 
 \echo ''
+\echo '--- the helpers themselves, with negative controls ---'
+-- These are the foundation the whole moderation layer stands on: the admin
+-- policies are `using (is_admin())` and the organizer ones go through
+-- is_owner()/is_member(). Until 2026-09-19 nothing in this file asserted what
+-- they RETURN -- only that anon cannot call is_admin().
+--
+-- A production state made the gap concrete: user_roles and organizer_members
+-- were both empty, so all three returned false for everyone, every admin policy
+-- was unreachable, and the approval queue had nobody who could open it. The
+-- schema was correct and the suite was green throughout. A test that never asks
+-- cannot notice.
+--
+-- Every positive below is paired with a negative. A helper that returned true
+-- for everybody would satisfy all the positives, which is precisely what the
+-- pairing exists to catch.
+--
+-- CANONICAL SPELLING, measured 2026-09-19 with pg_get_functiondef against
+-- eqcgeqzzuzcwrflwasjo rather than recalled:
+--
+--   auth.uid() = coalesce(
+--     nullif(current_setting('request.jwt.claim.sub', true), ''),
+--     (nullif(current_setting('request.jwt.claims',   true), '')::jsonb ->> 'sub')
+--   )::uuid
+--
+-- Both spellings work, and the SINGULAR takes precedence when both are set.
+-- This file uses the singular throughout; ad-hoc impersonation elsewhere has
+-- used the plural JSON blob, and for setting a subject the two are equivalent.
+-- The consequence worth knowing: because the singular wins, a block that sets
+-- the plural while a stale singular is still in scope runs silently as the OLD
+-- user. Every `reset request.jwt.claim.sub` here is load-bearing, not tidiness.
+
+set role authenticated;
+
+set request.jwt.claim.sub = 'da5e0000-0000-0000-0000-000000000004';  -- dave, admin
+select check_eq('is_admin() true for an admin',
+  public.is_admin()::text, 'true');
+select check_eq('NEGATIVE: is_owner() false -- an admin owns nothing',
+  public.is_owner('0a000000-0000-0000-0000-0000000000aa')::text, 'false');
+reset request.jwt.claim.sub;
+
+set request.jwt.claim.sub = 'a11ce000-0000-0000-0000-000000000001';  -- alice, owner org A
+select check_eq('is_owner() true for the org she owns',
+  public.is_owner('0a000000-0000-0000-0000-0000000000aa')::text, 'true');
+select check_eq('NEGATIVE: is_owner() false for an org she does not own',
+  public.is_owner('0b000000-0000-0000-0000-0000000000bb')::text, 'false');
+select check_eq('NEGATIVE: is_admin() false for a mere owner',
+  public.is_admin()::text, 'false');
+reset request.jwt.claim.sub;
+
+set request.jwt.claim.sub = 'b0b00000-0000-0000-0000-000000000002';  -- bob, editor org A
+select check_eq('is_member() true for an editor',
+  public.is_member('0a000000-0000-0000-0000-0000000000aa')::text, 'true');
+select check_eq('NEGATIVE: is_owner() false -- an editor is not an owner',
+  public.is_owner('0a000000-0000-0000-0000-0000000000aa')::text, 'false');
+reset request.jwt.claim.sub;
+
+-- The uid that belongs to nobody. This is the shape production was in before
+-- the first admin existed, and the case every helper must answer false.
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000ff';
+select check_eq('NEGATIVE: is_admin() false for an unknown uid',
+  public.is_admin()::text, 'false');
+select check_eq('NEGATIVE: is_owner() false for an unknown uid',
+  public.is_owner('0a000000-0000-0000-0000-0000000000aa')::text, 'false');
+select check_eq('NEGATIVE: is_member() false for an unknown uid',
+  public.is_member('0a000000-0000-0000-0000-0000000000aa')::text, 'false');
+select check_eq('NEGATIVE: a stranger sees no events at all',
+  (select count(*)::text from public.events), '0');
+reset request.jwt.claim.sub;
+
+reset role;
+
+\echo ''
 \echo '--- the anon key still cannot see any of it ---'
 set role anon;
 select check_eq('the newly approved event is now public',

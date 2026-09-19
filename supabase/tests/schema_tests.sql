@@ -379,12 +379,27 @@ select check_eq('authenticated can call exactly the intended functions',
       and routine_name not in ('must_fail','check_eq','touched')),
   'approve_event is_admin is_event_member is_member is_owner mark_reviewed reject_event slugify uuid_or_null');
 
-select check_eq('anon holds SELECT on the three public views and nothing else',
+-- WIDENED 2026-09-19, deliberately, because this is the assertion that says
+-- what anon can reach and widening one of those should never be quiet.
+--
+-- `content_checksum` joined the list in `20260831120000_content_checksum.sql`,
+-- which landed in d2e3768 on 2026-09-09. This file was last touched 2026-08-28,
+-- so from that day `./scripts/test-schema.sh` exited non-zero on every run --
+-- ten days of a suite that AGENTS.md and PROJECT_SETUP.md both advertise as a
+-- verification step. A check that always fails stops being read. It failed
+-- LAST here, so no assertion was skipped behind it; that was measured, not
+-- assumed.
+--
+-- The grant itself is correct and stays. The view is an md5 plus three counts
+-- computed entirely FROM the three public views, so it discloses nothing anon
+-- could not already read row by row, and it is a view rather than an RPC
+-- precisely so no execute grant has to be carved out of the sweep above.
+select check_eq('anon holds SELECT on the three public views + content_checksum, nothing else',
   (select coalesce(string_agg(distinct table_name || ':' || privilege_type, ' '
                               order by table_name || ':' || privilege_type), 'none')
      from information_schema.role_table_grants
     where grantee = 'anon' and table_schema = 'public'),
-  'event_exceptions_public:SELECT events_public:SELECT organizers_public:SELECT');
+  'content_checksum:SELECT event_exceptions_public:SELECT events_public:SELECT organizers_public:SELECT');
 
 \echo ''
 \echo 'ALL SCHEMA TESTS PASSED'
