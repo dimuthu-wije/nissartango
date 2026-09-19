@@ -23,9 +23,29 @@
 // in the browser that STARTED the sign-in. A prefetch has no verifier. It can
 // fetch the link as often as it likes and never complete a login.
 //
-// The workaround that made 11:35 succeed -- switching off Chrome's page
-// preloading -- is a setting on one laptop. It does not travel to an organizer.
-// This does.
+// WHAT THIS DOES NOT FIX, stated because the first draft of this comment
+// claimed it did.
+//
+// The email link still points at {SUPABASE_URL}/auth/v1/verify?token=..., and
+// THAT endpoint is single-use whatever flow follows it: it validates the token
+// and redirects to redirect_to with a `code`. So a prefetch can still spend the
+// token, and a person can still be shown `otp_expired`.
+//
+// PKCE buys CONFIDENTIALITY, not availability:
+//
+//   before   a preload completed a full login. On 2026-09-19 at 11:13 it
+//            created a real session, with real tokens, for whatever fetched
+//            the link.
+//   after    a preload gets a code it cannot redeem. No session exists for
+//            anyone but the browser holding the verifier.
+//
+// That is the property worth having -- a mail scanner or a corporate link
+// rewriter cannot log in as an organizer -- and it is guaranteed by
+// construction rather than by a browser setting. Whether the person's own
+// click still succeeds is a separate question, and switching off Chrome's page
+// preloading is still the only lever anyone has over it. Do not read a
+// successful sign-in as proof that prefetching was survived; read the session
+// table.
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY, REDIRECT_TO } from '/config.js';
 
