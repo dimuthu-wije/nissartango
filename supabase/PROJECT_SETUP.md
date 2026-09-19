@@ -687,6 +687,47 @@ reachable nor revokable. Check 12 is scoped to the roles that matter and
 check 13 reports these as INFO; the probe confirms a new table of yours
 arrives with no grants at all.
 
+## Applying a migration to a hosted project
+
+**`supabase db push` targets whatever is LINKED.** On 2026-09-19
+`supabase/.temp/project-ref` read `eqcgeqzzuzcwrflwasjo` — production. So
+intending "try it on dev first" and typing the obvious command would have
+migrated production and reported `Finished supabase db push.` The project names
+are backwards, so nothing on screen would have contradicted you either.
+
+Use `./scripts/db-push.sh dev|prod [--dry-run]`. It pushes by `--db-url`, reads
+`.env` the way `check-db.sh` does (parsed, never sourced — the password
+contains `$` and backticks), and prints the ref it is about to change, taken
+out of the connection string rather than out of the argument:
+
+    target:  prod
+    ref:     eqcgeqzzuzcwrflwasjo   *** PRODUCTION ***
+    linked:  eqcgeqzzuzcwrflwasjo (NOT used -- this pushes by --db-url)
+
+Dry-run first, dev first, and verify from outside afterwards — the column, the
+view's column ORDER, and the grants. The grants matter most on **dev**:
+Supabase's default privileges grant ALL on new objects in `public` to `anon`,
+so if a `create or replace view` ever reset them, the deliberately fail-open
+project is where `anon` shows up holding INSERT/UPDATE/DELETE.
+
+### A correction, on the record: the checksum moved TWICE, not once
+
+`20260919120000_legacy_slugs.sql` says in its header to "expect exactly one
+drift-triggered rebuild". That is **wrong**, and the file cannot be edited to
+say so — it is applied, and migrations are append-only. Measured:
+
+    3642812f...  before the migration
+    291db6e5...  after it: the added column changes the row text, with no
+                 content change at all
+    f457b6a3...  after data/backfill-legacy-slugs.sql populated legacy_slugs
+                 on one row
+
+`content_checksum` is an md5 over `events_public` rows as text, so **a schema
+change and a content change are indistinguishable to it** — by design, since
+either can make the built site wrong. A migration that adds a column to that
+view and a backfill that fills it are two drift events, not one. Plan for a
+rebuild after each, and do not read the second as a fault.
+
 ## Creating the next project
 
 (Including making `nissartango-dev` into a real one.)
