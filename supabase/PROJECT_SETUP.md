@@ -175,11 +175,24 @@ The table below is the state as measured at 2026-09-19 ~10:40Z:
 |---|---|---|---|
 | Site URL | `https://editor.nissartango.fr` — **changed 2026-09-19** | `http://localhost:3000` (untouched) | `https://editor.nissartango.fr` |
 | Redirect URLs | `https://editor.nissartango.fr/**`, `https://editor.nissartango.fr/auth/callback` | *(none)* | those, plus the editor SPA's local dev origin |
-| Does that host resolve? | **NO — authoritative NXDOMAIN** | n/a | it must, first |
+| Does that host resolve? | **YES, since 2026-09-19 ~11:05Z** | n/a | — |
 
-The *values* are right. The *ordering* was not, and the consequence is concrete:
-**every magic link this project issues now lands on a hostname that does not
-exist**, and there is no fallback, because `site_url` IS the fallback.
+**RESOLVED.** `npm run deploy:editor` created the Worker `nissartango-editor`
+with `custom_domain: true`, which provisioned the DNS record and the
+certificate. Measured immediately after: three public resolvers answer
+Cloudflare anycast, `/` and `/auth/callback/` both return 200, and the CSP,
+HSTS, `x-frame-options` and `no-store` headers from `editor/public/_headers`
+are all present on the live response.
+
+The configuration in this table is now correct as it stands and needs no
+further dashboard change.
+
+For the window between the two — roughly 10:00Z to 11:05Z on 2026-09-19 — the
+values were right and the *ordering* was not, and the consequence was concrete:
+every magic link the project issued landed on a hostname that did not exist,
+with no fallback, because `site_url` IS the fallback. It cost nothing only
+because the built-in mail sender could reach exactly one person. The lesson is
+kept below rather than deleted.
 
 ### How to read this configuration back without sending an email
 

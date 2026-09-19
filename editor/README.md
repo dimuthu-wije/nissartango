@@ -9,10 +9,12 @@ Supabase Auth's Site URL for production was set to
 `https://editor.nissartango.fr` on 2026-09-19, while that hostname did not
 exist. `site_url` is also the fallback for any `redirect_to` that is not
 allow-listed, and `http://localhost:3000` was dropped from the allow-list in the
-same change — so every magic link the production project issues currently lands
-on NXDOMAIN, with nothing behind it.
+same change — so for about an hour every magic link the production project
+issued landed on NXDOMAIN, with nothing behind it.
 
-Deploying this fixes that, because **the route below is the DNS record**.
+**Deployed 2026-09-19 ~11:05Z, which fixed it**, because the route in
+`wrangler.jsonc` IS the DNS record. Nothing in the Supabase dashboard had to
+change.
 
 ## Deploy
 
