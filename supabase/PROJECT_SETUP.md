@@ -202,28 +202,51 @@ subdomain, and RLS work can be tested by in-database impersonation with no
 editor origin at all. An earlier version of the stage-5 ordering argued the
 opposite and was wrong.
 
-### Email sender — UNMEASURED, and the next thing to read
+### Email sender — MEASURED 2026-09-19, and it is a hard blocker
 
 `[auth.email.smtp]` is commented out in `config.toml` in its entirety, so the
 local stack uses the built-in test server and the **hosted** projects fall back
-to Supabase's built-in email service, which is rate-limited and documented as
-being for development only. A site where organizers request their own magic
-links cannot run on it.
+to Supabase's built-in email service.
 
-Read Authentication → Emails → SMTP Settings on both projects and record here:
+Read from Authentication → Emails → SMTP Settings on both projects:
 
 | | `eqcgeqzzuzcwrflwasjo` (prod) | `hjsekipqryfuwdkhxuks` (dev) | wanted |
 |---|---|---|---|
-| Custom SMTP | *(unread)* | *(unread)* | a real sender on the nissartango.fr domain |
-| Sender address | *(unread)* | *(unread)* | |
-| Rate limit, emails/hour | *(unread)* | *(unread)* | above the built-in default |
+| Custom SMTP | **DISABLED** | **DISABLED** | a real sender on the nissartango.fr domain |
+| Sender address | built-in service | built-in service | `no-reply@nissartango.fr` or similar |
+| Rate limit, emails/hour | **2** | **2** | above the built-in default |
+
+**This is not a rate limit to work around. It is an impossibility.** Supabase's
+own documentation for the built-in service
+(<https://supabase.com/docs/guides/auth/auth-smtp>) says Auth "will only send
+messages to these addresses" — the **organization's team members**. Any other
+recipient fails with *"Email address not authorized"*. It also carries no SLA on
+delivery or uptime and is explicitly "not meant for production use", at 2
+messages per hour.
+
+So an organizer who is not a team member on the Supabase org **cannot receive a
+magic link at all**, no matter how long they wait. The one address that works
+today is the org owner's, which is the only reason the 2026-09-19 admin
+bootstrap succeeded — it is not evidence that the flow works for anyone else,
+and it must not be read as such.
+
+**Custom SMTP on the nissartango.fr domain is therefore a prerequisite for
+deliverable 3, not an improvement to it.** The 2/hour ceiling also bounds
+development: anyone iterating on the sign-in flow will hit it within minutes,
+and it presents as a broken flow rather than as a quota.
 
 **A 200 from `POST /auth/v1/otp` is not a delivered email.** It means GoTrue
-accepted the request and attempted a send. Until a message has been observed
-arriving, the sending path is exercised as far as a status code and no further —
-the same cannot-report shape as a check that prints `ok` over no data. Establish
-delivery before the flow is offered to anyone, and record the date it was
-observed, not the date it was configured.
+accepted the request and attempted a send. Delivery to the org owner's address
+was observed end to end on 2026-09-19: requested 08:37:21Z, clicked and
+confirmed 09:50:02Z, landing on `site_url` with
+`#access_token=…&expires_in=3600&type=signup`. Two things that looked like auth
+failures were not — an "error page" was the browser failing to reach
+`http://localhost:3000` with nothing listening, and an `otp_expired` was plain
+expiry (`otp_expiry` 3600, requested 08:37, clicked after 09:37). Link-scanner
+prefetch was ruled out rather than merely doubted.
+
+**Still unread:** the hosted Email OTP Expiration on each project. `config.toml`
+has `otp_expiry = 3600`, but that governs the local stack only.
 
 ## The three settings, per project
 
@@ -626,6 +649,25 @@ plan of record said it did; that was wrong. What the origin blocks is a usable
 browser session, not the row — which means the moderation layer could have been
 unblocked at any point in the preceding week.
 
+**The clock proves it, and this is the durable evidence:**
+
+    08:37:21.325Z  auth.users row created       -- the OTP REQUEST
+    08:37:55.785Z  user_roles + organizer_members inserted, 34s later;
+                   is_admin() / is_owner() verified true immediately after,
+                   with email_confirmed_at still NULL
+    09:50:02.227Z  email_confirmed_at set       -- the click, 72m41s after
+                                                   the row, 72m07s after the
+                                                   moderation layer worked
+
+Every moderation policy was reachable and proven working seventy-two minutes
+before the magic link was ever clicked. The row and the session are independent,
+and the interval between them is the measurement that says so. An argument that
+the deliverables had to be inverted because no `auth.users` row could exist
+without a completed login was made twice; the clock above is what refutes it.
+
+Timestamps read back from `auth.users`, `user_roles` and `organizer_members` on
+2026-09-19, not from anyone's notes.
+
 Check `{SUPABASE_URL}/auth/v1/settings` first — it is anon-readable and tells
 you whether the call can work. On 2026-09-19 production read `"email": true`,
 `"disable_signup": false`, `"mailer_autoconfirm": false`.
@@ -661,10 +703,15 @@ which is worth remembering before anyone blocks an RLS test on a working editor.
 - Email confirmations: off locally (`config.toml`), which is what lets
   `create-test-users.sh` work. The hosted projects need a deliberate choice, and
   magic-link sign-in makes the question mostly moot.
-- **The email sender, which is now the live question.** See "Auth, per project"
-  above: `[auth.email.smtp]` is commented out in its entirety, so the hosted
-  projects fall back to Supabase's built-in service — rate-limited and
-  documented as development-only. Three cells in that table are *(unread)*.
+- **The email sender — measured 2026-09-19, and a hard blocker, not a
+  preference.** Custom SMTP is DISABLED on both projects, so both fall back to
+  Supabase's built-in service, which sends **only to organization team members**
+  and refuses everyone else with "Email address not authorized", at 2 messages
+  per hour with no SLA. An organizer who is not on the Supabase org therefore
+  cannot receive a magic link at all. Custom SMTP on the nissartango.fr domain
+  is a prerequisite for deliverable 3. See "Auth, per project" above — the three
+  cells that were *(unread)* when this bullet was written are now filled in.
+  Still genuinely unread: the hosted Email OTP Expiration per project.
 - The editor origin. `wrangler.jsonc` already fixes the shape: the public site
   has no `main` and is static assets only, so the editor is a separate
   deployment, not a route on `nissartango`. The URL configuration that depends

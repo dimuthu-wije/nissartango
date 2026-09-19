@@ -277,6 +277,53 @@ claim above was wrong; it now answers the question per project, for good.
 
 Where a claim cannot be measured, record it as a claim, with its source and the
 date, not as a property of the project.
+
+### Instruments that lie quietly
+
+Measuring only beats remembering when the instrument is honest. Four here were
+not. Each is worse than an error, because each returns a plausible answer and
+nothing looks wrong:
+
+- **A caching web proxy** served day-stale pages for 36 hours and manufactured
+  the appearance of a poller outage that had not happened. Distinct
+  cache-busting URLs did not defeat it — it was not keying on the full URL. The
+  asymmetry is the defence: a stale cache can only ever return an OLDER
+  `built_at`, never a newer one. Demand that it has MOVED, and never read a
+  non-move as proof of anything.
+- **A FUSE mount reported every file as mode 600**, whatever its real
+  permissions — `README.md` read 600 too. `.env` was reported safe and was
+  actually 644. A permission read through a bridge is fabricated by the bridge.
+- **`git grep -E` has no `\b`.** It is POSIX ERE. A pattern using one matches
+  nothing, and inside an alternation it returns the *other* branch's hits, which
+  reads as a clean and complete result. Measured 2026-09-19 on this repo:
+  `-E '\bCMS\b'` found **0** in AGENTS.md; `-P '\bCMS\b'` found **4**. Use `-P`,
+  or `-F` for a literal.
+- **`${PIPESTATUS[0]}` is a bash-ism and yields empty in zsh** — it is
+  `$pipestatus[1]`, 1-indexed. Worse, `cmd | tail` makes `$?` report *tail's*
+  status, so a failing command reads as `exit=0`. This corrupted three separate
+  measurements in one sitting, including both staleness guards being recorded as
+  silent when each had correctly exited 1. **Capture exit codes without a pipe.**
+
+The shape they share: a confident answer from a layer nobody was thinking about.
+When a result is surprising, suspect the instrument before the system.
+
+### Never paste a token or a connection string into a chat
+
+An admin access token was pasted on 2026-09-19. Its session was revoked with
+`POST /auth/v1/logout?scope=global` (204), verified by SQL: `auth.sessions` and
+`auth.refresh_tokens` both went to zero — by DELETION, not by a `revoked` flag,
+which is what GoTrue actually does. A prediction of `refresh_revoked = 1` was
+wrong; `refresh_live = 0` was the number that mattered.
+
+**The access token itself could not be revoked.** PostgREST validates signature
+and expiry and consults no session table, so an issued JWT is live until its
+`exp` regardless of what happens to the session. The only other lever is
+rotating the signing key, which invalidates every token at once. Revoking a
+session closes refresh, not the hour already granted.
+
+There is no "Sign out user" control in Authentication → Users — the menu offers
+Remove MFA factors, Ban user and Delete user. The logout API is the route.
+
 ## Supabase
 
 Schema lives in `supabase/migrations/` and is applied with the CLI, never

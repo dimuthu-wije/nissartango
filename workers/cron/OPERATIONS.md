@@ -101,7 +101,8 @@ it deliberately, as an edit someone can question, or do the thing.
       older than 24 hours. Both should stay silent on a fresh CI build, where
       the clone and the build are new every time. **If neither has ever fired
       anywhere, they are checks that have only ever been silent** — fire each
-      once locally before trusting them.
+      once locally before trusting them. Both have now been fired; the raw
+      output is in the Record below, so this does not need doing again.
 
       Record: confirmed 2026-09-19, from the build log — not from the dashboard
       field. Build `edaff01d-b6a8-4091-8cd4-39ef40a3b5f5`, triggered by a push
@@ -112,12 +113,45 @@ it deliberately, as an edit someone can question, or do the thing.
       the checks now demonstrably run on a real deploy, which is the thing this
       box was ever about.
 
-      **The two staleness guards are still checks that have only ever been
-      silent.** A fresh CI clone is exactly where they are *supposed* to say
-      nothing, so their absence from this log is not evidence either way. Fire
-      each once locally — a project-ref mismatch and a >24h `dist/index.html` —
-      before trusting them. Unticked work, deliberately left visible here rather
-      than folded into the tick above.
+      **Both staleness guards FIRE. Measured 2026-09-19, locally.**
+
+      An earlier version of this record said they were "still checks that have
+      only ever been silent". That was wrong, and wrong in a way this file
+      already warns about one paragraph above: it read their absence from a CI
+      build log as evidence of absence, when a fresh CI clone is precisely where
+      both are supposed to say nothing. `verify-build.mjs` carries TEST notes at
+      the head of each guard, including a captured pre-change baseline, and they
+      had simply not been read.
+
+      Fired by following those notes, raw:
+
+          SUPABASE_URL=https://hjsekipqryfuwdkhxuks.supabase.co npm run verify:build
+            -> exit 1, ZERO ok lines, both refs named
+               "dist/ was built from project eqcgeqzzuzcwrflwasjo,
+                but SUPABASE_URL names hjsekipqryfuwdkhxuks."
+
+          touch -t "$(date -v-25H +%Y%m%d%H%M.%S)" dist/index.html
+          npm run verify:build
+            -> exit 1, ZERO ok lines
+               "dist/index.html was built 25 hours ago."
+
+          touch dist/index.html && npm run verify:build
+            -> exit 0, "build output verified"
+
+      Guard B reporting "built 25 hours ago" rather than the mtime/snapshot
+      message is the part worth checking, and it did: it shows the subsumption
+      ordering holds, so a more fundamental fault is not announced with a
+      narrower message.
+
+      Read the exit codes without a pipe. `npm run … | tail` reports *tail's*
+      status, and `${PIPESTATUS[0]}` is a bash-ism that yields empty in zsh
+      (`$pipestatus[1]`, 1-indexed). Both guards were briefly recorded as
+      "exit=0" for that reason alone.
+
+      Still true, and the script says it first: both failing cases were produced
+      by moving a timestamp and an environment variable, not by waiting a day or
+      misconfiguring a project. That demonstrates the comparisons work. It says
+      nothing about whether 24 hours is the right number.
 
       One thing read off the same log, unrelated to this box: Cloudflare built
       on `nodejs@24.18.0` while local is 22. AGENTS.md "Next up" item 7 asks for
