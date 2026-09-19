@@ -743,6 +743,41 @@ without a completed login was made twice; the clock above is what refutes it.
 Timestamps read back from `auth.users`, `user_roles` and `organizer_members` on
 2026-09-19, not from anyone's notes.
 
+### DONE 2026-09-19 11:35Z: the magic-link flow works end to end
+
+The first sign-in where a real token reached a real browser at the real origin
+and was displayed. Everything before this had proven a *part*: the row existed
+(08:37), the policies worked (08:37), the email was delivered and confirmed
+(09:50), the host resolved (11:05). This is the whole chain in one run.
+
+    baseline before the attempt   last_sign_in_at 11:13:18.721, 1 session
+    link requested                11:31:39Z
+    signed in                     11:35:01.238  -> moved past baseline: t
+    session created               11:35:01.239, Chrome/151 macOS, same /16 as the click
+    page displayed                sub 98f79fd9…, dimuthu.wije@outlook.com,
+                                  role authenticated, flow magiclink
+
+The baseline was recorded *before* sending the link, precisely so "it worked"
+could be a comparison rather than an impression. A green box on a page is the
+system reporting on itself; `last_sign_in_at` moving is the outside witness.
+
+**What made the difference was disabling Chrome's page preloading**
+(`chrome://settings/performance` → Preload pages → off) and copying the link
+rather than clicking it. The attempt 22 minutes earlier, with the same account,
+the same origin and a link well inside its hour, failed with `otp_expired`
+because the browser had already spent the token. Same everything; different
+outcome. That is a race, and the mitigation here is a browser setting on one
+machine — which is not a fix and does not scale to an organizer.
+
+**The fix is still PKCE**, and it still needs the editor app to hold a verifier.
+See `editor/README.md`.
+
+**Two sessions now exist**, 11:13:18 and 11:35:01. The first is the orphan the
+preload created: nobody holds its tokens, they went to a response the browser
+discarded. Its refresh token is nevertheless live and long-lived. Delete that
+row rather than waiting it out — a credential nobody holds is exactly the thing
+this project does not leave lying around.
+
 Check `{SUPABASE_URL}/auth/v1/settings` first — it is anon-readable and tells
 you whether the call can work. On 2026-09-19 production read `"email": true`,
 `"disable_signup": false`, `"mailer_autoconfirm": false`.
