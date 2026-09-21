@@ -1,7 +1,8 @@
 # nissartango-editor
 
-The editor origin. Today it is two static pages that receive a magic link and
-say what came back. It is **not** the editor yet.
+The editor origin. Today: a PKCE sign-in form, a magic-link callback, and an
+approval queue that can approve, reject and clear review flags. There is still
+no way to CREATE or EDIT an event, so it is not the whole editor yet.
 
 ## Why it exists now, ahead of any editor UI
 
@@ -93,15 +94,17 @@ Do not read `otp_expired` as "expired". Check `last_sign_in_at` and
 `auth.sessions` first. If a session exists, the flow worked and the display is
 the only thing that failed.
 
-**The real fix is PKCE, and it needs the editor app.** In the implicit flow the
-link alone is the credential, so anything that fetches it — a preloading
-browser, a mail scanner, a corporate link-rewriter — spends it. With
-`flow_type: 'pkce'` the link carries a `code` that is worthless without the
-verifier held in the browser that *started* the sign-in, so a prefetch cannot
-complete it. That requires a real sign-in form to store the verifier, which is
-the next piece of work and not something these two static pages can do.
+**PKCE was the fix, and it is now built** — `auth.js`, shipped 2026-09-19 and
+working end to end at 14:47:10Z. In the implicit flow the link alone is the
+credential, so anything that fetches it spends it. With PKCE the link carries a
+`code` that is worthless without the verifier held in the browser that *started*
+the sign-in.
 
-Until then, a magic link should be **copied and pasted**, not clicked.
+**But read `auth.js` for what PKCE does NOT fix.** `/auth/v1/verify` is still
+single-use whatever flow follows it, so a prefetch can still burn a link and a
+person can still be shown `otp_expired`. What changed is that a fetcher can no
+longer obtain a SESSION — at 11:13 a preload created a real one. Confidentiality,
+not availability.
 
 An earlier handover recorded link-scanner prefetch as "ruled out, not merely
 doubted", on the strength of one link that worked. One success does not rule
@@ -124,9 +127,11 @@ callback page can read `location.hash`, which is to say it can read an access
 token. `supabase-js` from a CDN is the ordinary choice and the wrong one for
 the single page in this project that handles a credential.
 
-**`connect-src` is `'self'` and that is not an oversight.** Nothing here calls
-Supabase yet. When the editor does, that line must gain the project origin as a
-visible edit someone can question — not a wildcard added in advance.
+**`connect-src` names ONE origin.** It was `'self'` until the sign-in form
+needed `/auth/v1/otp`; the edit that added
+`https://eqcgeqzzuzcwrflwasjo.supabase.co` is deliberately one ref spelled out,
+not `https://*.supabase.co` — a wildcard would let a compromised script post an
+access token to any project on the platform.
 
 **No `main` in `wrangler.jsonc`.** Static assets only, so there is no
 server-side code path that could hold a key. The editor will talk to Supabase
@@ -186,10 +191,25 @@ A timestamp that matches is a correlation. The trigger is the mechanism.
 
 ## Not done here
 
-- No editor UI, no reads, no writes.
-- No session persistence. The token is read, displayed as claims, and the
-  fragment is cleared from the address bar. Nothing is stored.
-- **Custom SMTP is still a hard blocker for anyone but the org owner.** The
-  built-in email service sends only to Supabase organization team members and
-  refuses everyone else with "Email address not authorized". See
-  `supabase/PROJECT_SETUP.md`.
+All three bullets that used to be here were true when written on 2026-09-19 and
+false by 2026-09-21. Replaced rather than amended, because a "not done" list
+that lies is worse than none.
+
+- **No way to CREATE or EDIT an event.** The queue decides on events; nothing
+  composes them. Adding one still means the SQL editor. That is the next real
+  piece of the editor.
+- **No session refresh.** A session is stored in `localStorage` and lasts one
+  hour, after which the queue says so and sends you back to sign in. The
+  refresh token is kept but never used — `POST /auth/v1/token?grant_type=refresh_token`
+  is maybe ten lines, and until it exists an hour of work ends with a sign-in.
+- **No sign-out that actually revokes.** `signOutLocally()` clears this browser
+  and says so; the session row and its refresh token stay live in the database
+  until they expire. Real revocation is `POST /auth/v1/logout` with the access
+  token in hand.
+- **Dev has no editor.** `editor.nissartango.fr` points at production, and
+  `config.js` hard-codes production's ref. There is no way to exercise this
+  against `hjsekipqryfuwdkhxuks`, which means every test is a production test.
+
+**Custom SMTP is no longer a blocker.** Solved 2026-09-21: Resend, sending as
+`Nissartango <no-reply@nissartango.fr>`, proven by delivery to an address that
+is not on the Supabase organization. See `supabase/PROJECT_SETUP.md`.

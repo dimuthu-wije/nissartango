@@ -277,21 +277,59 @@ subdomain, and RLS work can be tested by in-database impersonation with no
 editor origin at all. An earlier version of the stage-5 ordering argued the
 opposite and was wrong.
 
-### Email sender — MEASURED 2026-09-19, and it is a hard blocker
+### Email sender — SOLVED 2026-09-21. Was a hard blocker; read why it was.
 
-`[auth.email.smtp]` is commented out in `config.toml` in its entirety, so the
-local stack uses the built-in test server and the **hosted** projects fall back
-to Supabase's built-in email service.
+| | `eqcgeqzzuzcwrflwasjo` (prod) | `hjsekipqryfuwdkhxuks` (dev) |
+|---|---|---|
+| Custom SMTP | **Resend**, since 2026-09-21 | still the built-in service |
+| Sender address | `Nissartango <no-reply@nissartango.fr>` | — |
+| Rate limit, emails/hour | **30** | 2 (the built-in ceiling) |
 
-Read from Authentication → Emails → SMTP Settings on both projects:
+**Proven, not configured.** A magic link was delivered on 2026-09-21 to a
+`@gmail.com` address that is NOT on the Supabase organization and holds zero
+rows in `user_roles`. That is precisely the case the built-in service refuses.
+Header check on an earlier message to the org owner:
 
-| | `eqcgeqzzuzcwrflwasjo` (prod) | `hjsekipqryfuwdkhxuks` (dev) | wanted |
-|---|---|---|---|
-| Custom SMTP | **DISABLED** | **DISABLED** | a real sender on the nissartango.fr domain |
-| Sender address | built-in service | built-in service | `no-reply@nissartango.fr` or similar |
-| Rate limit, emails/hour | **2** | **2** | above the built-in default |
+    spf=pass    smtp.mailfrom=rsend.nissartango.fr
+    dkim=pass   header.d=nissartango.fr        <- signing as OUR domain
+    dkim=pass   header.d=amazonses.com
+    compauth=pass reason=109
 
-**This is not a rate limit to work around. It is an impossibility.** Supabase's
+DNS, added by Resend's one-time Cloudflare authorisation and verified against a
+baseline taken beforehand:
+
+    send    CNAME  send.forge.rmta.net     (return path; carries Resend's SPF)
+    rsend   CNAME  rsend.forge.rmta.net
+    resend._domainkey  TXT  (DKIM public key)
+    _dmarc  TXT  v=DMARC1; p=none; rua=mailto:dmarc@nissartango.fr
+
+**The apex SPF was never touched, and that was the risk worth managing.**
+Cloudflare Email Routing already owns the single apex SPF record, and a domain
+may have only one — a second would be a permanent error that degrades
+everything sending as this domain, the build-failure notifier included. Resend's
+layout puts SPF on the `send.` subdomain via CNAME, so the collision never
+arose. Verified after the fact: exactly one apex SPF, 3/3 Email Routing MX, and
+the three Workers custom domains unchanged.
+
+**`rua` must be an address IN this domain.** `rua=mailto:…@outlook.com` would
+have been silently ignored: RFC 7489 requires the receiving domain to publish a
+record authorising external reports, and `nissartango.fr._report._dmarc.outlook.com`
+does not exist. `dmarc@nissartango.fr` forwards to Outlook through Email
+Routing instead, which needs no such authorisation. A DMARC record that looks
+configured and delivers no reports is the easy mistake here.
+
+**Do not raise `p=none` without reading the reports first.** The build-failure
+notifier also sends as `nissartango.fr`, through Cloudflare's `send_email`
+binding rather than Resend. At `p=none` that is fine. At `p=reject`, if that
+path does not align, the alerting emails start being rejected — and the failure
+mode is silence, which is the one thing the notifier exists to prevent.
+
+---
+
+**Why it was a blocker, kept because the reasoning still applies to any project
+that has not done this yet:**
+
+**It was not a rate limit to work around. It was an impossibility.** Supabase's
 own documentation for the built-in service
 (<https://supabase.com/docs/guides/auth/auth-smtp>) says Auth "will only send
 messages to these addresses" — the **organization's team members**. Any other
@@ -305,10 +343,13 @@ today is the org owner's, which is the only reason the 2026-09-19 admin
 bootstrap succeeded — it is not evidence that the flow works for anyone else,
 and it must not be read as such.
 
-**Custom SMTP on the nissartango.fr domain is therefore a prerequisite for
-deliverable 3, not an improvement to it.** The 2/hour ceiling also bounds
-development: anyone iterating on the sign-in flow will hit it within minutes,
-and it presents as a broken flow rather than as a quota.
+**Custom SMTP on the nissartango.fr domain was therefore a prerequisite for
+deliverable 3, not an improvement to it.** The 2/hour ceiling also bounded
+development, exactly as predicted: on 2026-09-19 it locked the maintainer out
+for half an hour, twice, mid-task — once while signed out, so neither the old
+session nor a new link was available. It presents as a broken flow rather than
+as a quota, which is why the sign-in form surfaces the raw
+`email rate limit exceeded` instead of a friendlier message.
 
 **A 200 from `POST /auth/v1/otp` is not a delivered email.** It means GoTrue
 accepted the request and attempted a send. Delivery to the org owner's address
@@ -867,14 +908,19 @@ which is worth remembering before anyone blocks an RLS test on a working editor.
 - Email confirmations: off locally (`config.toml`), which is what lets
   `create-test-users.sh` work. The hosted projects need a deliberate choice, and
   magic-link sign-in makes the question mostly moot.
-- **The email sender — measured 2026-09-19, and a hard blocker, not a
-  preference.** Custom SMTP is DISABLED on both projects, so both fall back to
-  Supabase's built-in service, which sends **only to organization team members**
-  and refuses everyone else with "Email address not authorized", at 2 messages
-  per hour with no SLA. An organizer who is not on the Supabase org therefore
-  cannot receive a magic link at all. Custom SMTP on the nissartango.fr domain
-  is a prerequisite for deliverable 3. See "Auth, per project" above — the three
-  cells that were *(unread)* when this bullet was written are now filled in.
+- ~~**The email sender.**~~ **SOLVED 2026-09-21.** Resend on production,
+  sending as `Nissartango <no-reply@nissartango.fr>`, rate limit raised from 2
+  to 30/hour. Proven rather than configured: a link was delivered to a
+  `@gmail.com` address holding zero rows in `user_roles` — exactly the case the
+  built-in service refused with "Email address not authorized". See "Email
+  sender" above for the DNS, the headers, and the two traps (the apex SPF
+  collision that did not happen, and the `rua` address that would have been
+  silently ignored).
+
+  **Dev still uses the built-in service**, deliberately: nothing signs in there
+  and a second sending domain would be two things to keep aligned. If dev ever
+  needs real mail, it needs its own Resend domain — not this one's key.
+
   Still genuinely unread: the hosted Email OTP Expiration per project.
 - **The editor origin — now the single blocking item.** `wrangler.jsonc` already
   fixes the shape: the public site has no `main` and is static assets only, so
