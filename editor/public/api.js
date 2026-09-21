@@ -129,3 +129,63 @@ export const reject = (id, note) => {
 };
 
 export const markReviewed = (id) => rpc('mark_reviewed', { p_event: id });
+
+// ---------------------------------------------------------------------------
+// Events: read one, create, update.
+//
+// WRITABLE is the 21 columns `authenticated` holds column-level INSERT and
+// UPDATE on, measured against production rather than copied from the migration.
+// Sending anything outside it is refused by the database, not by this list --
+// the list exists so the refusal never has to happen.
+//
+// Conspicuously absent, and not oversights: `status` (approve_event /
+// reject_event only), `review_note` (the admin's channel), `needs_review` (set
+// by trigger), `slug` (derived once, permalinks are forever), `created_by`
+// (filled from auth.uid() by DEFAULT) and `legacy_slugs`.
+// ---------------------------------------------------------------------------
+
+export const WRITABLE = [
+  'organizer_id', 'title', 'type', 'starts_at', 'duration_minutes', 'timezone',
+  'recurrence', 'recurrence_end',
+  'location_name', 'location_address', 'location_postal_code', 'city',
+  'teachers', 'price_full', 'price_member', 'price_note',
+  'signup_url', 'image_path', 'body',
+  'cancelled_at', 'cancellation_note',
+];
+
+async function write(method, path, body) {
+  return send((s) => fetch(`${REST}/${path}`, {
+    method,
+    headers: headers(s, {
+      'Content-Type': 'application/json',
+      // Ask for the row back. Without it a successful write returns 204 and
+      // the page has to guess what the database actually stored -- which
+      // matters here, because triggers derive the slug and defaults fill in
+      // columns the form never sent.
+      Prefer: 'return=representation',
+    }),
+    body: JSON.stringify(body),
+  }));
+}
+
+/**
+ * The organizers this caller may create events FOR.
+ *
+ * Read from organizer_members, not from organizers. An admin can SELECT every
+ * organizer but may only INSERT for ones they are a member of -- so listing
+ * `organizers` would offer choices that fail on save with a 403 the person
+ * cannot act on. This list is correct by construction.
+ */
+export const myOrganizers = () =>
+  select('organizer_members?select=role,organizers(id,name,slug)');
+
+export const getEvent = (id) =>
+  select(`events?select=id,slug,status,needs_review,review_note,${WRITABLE.join(',')}` +
+         `&id=eq.${encodeURIComponent(id)}`).then((rows) => rows?.[0] ?? null);
+
+export const createEvent = (fields) =>
+  write('POST', 'events', fields).then((rows) => rows?.[0] ?? null);
+
+export const updateEvent = (id, fields) =>
+  write('PATCH', `events?id=eq.${encodeURIComponent(id)}`, fields)
+    .then((rows) => rows?.[0] ?? null);

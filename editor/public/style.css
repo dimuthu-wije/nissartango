@@ -239,3 +239,67 @@ a.btn { text-decoration: none; display: inline-block; }
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* --- event form --------------------------------------------------------- */
+
+.event-form { margin-top: 1.1rem; }
+
+.event-form .section {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.35rem;
+  margin: 1.6rem 0 0.9rem;
+}
+
+.event-form .section:first-child { margin-top: 0; }
+
+.field { margin: 0 0 0.9rem; }
+
+.field label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  font: inherit;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.field textarea { resize: vertical; }
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--idle);
+  outline-offset: 2px;
+}
+
+.field input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.field .hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0.25rem 0 0;
+}
+
+.field-error {
+  font-size: 0.82rem;
+  color: var(--bad);
+  margin: 0.3rem 0 0;
+}
+
+.has-error input,
+.has-error select,
+.has-error textarea { border-color: var(--bad); }

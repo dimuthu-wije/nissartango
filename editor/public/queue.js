@@ -112,6 +112,12 @@ function card(ev, refresh) {
       run(() => markReviewed(ev.id), 'Clearing the flag…')));
   }
 
+  // Edit is a link, not a button: it navigates, and a person may reasonably
+  // want it in a new tab while keeping the queue open.
+  const edit = el('a', 'Edit', 'btn btn-quiet');
+  edit.href = `/event/?id=${encodeURIComponent(ev.id)}`;
+  actions.appendChild(edit);
+
   c.append(actions, status);
   return c;
 }
@@ -154,6 +160,12 @@ function renderNotAdmin(claims) {
 async function render() {
   const [queue, decided] = await Promise.all([reviewQueue(), recentlyDecided()]);
   const frag = document.createDocumentFragment();
+
+  const top = el('div', null, 'actions');
+  const add = el('a', 'New event', 'btn');
+  add.href = '/event/';
+  top.appendChild(add);
+  frag.appendChild(top);
 
   if (!queue.length) {
     // "Nothing waiting" -- said plainly, because an empty queue and a broken

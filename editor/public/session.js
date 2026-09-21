@@ -85,10 +85,13 @@ function showSession(session, how) {
         'NOT verified.';
   b.appendChild(note);
 
-  const queue = el('a', 'Open the approval queue');
+  const links = el('div', null, 'actions');
+  const queue = el('a', 'Open the approval queue', 'btn');
   queue.href = '/queue/';
-  queue.className = 'btn';
-  b.appendChild(queue);
+  const add = el('a', 'Add an event', 'btn btn-quiet');
+  add.href = '/event/';
+  links.append(queue, add);
+  b.appendChild(links);
 
   const signOut = el('button', 'Sign out of this browser');
   signOut.className = 'btn';

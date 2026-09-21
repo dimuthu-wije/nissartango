@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Événement — Nissartango</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Événement</h1>
+  <p class="lede">Créer ou modifier une entrée de l'agenda.</p>
+
+  <!--
+    /event/            create
+    /event/?id=<uuid>  edit
+
+    One form for both: the writable column set is identical, because INSERT and
+    UPDATE are granted on the SAME 21 columns.
+
+    Nothing here can publish. The insert policy requires status = 'pending', so
+    an event created here is pending whoever creates it — there is no publish
+    control because the database would refuse one. The queue publishes.
+  -->
+  <div id="out"></div>
+
+  <footer>
+    <a href="/queue/">File d'attente</a> ·
+    <a href="/">Accueil</a> ·
+    <button id="signout" class="linkish" type="button">Se déconnecter</button>
+  </footer>
+</main>
+
+<script type="module" src="/event.js"></script>
+</body>
+</html>

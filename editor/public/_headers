@@ -49,3 +49,11 @@
 
 /queue/
   Cache-Control: no-store, must-revalidate
+
+/event
+  # Same reason as the queue: a pending event is not public content, and an
+  # edit form shows a published one's innards. Nothing should cache either.
+  Cache-Control: no-store, must-revalidate
+
+/event/
+  Cache-Control: no-store, must-revalidate
