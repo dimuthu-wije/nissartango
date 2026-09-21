@@ -903,6 +903,38 @@ the admin and stays shut for everyone else. Note that this needs no browser and
 no session — `set local request.jwt.claims` is enough to exercise every policy,
 which is worth remembering before anyone blocks an RLS test on a working editor.
 
+### Memberships: who may create events. Decided 2026-09-21.
+
+`events_member_insert` is the ONLY insert policy — the admin policies add reach
+for select, update and delete, but not for create. So creating an event requires
+`is_member(organizer_id)`, and being an admin does not help.
+
+The maintainer was a member of `nissartango` alone, which meant he could not
+create events for the two organizers whose events he actually enters by hand.
+
+Fixed by membership, not by policy: he is now `editor` on `el-gato-tanguero` and
+`rosa-gervasi`. **Deliberately `editor` and not `owner`**, for two reasons:
+
+- `is_member()` is what the insert policy checks, so `editor` is sufficient.
+  `owner` would grant more than the job needs.
+- `organizers_without_owner` lists organizers with no member holding `owner`.
+  As `editor` those two stay on that list, which is true — nobody from those
+  organizations has claimed them — and keeps the prompt visible in the admin
+  queue for the day they sign up and should be made owner.
+
+The alternative considered and rejected was an `events_admin_insert` policy.
+It would have worked and it would have said something false: that an admin
+creates events *because* they are an admin, rather than because they are
+currently acting as those organizers' editor. Membership is revocable with one
+`delete`; a policy is a migration.
+
+Verified by impersonation afterwards: `is_member` true for all three,
+`is_owner` true for `nissartango` only.
+
+Note what the policy also forces: `status = 'pending'` and
+`created_by = auth.uid()`. Nobody creates an already-approved event, the
+maintainer included — anything added goes through the queue.
+
 ### Still to decide
 
 - Email confirmations: off locally (`config.toml`), which is what lets
