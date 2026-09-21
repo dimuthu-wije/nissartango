@@ -60,7 +60,7 @@ export function validate(v) {
     p.push(['recurrence_end', `Before the first occurrence (${v.starts_at_date}).`]);
   }
   if (v.cancellation_note && !v.cancelled_at_local) {
-    p.push(['cancellation_note', 'A note needs a cancellation date beside it.']);
+    p.push(['cancellation_note', 'Tick "This event is cancelled" above, or clear this.']);
   }
   return p;
 }

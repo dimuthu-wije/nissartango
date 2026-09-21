@@ -189,3 +189,45 @@ export const createEvent = (fields) =>
 export const updateEvent = (id, fields) =>
   write('PATCH', `events?id=eq.${encodeURIComponent(id)}`, fields)
     .then((rows) => rows?.[0] ?? null);
+
+// ---------------------------------------------------------------------------
+// Exceptions: one DATE of a repeating event, off or moved.
+//
+// A different thing from events.cancelled_at, and the two are worth keeping
+// straight because the form used to offer only the wrong one:
+//
+//   events.cancelled_at   the WHOLE event is off, forever. The page stays and
+//                         says Annulé. src/pages/evenements/[slug].astro only
+//                         ever asks Boolean(cancelled_at) -- the timestamp is
+//                         a flag, never a date anyone reads.
+//   event_exceptions      ONE occurrence, by DATE, with no time. Cancelled
+//                         ones are still rendered, flagged, because "pas de
+//                         practica le 15 août" tells a reader more than a week
+//                         that silently is not there.
+//
+// `moved` relocates an occurrence to moved_starts_at and keeps the original as
+// previousStart for schema.org. Both kinds are handled by src/lib/occurrences.js.
+// ---------------------------------------------------------------------------
+
+async function del(path) {
+  // No body: DELETE with one is accepted by some servers and rejected by
+  // others, and PostgREST takes its filter from the query string regardless.
+  return send((s) => fetch(`${REST}/${path}`, {
+    method: 'DELETE',
+    headers: headers(s, { Prefer: 'return=representation' }),
+  }));
+}
+
+export const listExceptions = (eventId) =>
+  select('event_exceptions?select=occurrence_date,kind,note,moved_starts_at' +
+         `&event_id=eq.${encodeURIComponent(eventId)}&order=occurrence_date.asc`);
+
+export const addException = (row) => write('POST', 'event_exceptions', row);
+
+/**
+ * Keyed by (event_id, occurrence_date) -- the pair content.config.ts also uses
+ * as the collection id, so it is the identity of an exception everywhere.
+ */
+export const removeException = (eventId, occurrenceDate) =>
+  del(`event_exceptions?event_id=eq.${encodeURIComponent(eventId)}` +
+      `&occurrence_date=eq.${encodeURIComponent(occurrenceDate)}`);

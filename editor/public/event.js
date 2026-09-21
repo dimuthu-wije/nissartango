@@ -22,7 +22,8 @@
 
 import { getSession, hasSession, claimsOf, signOutLocally } from '/auth.js';
 import {
-  myOrganizers, getEvent, createEvent, updateEvent, AuthExpired,
+  myOrganizers, getEvent, createEvent, updateEvent,
+  listExceptions, addException, removeException, AuthExpired,
 } from '/api.js';
 import { zonedToInstant, partsInZone } from '/zone.js';
 import { validate } from '/validate.js';
@@ -138,8 +139,13 @@ function showErrors(problems) {
 function readForm() {
   const tz = val('timezone');
   const startsLocal = fields.get('starts_at').control.value;
-  const cancelledLocal = fields.get('cancelled_at').control.value;
   const startsIso = inputToInstant(startsLocal, tz);
+  // The checkbox carries no time of its own. Keep the original stamp when it
+  // was already cancelled, so re-saving an edit does not rewrite when the
+  // cancellation happened.
+  const wasCancelled = fields.get('cancelled_at').wasCancelledAt ?? null;
+  const cancelledNow = fields.get('cancelled_at').control.checked;
+  const cancelledIso = cancelledNow ? (wasCancelled ?? new Date().toISOString()) : null;
   return {
     organizer_id: val('organizer_id'),
     title: val('title'),
@@ -164,8 +170,10 @@ function readForm() {
     signup_url: val('signup_url') || null,
     image_path: val('image_path') || null,
     body: fields.get('body').control.value.trim() || null,
-    cancelled_at_local: cancelledLocal,
-    cancelled_at: inputToInstant(cancelledLocal, tz),
+    // validate.js checks cancellation_note against this, so it has to be
+    // truthy-when-cancelled in the same way the old datetime field was.
+    cancelled_at_local: cancelledNow ? 'yes' : '',
+    cancelled_at: cancelledIso,
     cancellation_note: val('cancellation_note') || null,
   };
 }
@@ -246,13 +254,30 @@ function buildForm(organizers, existing) {
   body.value = existing?.body ?? '';
   form.appendChild(field('body', 'Description', body));
 
-  section('Cancellation');
-  form.appendChild(field('cancelled_at', 'Cancelled at',
-    input('datetime-local', { value: instantToInput(existing?.cancelled_at, tz) }),
-    { hint: 'A cancelled event stays published and keeps its page — that is deliberate.' }));
+  section('Cancel the whole event');
+  // A CHECKBOX, not a date. cancelled_at is lifecycle state stored as a
+  // timestamp: the site only ever asks Boolean(cancelled_at), so the hour is
+  // never read by anything. Offering a datetime picker invited a precision
+  // that does not exist and made people wonder what time to put. Ticking
+  // stamps now(); unticking nulls it, which is exactly how the schema
+  // describes un-cancelling.
+  //
+  // To cancel ONE DATE of a repeating event, use Exceptions below instead.
+  const cancelBox = input('checkbox');
+  cancelBox.checked = Boolean(existing?.cancelled_at);
+  const cancelWrap = field('cancelled_at', 'This event is cancelled', cancelBox, {
+    hint: existing?.cancelled_at
+      ? `Cancelled on ${instantToInput(existing.cancelled_at, tz).replace('T', ' ')}. ` +
+        'Untick to un-cancel. The page stays either way and says Annulé.'
+      : 'The whole event, every date. It keeps its page and says Annulé. ' +
+        'For a single date of a repeating event, use Exceptions below.',
+  });
+  cancelWrap.classList.add('field-check');
+  fields.get('cancelled_at').wasCancelledAt = existing?.cancelled_at ?? null;
+  form.appendChild(cancelWrap);
   form.appendChild(field('cancellation_note', 'Why',
     input('text', { value: existing?.cancellation_note ?? '' }),
-    { hint: 'Needs a cancellation date beside it.' }));
+    { hint: 'Shown to readers. Needs the box above ticked.' }));
 
   // Recurrence end only makes sense for a series. Disabled rather than hidden,
   // so the rule is visible instead of the control mysteriously not existing.
@@ -340,6 +365,115 @@ function renderSignedOut() {
   out().replaceChildren(b);
 }
 
+/**
+ * One DATE of a repeating event, cancelled or moved.
+ *
+ * Edit mode only: an exception is keyed by (event_id, occurrence_date), so
+ * there is nothing to attach one to until the event exists. Rendered as its
+ * own box rather than as fields, because these are rows in another table with
+ * their own lifetime -- adding one is a separate act from saving the event,
+ * and pretending otherwise would mean an unsaved form silently holding
+ * exceptions that are already in the database.
+ */
+function exceptionsSection(eventId, tz) {
+  const b = box('idle', 'Exceptions',
+    'A single date of a repeating event. Cancelled dates are still SHOWN on ' +
+    'the site, marked — a reader is better served by "pas de practica le 15 ' +
+    'août" than by a week that silently is not there.');
+
+  const list = el('div', null, 'ex-list');
+  const status = el('p', null, 'note');
+  b.appendChild(list);
+
+  const refresh = async () => {
+    let rows;
+    try { rows = await listExceptions(eventId); }
+    catch (err) {
+      if (err instanceof AuthExpired) return renderExpired();
+      list.replaceChildren(el('p', `Could not load: ${err.message}`, 'field-error'));
+      return;
+    }
+    list.replaceChildren();
+    if (!rows.length) {
+      list.appendChild(el('p', 'No exceptions. Every occurrence happens as scheduled.', 'note'));
+      return;
+    }
+    for (const x of rows) {
+      const row = el('div', null, 'ex-row');
+      row.appendChild(el('span', x.occurrence_date, 'ex-date'));
+      row.appendChild(el('span', x.kind,
+        `tag tag-${x.kind === 'cancelled' ? 'rejected' : 'pending'}`));
+      if (x.kind === 'moved' && x.moved_starts_at) {
+        row.appendChild(el('span', `→ ${instantToInput(x.moved_starts_at, tz).replace('T', ' ')}`, 'muted'));
+      }
+      if (x.note) row.appendChild(el('span', x.note, 'muted'));
+      const rm = el('button', 'Remove', 'btn btn-quiet');
+      rm.type = 'button';
+      rm.addEventListener('click', async () => {
+        rm.disabled = true;
+        status.textContent = 'Removing…';
+        try { await removeException(eventId, x.occurrence_date); status.textContent = ''; await refresh(); }
+        catch (err) {
+          if (err instanceof AuthExpired) return renderExpired();
+          rm.disabled = false;
+          status.textContent = `Failed: ${err.message}`;
+        }
+      });
+      row.appendChild(rm);
+      list.appendChild(row);
+    }
+  };
+
+  // --- add one -------------------------------------------------------------
+  const add = el('div', null, 'ex-add');
+  const date = input('date');
+  const kind = selectOf(['cancelled', 'moved']);
+  const note = input('text', { placeholder: 'Reason, shown to readers (optional)' });
+  const moved = input('datetime-local');
+  const movedWrap = el('div', null, 'field');
+  movedWrap.append(Object.assign(el('label', 'Moved to'), { htmlFor: 'ex-moved' }), moved);
+  moved.id = 'ex-moved';
+
+  const syncKind = () => { movedWrap.hidden = kind.value !== 'moved'; };
+  kind.addEventListener('change', syncKind);
+  syncKind();
+
+  const addBtn = el('button', 'Add exception', 'btn btn-quiet');
+  addBtn.type = 'button';
+  addBtn.addEventListener('click', async () => {
+    if (!date.value) { status.textContent = 'Pick a date.'; date.focus(); return; }
+    if (kind.value === 'moved' && !moved.value) {
+      status.textContent = 'A moved occurrence needs a new date and time.';
+      moved.focus();
+      return;
+    }
+    addBtn.disabled = true;
+    status.textContent = 'Adding…';
+    try {
+      await addException({
+        event_id: eventId,
+        occurrence_date: date.value,          // a DATE. No time, deliberately.
+        kind: kind.value,
+        note: note.value.trim() || null,
+        moved_starts_at: kind.value === 'moved' ? inputToInstant(moved.value, tz) : null,
+      });
+      date.value = ''; note.value = ''; moved.value = '';
+      status.textContent = '';
+      await refresh();
+    } catch (err) {
+      if (err instanceof AuthExpired) return renderExpired();
+      status.textContent = `Refused: ${err.message}`;
+    } finally {
+      addBtn.disabled = false;
+    }
+  });
+
+  add.append(date, kind, note, addBtn);
+  b.append(add, movedWrap, status);
+  refresh();
+  return b;
+}
+
 async function boot() {
   if (!out()) return;
   if (!hasSession()) return renderSignedOut();
@@ -400,7 +534,12 @@ async function boot() {
     });
 
     wrap.appendChild(form);
-    out().replaceChildren(wrap);
+
+    const frag = document.createDocumentFragment();
+    frag.appendChild(wrap);
+    // Only when the event exists: an exception is keyed by its id.
+    if (existing) frag.appendChild(exceptionsSection(existing.id, existing.timezone ?? 'Europe/Paris'));
+    out().replaceChildren(frag);
   } catch (err) {
     if (err instanceof AuthExpired) return renderExpired();
     const b = box('bad', 'The form could not be loaded.', String(err.message));
