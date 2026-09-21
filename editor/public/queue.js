@@ -11,7 +11,7 @@
 // look busy: "nothing is waiting" and "you cannot see anything" are completely
 // different states and must never render the same way.
 
-import { storedSession, signOutLocally, claimsOf } from '/auth.js';
+import { getSession, hasSession, signOutLocally, claimsOf } from '/auth.js';
 import {
   isAdmin, reviewQueue, recentlyDecided, approve, reject, markReviewed, AuthExpired,
 } from '/api.js';
@@ -187,10 +187,13 @@ async function render() {
 
 async function boot() {
   if (!out()) return;
-  const session = storedSession();
-  if (!session) return renderSignedOut();
+  if (!hasSession()) return renderSignedOut();
 
   out().replaceChildren(box('idle', 'Loading…'));
+  // getSession refreshes if the access token is spent, so coming back to this
+  // page tomorrow reloads the queue rather than showing a sign-in form.
+  let session;
+  try { session = await getSession(); } catch { return renderExpired(); }
   try {
     if (!(await isAdmin())) return renderNotAdmin(claimsOf(session.access_token));
     await render();

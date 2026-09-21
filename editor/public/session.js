@@ -16,7 +16,9 @@
 // parameter and will appear in logs -- which is safe only because the code
 // alone cannot be redeemed. That asymmetry is the design, not an oversight.
 
-import { requestLink, exchangeCode, storedSession, signOutLocally, claimsOf } from '/auth.js';
+import {
+  requestLink, exchangeCode, getSession, hasSession, signOutLocally, claimsOf,
+} from '/auth.js';
 
 const $ = (s) => document.querySelector(s);
 const out = () => $('#out');
@@ -125,10 +127,11 @@ function showForm(message) {
 
   const note = el('p', null, 'note');
   note.textContent =
-    'No account is created from this form. Only an address that already has ' +
-    'one will receive anything — and today, because custom SMTP is not ' +
-    'configured, only members of the Supabase organization can receive mail ' +
-    'at all. Everyone else gets nothing, with no error shown here.';
+    'No account is created from this form — only an address that already has ' +
+    'one will receive anything, and an address without one is told nothing, ' +
+    'so this page cannot be used to discover who has an account. Mail is sent ' +
+    'from no-reply@nissartango.fr; if nothing arrives, check spam before ' +
+    'asking for another.';
   b.appendChild(note);
 
   form.addEventListener('submit', async (e) => {
@@ -215,8 +218,14 @@ async function boot() {
     return showSession(session, frag.get('type') || 'implicit');
   }
 
-  const existing = storedSession();
-  if (existing) return showSession(existing, 'stored');
+  if (hasSession()) {
+    try {
+      // Refreshes a spent access token rather than asking for another link.
+      return showSession(await getSession(), 'stored');
+    } catch {
+      // The refresh token is gone or refused; the form is the honest answer.
+    }
+  }
 
   showForm();
 }

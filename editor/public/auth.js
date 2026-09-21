@@ -57,6 +57,37 @@ const SESSION_KEY = 'nt.session';
 // console have one import to reach for.
 export { newVerifier, challengeFor } from '/pkce.js';
 import { newVerifier, challengeFor } from '/pkce.js';
+import { needsRefresh, isExpired, secondsLeft } from '/expiry.js';
+export { secondsLeft };
+
+/** The session is gone and cannot be recovered here. Sign in again. */
+export class AuthExpired extends Error {
+  constructor(why) {
+    super(why || 'your session has expired');
+    this.name = 'AuthExpired';
+  }
+}
+
+/**
+ * One shape, written in one place. expires_at is stored in SECONDS because
+ * that is what GoTrue speaks; see expiry.js for why that matters.
+ */
+function store(s) {
+  const saved = {
+    access_token: s.access_token,
+    refresh_token: s.refresh_token,
+    expires_at: s.expires_at ?? Math.floor(Date.now() / 1000) + (s.expires_in ?? 3600),
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(saved));
+  return saved;
+}
+
+function readStored() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    return s?.access_token ? s : null;
+  } catch { return null; }
+}
 
 async function api(path, body, query = '') {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/${path}${query}`, {
@@ -117,24 +148,80 @@ export async function exchangeCode(code) {
   // One-shot: a verifier that survives its exchange is a credential lying
   // around for no reason.
   localStorage.removeItem(VERIFIER_KEY);
-  localStorage.setItem(SESSION_KEY, JSON.stringify({
-    access_token: session.access_token,
-    refresh_token: session.refresh_token,
-    expires_at: Math.floor(Date.now() / 1000) + (session.expires_in ?? 3600),
-  }));
+  store(session);
   return session;
 }
 
+/**
+ * The session as it stands, or null if it is already unusable.
+ *
+ * SYNCHRONOUS, and therefore cannot refresh. Use it to decide what to paint
+ * before any await -- getSession() is what anything talking to the server
+ * should call.
+ */
 export function storedSession() {
-  try {
-    const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-    if (!s?.access_token) return null;
-    // Expired is not signed in. The token would be refused by PostgREST
-    // anyway; saying so here is the difference between "you are logged out"
-    // and an unexplained failure on the next thing you click.
-    if (s.expires_at && s.expires_at * 1000 < Date.now()) return null;
-    return s;
-  } catch { return null; }
+  const s = readStored();
+  return s && !isExpired(s) ? s : null;
+}
+
+/**
+ * Is there a session here AT ALL, expired or not?
+ *
+ * Lets a caller tell "you were never signed in" from "your session ran out",
+ * which need different words: the second is worth apologising for and the
+ * first is not.
+ */
+export const hasSession = () => !!readStored();
+
+// One refresh in flight at a time.
+//
+// Without this, a page that fires several requests at once sends several
+// refreshes with the SAME refresh token. Supabase rotates refresh tokens, so
+// the second one is presenting a token the first has already spent -- inside
+// the reuse interval that is tolerated, outside it the whole session is
+// revoked as suspected replay. Sharing one promise makes the race impossible
+// rather than unlikely.
+let inFlight = null;
+
+/**
+ * Trade the refresh token for a new session.
+ *
+ * Assumes rotation: whatever comes back is stored, including a new refresh
+ * token. If this project's rotation setting ever changes, storing the same
+ * token again is harmless -- which is why this does not try to detect it.
+ */
+export function refreshSession() {
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    const s = readStored();
+    if (!s?.refresh_token) throw new AuthExpired('no refresh token in this browser');
+    let fresh;
+    try {
+      fresh = await api('token', { refresh_token: s.refresh_token }, '?grant_type=refresh_token');
+    } catch (err) {
+      // A refused refresh is terminal: the token is revoked, replayed or
+      // expired, and retrying cannot help. Clear it rather than leave a
+      // credential that will fail identically on every future request.
+      signOutLocally();
+      throw new AuthExpired(err?.message);
+    }
+    return store(fresh);
+  })().finally(() => { inFlight = null; });
+  return inFlight;
+}
+
+/**
+ * A session good enough to send, refreshing first if it is close to expiry.
+ *
+ * This is what makes the editor usable for longer than one hour, and what lets
+ * a returning visitor stay signed in: an access token that died overnight is a
+ * reason to refresh, not a reason to show the sign-in form.
+ */
+export async function getSession() {
+  const s = readStored();
+  if (!s) throw new AuthExpired('not signed in');
+  if (!needsRefresh(s)) return s;
+  return refreshSession();
 }
 
 /**
