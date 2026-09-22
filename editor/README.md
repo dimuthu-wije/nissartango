@@ -1,8 +1,10 @@
 # nissartango-editor
 
-The editor origin. Today: a PKCE sign-in form, a magic-link callback, and an
-approval queue that can approve, reject and clear review flags. There is still
-no way to CREATE or EDIT an event, so it is not the whole editor yet.
+The editor origin. As of 2026-09-22: a PKCE sign-in form with session refresh,
+a magic-link callback, an approval queue that can approve, reject and clear
+review flags, and a create/edit form that can also cancel a single date of a
+repeating event. It is usable end to end — sign in, compose, edit, approve,
+publish.
 
 ## Why it exists now, ahead of any editor UI
 
@@ -191,17 +193,16 @@ A timestamp that matches is a correlation. The trigger is the mechanism.
 
 ## Not done here
 
-All three bullets that used to be here were true when written on 2026-09-19 and
-false by 2026-09-21. Replaced rather than amended, because a "not done" list
-that lies is worse than none.
+This list has now gone stale TWICE. The three bullets originally here were true
+on 2026-09-19 and false by 2026-09-21; the four that replaced them were true on
+2026-09-21 and two were false by 2026-09-22 — create/edit shipped in `73e3880`
+and session refresh in `a250a7a`, and neither commit came back to this file.
 
-- **No way to CREATE or EDIT an event.** The queue decides on events; nothing
-  composes them. Adding one still means the SQL editor. That is the next real
-  piece of the editor.
-- **No session refresh.** A session is stored in `localStorage` and lasts one
-  hour, after which the queue says so and sends you back to sign in. The
-  refresh token is kept but never used — `POST /auth/v1/token?grant_type=refresh_token`
-  is maybe ten lines, and until it exists an hour of work ends with a sign-in.
+That is the project's recurring failure in miniature: a fix lands in one place
+and the prose describing its absence survives somewhere else. **When something
+here stops being true, delete the bullet in the same commit that makes it
+false.** A "not done" list that lies is worse than none.
+
 - **No sign-out that actually revokes.** `signOutLocally()` clears this browser
   and says so; the session row and its refresh token stay live in the database
   until they expire. Real revocation is `POST /auth/v1/logout` with the access
