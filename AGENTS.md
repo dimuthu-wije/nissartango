@@ -94,19 +94,31 @@ Every path above was confirmed to exist on 2026-09-19. The list previously named
 existed under those names in this layout, and `src/content.config.ts` was listed
 twice.
 
-### Handovers — `docs/HANDOVER-stage*.md`
+### Handovers and briefings — `docs/`
 
 **Read the highest-numbered one before starting.** It records what a stage of
 work established and the corrections it owed: which instruments lied, which
 confident claim turned out not to describe this project, and why something is
 the way it is when the code alone does not say.
 
-`docs/` is tracked and holds stages 5 and 6. Both were written into `Claude
-outputs/` first, which is **gitignored** (`.gitignore:79`), and both were moved
-on 2026-09-22; a stage 5.1 handover was pasted into a session and never written
-down at all, so nothing records what it said. Stage 5 carries a preface naming
-what has been superseded — read that box before its body, and note that its §7
-is still current.
+    docs/HANDOVER-stage6.md   the editor arc, e22ca1d..3522615
+    docs/HANDOVER-stage5.md   auth blocking facts, production as of 2026-09-19
+    docs/BRIEFING-stage5.md   WHY the schema is shaped this way -- the views as
+                              the column whitelist, user_roles vs a JWT claim,
+                              and why the editor is a separate deployment
+
+The briefing is the one to read before designing anything that touches
+`events_public`, `user_roles`, or the editor's deployment shape; its §1-§3 have
+not aged.
+
+All three carry a preface listing what has been superseded. **Read that box
+before the body** — and read what it says is still current, which is the half a
+reader is likeliest to discount once part of a document is marked stale.
+
+All three were written into `Claude outputs/` first, which is **gitignored**
+(`.gitignore:79`), and all three were moved here on 2026-09-22. A stage 5.1
+handover was pasted into a session and never written down anywhere, so nothing
+records what it said.
 
 `Claude outputs/` remains ignored and is the right place for working output. A
 handover is not working output.
