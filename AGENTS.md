@@ -106,6 +106,11 @@ the way it is when the code alone does not say.
     docs/BRIEFING-stage5.md   WHY the schema is shaped this way -- the views as
                               the column whitelist, user_roles vs a JWT claim,
                               and why the editor is a separate deployment
+    docs/DRAFT-free-text-section.md
+                              SUPERSEDED. The authority is
+                              supabase/PROJECT_SETUP.md:989. Kept for one
+                              measurement recorded nowhere else: build 9597906f,
+                              which proved verify:build had never run on a deploy
 
 The briefing is the one to read before designing anything that touches
 `events_public`, `user_roles`, or the editor's deployment shape; its §1-§3 have
@@ -120,8 +125,9 @@ All three were written into `Claude outputs/` first, which is **gitignored**
 handover was pasted into a session and never written down anywhere, so nothing
 records what it said.
 
-`Claude outputs/` remains ignored and is the right place for working output. A
-handover is not working output.
+`Claude outputs/` remains ignored and is the right place for working output —
+it is empty as of 2026-09-22. A handover is not working output, and neither is
+the evidence behind a decision.
 
 Two sessions in a row searched for these, read an empty result as "none exist",
 and were wrong in both directions — first that there were none, then that the
