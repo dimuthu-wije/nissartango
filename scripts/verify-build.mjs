@@ -572,7 +572,14 @@ if (!infoFile) {
 //
 //     So it is checked again here, against the written file, by a different
 //     script that has no reason to be edited at the same time as the other.
-const FORBIDDEN_ORGANIZER_FIELDS = ['email', 'phone', 'address', 'notes'];
+// contact_email_consent_at / contact_phone_consent_at joined this list on
+// 2026-09-22, the day the columns were created. They are a record of what an
+// organizer agreed to, not content, and organizers_public deliberately omits
+// them -- so if one ever turns up in the snapshot, a view was widened by
+// accident. contact_email and contact_phone are NOT here: those are public on
+// purpose, and the database refuses to hold either without a consent beside it.
+const FORBIDDEN_ORGANIZER_FIELDS = ['email', 'phone', 'address', 'notes',
+  'contact_email_consent_at', 'contact_phone_consent_at'];
 let snapshotForPrivacy = null;
 try { snapshotForPrivacy = JSON.parse(await readFile(currentSnapshotPath(), 'utf8')); } catch {}
 
@@ -591,8 +598,8 @@ if (!snapshotForPrivacy) {
     }
     if (leaked.length) {
       leaked.forEach((l) => fail(
-        `${l} — organizers_public is the privacy boundary and this file gets COMMITTED ` +
-        'to a public repository. Do not publish, and do not commit.'));
+        `${l} — organizers_public is the privacy boundary, and a field that is not ` +
+        'in the view cannot be in this file unless the view changed. Do not publish.'));
     } else {
       ok(`${organizers.length} organizer(s), none carrying ${FORBIDDEN_ORGANIZER_FIELDS.join('/')}`);
     }
@@ -600,9 +607,19 @@ if (!snapshotForPrivacy) {
 
   // And a WARNING, deliberately not a failure: contact details a person typed
   // into a free-text field. An organizer may legitimately put an email in an
-  // event description, so failing the build here would block correct content
-  // on a policy nobody has decided yet. Stage 5 has to decide it -- warn,
-  // point at the decision, do not pretend it is settled.
+  // event description, so failing the build here would block correct content.
+  //
+  // WHAT THIS WARNING IS FOR NOW. It used to say "this file is committed to a
+  // PUBLIC repo, and git history is forever" -- and that stopped being true on
+  // 2026-09-17, when data/snapshot.json left the index. The hazard it named is
+  // gone; the check is not, because a contact detail in free text is still
+  // worth a second look. Two reasons, and neither is git:
+  //
+  //   1. the organizer may not have meant to publish it, and
+  //   2. since 2026-09-22 there is a sanctioned place for one --
+  //      organizers.contact_email / .contact_phone, which record a consent and
+  //      render as real links. A number in `body` is now a sign that somebody
+  //      did not know the field existed, which is a fixable thing.
   const CONTACT = [
     [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, 'an email address'],
     [/(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}/g, 'a French phone number'],
@@ -640,8 +657,9 @@ if (!snapshotForPrivacy) {
   if (notices.length) {
     console.log(`  WARN  ${notices.length} free-text field(s) look like contact details:`);
     notices.slice(0, 5).forEach((n) => console.log(`        ${n}`));
-    console.log('        This file is committed to a PUBLIC repo, and git history is forever.');
-    console.log('        Not a build failure: see "Still to decide (stage 5)" in supabase/PROJECT_SETUP.md.');
+    console.log('        Check the organizer meant to publish it.');
+    console.log('        There is a sanctioned place for one: organizers.contact_email /');
+    console.log('        .contact_phone, which record a consent and render as links.');
   }
 }
 

@@ -188,12 +188,34 @@ refute_body    "no review notes in the payload"      -i "review_note"
 
 assert_ok      "GET /organizers_public?select=*"     "${anon[@]}" "$REST/organizers_public?select=*"
 assert_contains "...with organizers actually in it"  -i "nissartango"
-refute_body    "no email address in the payload"     -F "@"
-refute_body    "no phone number in the payload"      -E "\+33|0[1-9]([ .-]?[0-9]{2}){4}"
+
+# These two refuted an "@" and a French phone SHAPE until 2026-09-22, which was
+# a proxy for "the private columns are not exposed" and stopped being one the
+# day contact_email became public: a correctly working system would have failed
+# them the first time an organizer published an address.
+#
+# The KEY is the precise thing to refute, and it discriminates -- "email" with
+# its opening quote does not occur inside "contact_email", because the
+# character before `email` there is an underscore. So these still fail if the
+# private column is ever exposed, and no longer fail when the public one is
+# populated. Checked, not assumed: grep -F '"email"' over a payload carrying
+# contact_email matches nothing.
+refute_body    "no private email KEY in the payload" -F '"email"'
+refute_body    "no private phone KEY in the payload" -F '"phone"'
 
 assert_refused "asking for phone explicitly fails"   '^(400|403)$' "${anon[@]}" "$REST/organizers_public?select=id,phone"
 assert_contains "...because the column is not there" -i "does not exist\|42703\|PGRST"
 assert_refused "asking for email explicitly fails"   '^(400|403)$' "${anon[@]}" "$REST/organizers_public?select=id,email"
+
+# The sanctioned public fields ARE readable -- the positive half, without which
+# the four refusals above would also pass on a view that had lost them.
+assert_ok      "anon CAN read the public contact fields" "${anon[@]}" \
+  "$REST/organizers_public?select=id,contact_email,contact_phone"
+
+# ...but never the consent behind them. A consent is a record of what somebody
+# agreed to, not content, and organizers_public omits both timestamps.
+assert_refused "consent timestamps are not exposed"  '^(400|403)$' "${anon[@]}" \
+  "$REST/organizers_public?select=id,contact_email_consent_at"
 
 assert_refused "anon cannot insert an event"         '^(401|403|404|405)$' -X POST "${anon[@]}" \
   -H 'Content-Type: application/json' \

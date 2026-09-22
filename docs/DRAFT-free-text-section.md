@@ -38,14 +38,20 @@ on 2026-09-22.
 > repo. It is the only record that the safeguard the section leaned on had never
 > once fired in production.
 >
-> **Also still standing, and not yet done:** `contact_email` and
-> `contact_phone` on the organizer schema with an explicit "published publicly,
-> permanently" checkbox. Today there is nowhere sanctioned to put a phone
-> number, which is exactly what drives one into `body` — the schema produces the
-> failure mode the warning exists to catch. (`public.organizers` already has
-> `email` and `phone`; both are PRIVATE, absent from `organizers_public`, and
-> are not the public fields this asks for.) And: tell organizers plainly, in
-> French, what is published.
+> **The two "regardless" items, as of 2026-09-22.** The first is DONE in the
+> schema: `contact_email` and `contact_phone` exist on `public.organizers`, are
+> exposed through `organizers_public`, and render on the event page
+> (`20260922120000_organizer_public_contact.sql`). The "published publicly,
+> permanently" checkbox this draft asked for is enforced by the database rather
+> than by a form — a consent timestamp is required by CHECK whenever a value is
+> present — so the rule survives a form that forgets it. (`public.organizers`
+> still has private `email` and `phone`; they never moved and are not these.)
+>
+> Two halves remain: **nothing but SQL can set them**, because the editor has no
+> organizer form at all; and **nobody has been told, in French, what publishing
+> means.** The column records that consent was given. Only the wording makes it
+> informed, and that is the half that decides whether any of this was worth
+> doing.
 
 ---
 

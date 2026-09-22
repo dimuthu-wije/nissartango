@@ -3,7 +3,7 @@ import { getCollection, render } from 'astro:content';
 import { Image } from 'astro:assets';
 import Layout from '../../layouts/Layout.astro';
 import {
-  loadAgenda, socialLinks, TYPE_LABELS, priceSummary,
+  loadAgenda, socialLinks, contactLinks, TYPE_LABELS, priceSummary,
   fmtFull, fmtTime, isoWithOffset, toRow,
 } from '../../lib/content';
 import { expand, nextDate, RECURRENCE_LABELS } from '../../lib/occurrences.js';
@@ -223,6 +223,16 @@ const jsonLd = nodes.length === 1
           ))}
         </span>
       )}
+      {/* Contact details the organizer asked to publish. Rendered rather than
+          merely stored: a sanctioned field that never appears is not a
+          sanctioned field, it is image_path. */}
+      {organizer && contactLinks(organizer).length > 0 && (
+        <span class="contact">
+          {contactLinks(organizer).map((l) => (
+            <a href={l.href}>{l.label}</a>
+          ))}
+        </span>
+      )}
     </dd>
   </dl>
 
@@ -271,6 +281,8 @@ const jsonLd = nodes.length === 1
   .recur, .note { display: block; color: var(--muted); font-size: 0.85rem; }
   .social { display: block; margin-top: 0.3rem; font-size: 0.85rem; }
   .social a { margin-right: 0.75rem; }
+  .contact { display: block; margin-top: 0.3rem; font-size: 0.85rem; }
+  .contact a { margin-right: 0.75rem; }
   .dates { margin-bottom: 2rem; }
   .dates h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
               color: var(--muted); margin-bottom: 0.5rem; }

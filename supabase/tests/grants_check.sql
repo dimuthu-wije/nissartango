@@ -93,12 +93,19 @@ with checks as (
 
   -- ---- the private columns are not in the public view ---------------------
   union all
-  select 8, 'organizers_public exposes no email/phone',
+  -- Widened 2026-09-22 with the two consent timestamps, rather than added as a
+  -- check 14: this is the same assertion -- the private columns are not in the
+  -- public view -- and the consent columns are private for the same reason.
+  -- contact_email and contact_phone are deliberately NOT listed: they are the
+  -- sanctioned public fields, and the day they vanish from the view is a
+  -- different fault from the day a private one appears in it.
+  select 8, 'organizers_public exposes no email/phone/consent',
          'none',
          coalesce(string_agg(column_name, ' '), 'none')
     from information_schema.columns
    where table_schema = 'public' and table_name = 'organizers_public'
-     and column_name in ('email','phone')
+     and column_name in ('email','phone',
+                         'contact_email_consent_at','contact_phone_consent_at')
 
   -- ---- helpers are DEFINER, and pinned ------------------------------------
   union all

@@ -58,14 +58,29 @@ cours/practica/milonga/stage/demo/festival), `starts_at`, `duration_minutes`,
 `cancellation_note`, `created_at`, `updated_at`
 
 **`organizers`** — `db_id`, `name`, `slug`, `website`, `instagram`, `facebook`,
-`tiktok`, `created_at`, `updated_at`.
+`tiktok`, `created_at`, `updated_at`, `contact_email`, `contact_phone`.
 
-**There is no `email` and no `phone` here.** They are absent from the public
-view as well as from this schema, and that absence is the boundary keeping
-organizer contact details out of a public build and a public repo. They exist in
-production and in the private `nissartango-backups` repo, nowhere else. This
-file previously listed both as organizer fields, which described the boundary
-backwards.
+**There is still no `email` and no `phone` here, and `contact_*` is not them.**
+The private pair is absent from the public view as well as from this schema, and
+that absence is the boundary keeping organizer contact details out of a public
+build and a public repo. They exist in production and in the private
+`nissartango-backups` repo, nowhere else. This file previously listed both as
+organizer fields, which described the boundary backwards.
+
+`contact_email` and `contact_phone` are a different fact, added 2026-09-22
+(`20260922120000_organizer_public_contact.sql`): what an organizer **chose to
+publish**, rather than how I reach them. They are public on purpose, rendered on
+the event page, and the database refuses to hold either without a consent
+timestamp beside it — `contact_email_consent_at` / `contact_phone_consent_at`,
+which are themselves private and are NOT in the view. A form that forgets the
+"published publicly, permanently" checkbox cannot write the column.
+
+They exist because their absence was causing the leak the build warns about:
+with nowhere sanctioned to put a phone number, it goes in an event's `body`.
+`verify-build.mjs` still notices a contact detail in free text, but the warning
+now means "check they meant to, and tell them about the field" rather than
+"this is about to enter git forever", which stopped being true when
+`data/snapshot.json` left the index on 2026-09-17.
 
 **`exceptions`** — `event_id`, `occurrence_date`, `kind` (cancelled/moved),
 `note`, `moved_starts_at`

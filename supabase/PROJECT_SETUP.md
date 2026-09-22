@@ -1095,14 +1095,27 @@ auditing it for a phone number, so this is a deadline and not a reprieve.
 
 **Two things that should happen regardless.**
 
-- Add `contact_email` and `contact_phone` to the organizer schema, each with an
-  explicit "published publicly, permanently" checkbox. Today there is nowhere
-  sanctioned to put a phone number, which is exactly what drives it into `body`.
-  Note that `public.organizers` already has `email` and `phone`, both PRIVATE
-  and both absent from `organizers_public` — they are not the public fields this
-  asks for.
-- Tell organizers plainly, in French, at sign-up and under the free-text fields,
-  what is published.
+- **DONE 2026-09-22, in the schema:** `contact_email` and `contact_phone` on
+  `public.organizers`, exposed through `organizers_public` and rendered on the
+  event page — `20260922120000_organizer_public_contact.sql`. The "published
+  publicly, permanently" checkbox is enforced by the DATABASE rather than by a
+  form: `contact_email_consent_at` / `contact_phone_consent_at` are required by
+  CHECK whenever the matching value is non-null, so a form that forgets the box
+  cannot write the column. The two timestamps are private and are not in the
+  view; `grants_check.sql` check 8 fails if either ever appears there, and
+  `verify-build.mjs` fails the build if one reaches the snapshot.
+
+  `public.organizers` still has `email` and `phone`, both PRIVATE and both
+  absent from `organizers_public`. They were never the fields this asked for and
+  they have not moved.
+
+  **Still open: nothing can SET them but SQL.** The editor has no organizer
+  form at all — it composes events only — so today this is the same position
+  events were in before `73e3880`. The column exists and the consent is
+  enforced; the checkbox has no UI to live in yet.
+- **Still open:** tell organizers plainly, in French, at sign-up and under the
+  free-text fields, what is published. The column records that consent was
+  given; only the wording makes it informed, and that half is not built.
 
 **What `npm run verify:build`'s contact-detail check is for afterwards.** It no
 longer guards git. Its remaining job is to tell you that an organizer published
@@ -1111,6 +1124,13 @@ an organizer may have every right to publish one. Widened 2026-09-17 from
 `['body', 'price_note', 'location_address']` to all eight organizer-typed
 fields, which was worth doing only once `verify:build` demonstrably ran on a
 deploy.
+
+Its MESSAGE was rewritten on 2026-09-22 and had been wrong since 2026-09-17: it
+said "this file is committed to a PUBLIC repo, and git history is forever" long
+after `data/snapshot.json` left the index. A warning that names a hazard which
+no longer exists teaches the reader to discount it. It now says to check the
+organizer meant to publish, and points at the `contact_*` fields — because a
+number in `body` is now most likely somebody not knowing the field exists.
 
 ## Free plan
 

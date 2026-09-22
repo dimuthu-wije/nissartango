@@ -51,6 +51,29 @@ export function socialLinks(o: any) {
   ].filter(Boolean) as { label: string; href: string }[];
 }
 
+/**
+ * Contact details the organizer asked to have published.
+ *
+ * NOT organizers.email / .phone -- those are private, are absent from
+ * organizers_public, and never reach this build at all. These two are the
+ * sanctioned place, added 2026-09-22 because there was none, and a phone
+ * number with nowhere to go ends up in an event's free text instead.
+ *
+ * `tel:` strips spaces and dots because a French number is written 06 12 34 56
+ * 78 and dialled 0612345678; the text shown stays exactly as it was typed.
+ */
+export function contactLinks(o: any) {
+  if (!o) return [];
+  return [
+    o.contact_email && {
+      label: o.contact_email, href: `mailto:${o.contact_email}`,
+    },
+    o.contact_phone && {
+      label: o.contact_phone, href: `tel:${String(o.contact_phone).replace(/[\s.]/g, '')}`,
+    },
+  ].filter(Boolean) as { label: string; href: string }[];
+}
+
 export const TYPE_LABELS: Record<string, string> = {
   cours: 'Cours', practica: 'Practica', milonga: 'Milonga',
   stage: 'Stage', demo: 'Démonstration', festival: 'Festival',

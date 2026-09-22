@@ -67,6 +67,12 @@ const organizers = defineCollection({
   loader: snapshotLoader('organizers', (r) => r.slug),
   // Note what is absent: email and phone. They are absent from the view too,
   // which is the actual boundary — this schema just documents it.
+  //
+  // contact_email and contact_phone ARE here, and are a different fact: what
+  // the organizer chose to publish, rather than how I reach them. The database
+  // will not accept either without a recorded consent
+  // (organizers_contact_*_needs_consent), and the consent timestamps are NOT
+  // exposed by the view, so they are absent here too.
   schema: z.object({
     db_id: uuid,
     name: z.string(),
@@ -77,6 +83,8 @@ const organizers = defineCollection({
     tiktok: nullableString,
     created_at: nullableString,
     updated_at: nullableString,
+    contact_email: nullableString,
+    contact_phone: nullableString,
   }),
 });
 
