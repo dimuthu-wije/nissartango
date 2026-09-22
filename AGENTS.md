@@ -94,6 +94,26 @@ Every path above was confirmed to exist on 2026-09-19. The list previously named
 existed under those names in this layout, and `src/content.config.ts` was listed
 twice.
 
+### Handovers — `docs/HANDOVER-stage*.md`
+
+**Read the highest-numbered one before starting.** It records what a stage of
+work established and the corrections it owed: which instruments lied, which
+confident claim turned out not to describe this project, and why something is
+the way it is when the code alone does not say.
+
+`docs/` is tracked and starts at stage 6. Earlier handovers were written into
+`Claude outputs/`, which is **gitignored** (`.gitignore:79`) — so stage 5 and
+the stage 5 briefing exist on one machine and are in no clone. A stage 5.1
+handover was pasted into a session and never written down at all.
+
+Two sessions in a row searched for these, read an empty result as "none exist",
+and were wrong in both directions — first that there were none, then that the
+ignored ones were tracked. Hence the explicit path above.
+
+**Write the next one into `docs/` and commit it in the same breath.** The repo
+is PUBLIC, which is a constraint on what a handover may contain, not a reason to
+leave it out of git: nothing in one should need a secret to be useful.
+
 ## Decisions made, and why
 
 - **Astro over Next.js/plain HTML** — zero JS by default, good SEO, shared
