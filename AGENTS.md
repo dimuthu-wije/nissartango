@@ -101,10 +101,15 @@ work established and the corrections it owed: which instruments lied, which
 confident claim turned out not to describe this project, and why something is
 the way it is when the code alone does not say.
 
-`docs/` is tracked and starts at stage 6. Earlier handovers were written into
-`Claude outputs/`, which is **gitignored** (`.gitignore:79`) — so stage 5 and
-the stage 5 briefing exist on one machine and are in no clone. A stage 5.1
-handover was pasted into a session and never written down at all.
+`docs/` is tracked and holds stages 5 and 6. Both were written into `Claude
+outputs/` first, which is **gitignored** (`.gitignore:79`), and both were moved
+on 2026-09-22; a stage 5.1 handover was pasted into a session and never written
+down at all, so nothing records what it said. Stage 5 carries a preface naming
+what has been superseded — read that box before its body, and note that its §7
+is still current.
+
+`Claude outputs/` remains ignored and is the right place for working output. A
+handover is not working output.
 
 Two sessions in a row searched for these, read an empty result as "none exist",
 and were wrong in both directions — first that there were none, then that the

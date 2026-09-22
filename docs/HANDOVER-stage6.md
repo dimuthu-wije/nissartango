@@ -11,15 +11,15 @@ would otherwise have to rediscover by making the same mistakes.
 
 ## 1. Where this picks up
 
-**This file is the first handover that is in git.** It lives in `docs/`, which
-is tracked, and that is a deliberate change from what came before.
+The previous handover is **`docs/HANDOVER-stage5.md`**, written by the reviewer
+session on 2026-09-19 10:15Z at `e22ca1d`. Read it — its §7, "decided and
+measured, do not re-litigate", is still load-bearing. It carries a preface
+listing what has been superseded since, so read the box before the body.
 
-The previous one is `Claude outputs/HANDOVER-stage5.md`, written by the reviewer
-session on 2026-09-19 10:15Z at `e22ca1d`. It is **not in this repository** —
-`Claude outputs/` is gitignored at `.gitignore:79`, so it exists on one machine
-and a fresh clone gets nothing. If you are reading this without it, that is why.
-It is worth reading and can be tracked here alongside this file; it contains no
-keys or connection strings, which was checked rather than assumed.
+Both files reached `docs/` on 2026-09-22, and neither was there before. They had
+been written into `Claude outputs/`, which is **gitignored** at `.gitignore:79`
+— so for three days the only record of how this project got here lived on one
+disk, in a directory git was told to ignore, and no clone had ever seen it.
 
 A stage 5.1 handover never reached the disk at all. It was pasted into a session
 and lived only in that chat, and nothing anywhere records what it said.
