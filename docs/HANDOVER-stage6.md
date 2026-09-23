@@ -82,17 +82,23 @@ A separate Workers deployment, static assets only, no `main`. It talks to
 Supabase from the browser with the publishable key and the caller's own JWT, so
 RLS is the enforcement rather than something a Worker has to remember.
 
-    editor/public/
+    editor/public/                              (line counts as of 2026-09-23)
       config.js      20   URL + publishable key + redirect. Both values public by design.
       pkce.js        29   b64url / newVerifier / challengeFor. Pure. RFC 7636 vector.
+      consent.js     45   what to send for a published contact detail. Pure.
       expiry.js      46   secondsLeft / isExpired / needsRefresh. Pure.
-      auth.js       245   PKCE by hand, storage, refresh, local sign-out.
-      api.js        233   PostgREST calls, WRITABLE, one 401-retry-after-refresh.
-      validate.js    66   mirrors 11 CHECK constraints + the events_validate trigger.
       zone.js       133   VERBATIM COPY of src/lib/zone.js.
-      session.js    238   sign-in form, callback, session display.
+      validate.js   146   mirrors the CHECK constraints on events AND organizers.
       queue.js      225   approve / reject / mark reviewed.
+      session.js    238   sign-in form, callback, session display.
+      auth.js       245   PKCE by hand, storage, refresh, local sign-out.
+      api.js        275   PostgREST calls, the two WRITABLE lists, one 401-retry.
+      organizer.js  380   organizer form: the two contact pairs and the consent.
       event.js      555   create + edit form, exceptions section.
+
+    Four of those are pure and have no DOM, which is the whole reason Node can
+    test them: pkce, consent, expiry, validate. That split is deliberate and is
+    where a new piece of fiddly logic should go.
 
 Deploy with `npm run deploy:editor`. `custom_domain: true` in
 `editor/wrangler.jsonc` **is the DNS record** — do not hand-add an `A` or
