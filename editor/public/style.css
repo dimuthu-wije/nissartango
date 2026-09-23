@@ -308,6 +308,19 @@ a.btn { text-decoration: none; display: inline-block; }
 .has-error select,
 .has-error textarea { border-color: var(--bad); }
 
+/* Shown only when the editor is NOT pointed at production. Deliberately loud
+   and at the very top: its whole job is to be noticed before anything is
+   typed. */
+.target-banner {
+  background: var(--idle-bg);
+  color: var(--fg);
+  border-bottom: 2px solid var(--idle);
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+  text-align: center;
+}
+.target-banner strong { color: var(--idle); }
+
 /* A consent box is not an ordinary checkbox and should not look like one:
    ticking it publishes something permanently. Boxed and tinted so it reads as
    a decision rather than a preference. */

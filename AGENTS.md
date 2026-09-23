@@ -397,6 +397,25 @@ session closes refresh, not the hour already granted.
 There is no "Sign out user" control in Authentication → Users — the menu offers
 Remove MFA factors, Ban user and Delete user. The logout API is the route.
 
+**`supabase projects api-keys` prints legacy `service_role` JWTs in full.** It
+masks the newer `sb_secret_…` key (printing a short prefix then dots) and does NOT mask the
+legacy JWT-format `anon` and `service_role` keys, which are printed complete.
+On 2026-09-23 that put dev's `service_role` JWT into a chat transcript while
+fetching dev's *publishable* key, which is public and was the only part wanted.
+
+Two things made it worse than it had to be:
+
+- the output is **one single JSON line**, so `| grep publishable` matched the
+  whole thing. A line-oriented filter over line-oriented output is an
+  assumption, and this command breaks it.
+- the masking is inconsistent between key formats, so seeing one key masked is
+  no evidence that the others are.
+
+If you need a publishable key, take it from the dashboard, or pipe through `jq`
+selecting exactly that key — never a grep. If this command has already been
+run, treat that project's legacy keys as burned and disable them (Settings →
+API Keys → Legacy keys).
+
 ## Supabase
 
 Schema lives in `supabase/migrations/` and is applied with the CLI, never
@@ -434,6 +453,20 @@ was "no dev/prod separation"; both were false when measured on 2026-09-17, and
 `PROJECT_SETUP.md` was corrected then while this file was not.
 
 Check the ref before you push.
+
+The editor can now be run against dev instead of production:
+
+```
+./scripts/seed-dev-editor.sh --help   # once: dev is empty of users too
+npm run dev:editor                    # http://localhost:3000 -> dev
+```
+
+The ORIGIN picks the project (`editor/public/target.js`), so
+`editor.nissartango.fr` is production and everything else is dev — there is no
+flag to get wrong, and `tests/editor-config.test.js` asserts no other hostname
+can reach production. Port 3000 is dev's `site_url`, not a preference. Until
+2026-09-23 the editor hard-coded production, so every time anyone ran it they
+were editing the live agenda.
 
 Verification:
 

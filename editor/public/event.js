@@ -27,6 +27,7 @@ import {
 } from '/api.js';
 import { zonedToInstant, partsInZone } from '/zone.js';
 import { validate } from '/validate.js';
+import '/banner.js';   // side effect: names the project when it is not production
 
 // {value, label}: the VALUE is the database enum and is never translated --
 // events_type_check and events_recurrence_check compare against these exact
@@ -369,7 +370,7 @@ function renderSaved(row, created) {
   const queue = el('a', 'Ouvrir la file d\'attente');
   queue.href = '/queue/';
   queue.className = 'btn';
-  const again = el('a', 'Add another');
+  const again = el('a', 'En ajouter un autre');
   again.href = '/event/';
   again.className = 'btn btn-quiet';
   const row2 = el('div', null, 'actions');
@@ -388,7 +389,7 @@ function renderExpired() {
 
 function renderSignedOut() {
   const b = box('idle', 'Non connecté.', 'Seul un membre d\'un organisateur peut ajouter des événements.');
-  const a = el('a', 'Sign in'); a.href = '/'; a.className = 'btn';
+  const a = el('a', 'Se connecter'); a.href = '/'; a.className = 'btn';
   b.appendChild(a);
   out().replaceChildren(b);
 }
@@ -439,7 +440,7 @@ function exceptionsSection(eventId, tz) {
       rm.type = 'button';
       rm.addEventListener('click', async () => {
         rm.disabled = true;
-        status.textContent = 'Removing…';
+        status.textContent = 'Suppression…';
         try { await removeException(eventId, x.occurrence_date); status.textContent = ''; await refresh(); }
         catch (err) {
           if (err instanceof AuthExpired) return renderExpired();
@@ -477,7 +478,7 @@ function exceptionsSection(eventId, tz) {
       return;
     }
     addBtn.disabled = true;
-    status.textContent = 'Adding…';
+    status.textContent = 'Ajout…';
     try {
       await addException({
         event_id: eventId,

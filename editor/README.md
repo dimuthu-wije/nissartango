@@ -65,6 +65,68 @@ and to `site_url` when it is not, so one unauthenticated GET reveals both:
 
 The `location:` header names `site_url`. See `supabase/PROJECT_SETUP.md`.
 
+## Running it against dev
+
+    ./scripts/seed-dev-editor.sh --help     # once, the first time
+    npm run dev:editor                      # http://localhost:3000
+
+Until 2026-09-23 `config.js` hard-coded production, so every exercise of the
+editor — every sign-in, every form, every moderation decision made while trying
+something out — happened against the live agenda. There was no other way to run
+it.
+
+**The ORIGIN picks the project**, and nothing else can:
+
+    https://editor.nissartango.fr   ->  production   eqcgeqzzuzcwrflwasjo
+    http://localhost:3000           ->  dev          hjsekipqryfuwdkhxuks
+    anything else                   ->  dev
+
+Not an environment variable, because this deployment has no build step to
+substitute one into. Not a toggle, because a query parameter or a stored flag
+could be set by the page, and the whole point is that the production origin
+cannot be pointed anywhere else. The origin is the one input the page does not
+control. `editor/public/target.js` holds it; `tests/editor-config.test.js`
+asserts that no hostname but the exact production host resolves to production.
+
+Unrecognised hosts — a preview deployment, say — go to dev deliberately.
+Sending them to production would make every preview a production test; sending
+them to dev means the CSP in `_headers`, whose `connect-src` names production
+and only production, blocks them visibly in the console instead.
+
+**Port 3000 is not a preference.** Dev's Supabase Site URL is
+`http://localhost:3000`, still the scaffold default, measured with the
+`/auth/v1/verify` probe below. `site_url` is also the fallback for any
+`redirect_to` that is not allow-listed, so a dev magic link lands on port 3000
+whatever the server does. Serving elsewhere means links arrive at a closed port.
+
+**A banner names the project whenever it is not production**, with the REF and
+not just the name — the two project names are backwards, and a name is exactly
+what has misled people here before. Production shows nothing: a missing badge
+is noticed, a green one is not.
+
+### Dev was empty, so there was nothing to sign in as
+
+Measured 2026-09-23: `auth.users=0 user_roles=0 organizers=0 members=0
+events=0`. A dev editor you cannot sign into is not an improvement on no dev
+editor, so `scripts/seed-dev-editor.sh` fills in what is not content — an
+admin, an organizer you own, and three events chosen so the queue is neither
+empty nor uniform (pending, approved-and-flagged, rejected).
+
+It will not create the `auth.users` row. That is GoTrue's, and writing one by
+hand means guessing which columns are load-bearing this release; a malformed
+row breaks sign-in in a way that looks like a configuration problem. Create it
+in the dashboard once — Authentication → Users → Add user, Auto Confirm on —
+and the script finds it by email.
+
+It refuses to run against production, reading the ref out of the CONNECTION
+STRING rather than the argument, for the same reason `db-push.sh` does. It also
+accepts a local-stack URL, which is how the SQL in it was actually exercised
+before it was ever pointed at a hosted project — and that immediately caught
+two bugs: a uuid containing `v`, which is not a hex digit, and a second run
+failing because `organizer_members_keep_an_owner()` fires on UPDATE and asks
+only whether OLD.role was owner, so re-setting the sole owner to owner reads as
+removing the last one.
+
 ## What the pages do
 
 `public/session.js` reads the URL fragment, which is where GoTrue puts both the
@@ -280,9 +342,11 @@ false.** A "not done" list that lies is worse than none.
   and says so; the session row and its refresh token stay live in the database
   until they expire. Real revocation is `POST /auth/v1/logout` with the access
   token in hand.
-- **Dev has no editor.** `editor.nissartango.fr` points at production, and
-  `config.js` hard-codes production's ref. There is no way to exercise this
-  against `hjsekipqryfuwdkhxuks`, which means every test is a production test.
+- ~~**Dev has no editor.**~~ Closed 2026-09-23 — see "Running it against dev"
+  above. What is still true: **dev has no CSP.** `_headers` is Cloudflare
+  configuration and a local static server does not send it, so a Content
+  Security Policy mistake will not show up at localhost. Check that against a
+  deployed preview, not against `npm run dev:editor`.
 
 **Custom SMTP is no longer a blocker.** Solved 2026-09-21: Resend, sending as
 `Nissartango <no-reply@nissartango.fr>`, proven by delivery to an address that

@@ -15,6 +15,7 @@ import { getSession, hasSession, signOutLocally, claimsOf } from '/auth.js';
 import {
   isAdmin, reviewQueue, recentlyDecided, approve, reject, markReviewed, AuthExpired,
 } from '/api.js';
+import '/banner.js';   // side effect: names the project when it is not production
 
 const out = () => document.querySelector('#out');
 
@@ -134,7 +135,7 @@ function card(ev, refresh) {
 
   // Edit is a link, not a button: it navigates, and a person may reasonably
   // want it in a new tab while keeping the queue open.
-  const edit = el('a', 'Edit', 'btn btn-quiet');
+  const edit = el('a', 'Modifier', 'btn btn-quiet');
   edit.href = `/event/?id=${encodeURIComponent(ev.id)}`;
   actions.appendChild(edit);
 
@@ -157,7 +158,7 @@ function renderExpired() {
 function renderSignedOut() {
   const b = box('idle', 'Non connecté.',
     'La file d\'attente n\'est visible que par un administrateur.');
-  const a = el('a', 'Sign in');
+  const a = el('a', 'Se connecter');
   a.href = '/';
   a.className = 'btn';
   b.appendChild(a);
@@ -171,8 +172,8 @@ function renderNotAdmin(claims) {
     'is_admin() a répondu false pour ce compte. C\'est la réponse de la base, ' +
     'pas une supposition de cette page : un administrateur a besoin d\'une ligne dans user_roles.');
   const dl = el('dl');
-  dl.append(el('dt', 'signed in as'), el('dd', claims.email ?? '—'));
-  dl.append(el('dt', 'user id'), el('dd', claims.sub ?? '—'));
+  dl.append(el('dt', 'connecté en tant que'), el('dd', claims.email ?? '—'));
+  dl.append(el('dt', 'identifiant utilisateur'), el('dd', claims.sub ?? '—'));
   b.appendChild(dl);
   out().replaceChildren(b);
 }

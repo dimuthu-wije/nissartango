@@ -37,6 +37,7 @@ import {
 } from '/api.js';
 import { validateOrganizer } from '/validate.js';
 import { consentFor } from '/consent.js';
+import '/banner.js';   // side effect: names the project when it is not production
 
 const out = () => document.querySelector('#out');
 

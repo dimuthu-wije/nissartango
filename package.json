@@ -20,7 +20,9 @@
     "seed:real": "bash scripts/seed-real.sh",
     "hooks:install": "git config core.hooksPath .githooks && echo \"hooks: core.hooksPath -> .githooks\"",
     "deploy:notifier": "wrangler deploy --config workers/build-notifier/wrangler.jsonc",
-    "deploy:editor": "wrangler deploy --config editor/wrangler.jsonc"
+    "deploy:editor": "wrangler deploy --config editor/wrangler.jsonc",
+    "dev:editor": "node scripts/serve-editor.mjs",
+    "seed:dev-editor": "bash scripts/seed-dev-editor.sh"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.3",

@@ -19,6 +19,7 @@
 import {
   requestLink, exchangeCode, getSession, hasSession, signOutLocally, claimsOf,
 } from '/auth.js';
+import '/banner.js';   // side effect: names the project when it is not production
 
 const $ = (s) => document.querySelector(s);
 const out = () => $('#out');
@@ -113,11 +114,11 @@ function showError(title, detail, extra = []) {
 }
 
 function showForm(message) {
-  const b = box('idle', 'Sign in', message || 'Saisissez votre e-mail : un lien de connexion vous sera envoyé.');
+  const b = box('idle', 'Connexion', message || 'Saisissez votre e-mail : un lien de connexion vous sera envoyé.');
   const form = el('form');
   form.className = 'signin';
 
-  const label = el('label', 'Email');
+  const label = el('label', 'E-mail');
   label.setAttribute('for', 'email');
   const input = el('input');
   Object.assign(input, { type: 'email', id: 'email', name: 'email', required: true, autocomplete: 'email' });

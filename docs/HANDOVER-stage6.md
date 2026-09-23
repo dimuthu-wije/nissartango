@@ -197,10 +197,12 @@ gap, not an oversight.
   so in its own docstring; the session row and its refresh token stay live in
   the database until they expire. Real revocation is
   `POST /auth/v1/logout` with the access token in hand.
-- **Dev has no editor.** `config.js` hard-codes production's ref, and
-  `editor.nissartango.fr` points at production. There is no way to exercise any
-  of this against `hjsekipqryfuwdkhxuks`, **which means every test is a
-  production test.** This is the largest structural gap in the editor.
+- ~~**Dev has no editor.**~~ **Closed 2026-09-23.** The ORIGIN now picks the
+  project (`editor/public/target.js`): `editor.nissartango.fr` is production
+  and everything else, localhost included, is dev. `npm run dev:editor` serves
+  on port 3000 — the port is not a preference, it is dev's `site_url` — and
+  `./scripts/seed-dev-editor.sh` fills dev with an admin, an organizer and a
+  queue. A banner names the project whenever it is not production.
 - **`no-reply@nissartango.fr` does not receive.** Replies bounce. An Email
   Routing rule fixes it — the same two clicks that set up `dmarc@`.
 - **Email OTP Expiration is unread on both projects.** Never checked in the
@@ -289,9 +291,9 @@ The next items in `AGENTS.md` are public-site work — past-event archive, month
 grouping and type filtering, `/en/` pages — and they touch none of the auth or
 RLS knowledge above. That is a clean seam for a fresh session.
 
-If instead the editor is continued, the two that would change the most are
-**dev/prod separation for the editor** (so not every test is a production test)
-and **a revoking sign-out**.
+If instead the editor is continued, the one that would change the most is now
+**a revoking sign-out** — `signOutLocally()` still only clears the browser.
+Dev/prod separation was the other, and it landed on 2026-09-23.
 
 The method that made all of this work is in `AGENTS.md` — state the expected
 output before running a command, paste raw output rather than summaries, treat a
