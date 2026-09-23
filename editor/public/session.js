@@ -17,9 +17,10 @@
 // alone cannot be redeemed. That asymmetry is the design, not an oversight.
 
 import {
-  requestLink, exchangeCode, getSession, hasSession, signOutLocally, claimsOf,
+  requestLink, exchangeCode, getSession, hasSession, claimsOf,
 } from '/auth.js';
-import '/banner.js';   // side effect: names the project when it is not production
+import '/banner.js';
+import '/signout-button.js';   // side effect: names the project when it is not production
 
 const $ = (s) => document.querySelector(s);
 const out = () => $('#out');
@@ -95,15 +96,24 @@ function showSession(session, how) {
   links.append(queue, add);
   b.appendChild(links);
 
-  const signOut = el('button', 'Se déconnecter de ce navigateur');
-  signOut.className = 'btn';
-  signOut.addEventListener('click', () => { signOutLocally(); location.href = '/'; });
-  b.appendChild(signOut);
+  // id="signout" so signout-button.js picks it up by delegation, like the
+  // footer button on every other page -- one code path, not two.
+  const signOutBtn = el('button', 'Se déconnecter partout');
+  signOutBtn.className = 'btn';
+  signOutBtn.id = 'signout';
+  signOutBtn.type = 'button';
+  b.appendChild(signOutBtn);
 
   const caveat = el('p', null, 'note');
+  // This said sign-out "ne vide que ce navigateur" and that the session was
+  // not revoked, which was true until 2026-09-23 and is now backwards. It
+  // revokes every session for this account. What it still cannot do is
+  // invalidate the access token already issued.
   caveat.textContent =
-    'Se déconnecter ne vide que ce navigateur. La session n\'est pas révoquée dans ' +
-    'la base, et le jeton de rafraîchissement reste actif jusqu\'à son utilisation ou son expiration.';
+    'Révoque toutes les sessions de ce compte, pas seulement celle-ci. '
+    + "Le jeton d'accès déjà émis reste valable jusqu'à son expiration, une heure "
+    + 'au plus : PostgREST vérifie la signature et la date, et ne consulte aucune '
+    + 'table de sessions.';
   b.appendChild(caveat);
 }
 

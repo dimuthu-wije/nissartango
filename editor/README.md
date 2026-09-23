@@ -326,6 +326,42 @@ so Node can test it. `tests/consent.test.js` pins all three cases, including the
 withdrawal — value cleared, stamp KEPT — which the one-directional CHECK permits
 deliberately.
 
+## Signing out — `/auth/v1/logout`
+
+Until 2026-09-23 the sign-out button emptied `localStorage` and nothing else:
+the session row and its refresh token stayed live in the database until they
+expired. It now revokes, with `scope=global` — every session this account has,
+because the reason a person reaches for this control is usually "make this stop
+being usable", and per-session would be the wrong answer at the moment it
+mattered most.
+
+**The browser is cleared whether or not the server accepts.** The obvious
+ordering — revoke, and clear if it worked — reads as careful and is backwards:
+when the request fails, the person is shown an error and left signed in on the
+machine in front of them, and they close the laptop believing otherwise. So
+`editor/public/signout.js` clears always and reports the two halves separately.
+It is a separate file, with no DOM, so Node can test that; three tests in
+`tests/signout.test.js` fail if the ordering is inverted.
+
+**It does not invalidate the access token already issued, and the message says
+so.** Measured against the local stack on 2026-09-23 rather than taken from the
+docs:
+
+    POST /auth/v1/logout?scope=global      204
+    auth.sessions        1 -> 0
+    auth.refresh_tokens  1 -> 0            deleted, not flagged
+    the same access token, to PostgREST    200   <- still accepted
+    refresh with that session              400
+
+So revoking closes the refresh path, not the hour already granted. PostgREST
+validates signature and expiry and consults no session table. The only lever
+that shuts that window is rotating the signing key, which invalidates every
+token for every user at once.
+
+One module handles the button on all four pages. It used to be the same
+listener copied four times, which is how three of them would have gone on
+clearing `localStorage` and calling it done.
+
 ## Not done here
 
 This list has now gone stale TWICE. The three bullets originally here were true
@@ -338,10 +374,10 @@ and the prose describing its absence survives somewhere else. **When something
 here stops being true, delete the bullet in the same commit that makes it
 false.** A "not done" list that lies is worse than none.
 
-- **No sign-out that actually revokes.** `signOutLocally()` clears this browser
-  and says so; the session row and its refresh token stay live in the database
-  until they expire. Real revocation is `POST /auth/v1/logout` with the access
-  token in hand.
+- ~~**No sign-out that actually revokes.**~~ Closed 2026-09-23 — see "Signing
+  out" above. What remains true, and always will: signing out cannot invalidate
+  the access token already issued. Only rotating the project's signing key can,
+  and that invalidates every token for every user at once.
 - ~~**Dev has no editor.**~~ Closed 2026-09-23 — see "Running it against dev"
   above. What is still true: **dev has no CSP.** `_headers` is Cloudflare
   configuration and a local static server does not send it, so a Content

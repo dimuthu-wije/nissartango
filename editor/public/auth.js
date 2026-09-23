@@ -60,6 +60,9 @@ import { newVerifier, challengeFor } from '/pkce.js';
 import { needsRefresh, isExpired, secondsLeft } from '/expiry.js';
 export { secondsLeft };
 
+import { logoutPath, performSignOut } from '/signout.js';
+export { signOutMessage } from '/signout.js';
+
 /** The session is gone and cannot be recovered here. Sign in again. */
 export class AuthExpired extends Error {
   constructor(why) {
@@ -226,14 +229,71 @@ export async function getSession() {
 }
 
 /**
- * Local sign-out. It clears this browser and does NOT revoke the session in
- * the database -- that needs POST /auth/v1/logout with the access token, and
- * the refresh token stays live until it is used or expires. Say so rather than
- * implying more than it does.
+ * Local sign-out: clears this browser, revokes nothing.
+ *
+ * Kept, and still used -- but only as the second half of signOut() below, and
+ * as the honest thing to call when there is no session to revoke. Anything
+ * offering a person a "sign out" control should call signOut().
  */
 export function signOutLocally() {
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(VERIFIER_KEY);
+}
+
+/**
+ * Sign out and REVOKE, which is what a sign-out control should mean.
+ *
+ * POST /auth/v1/logout needs the access token in the Authorization header --
+ * the apikey alone is not enough, and a call without it returns 401 while
+ * looking like it worked from the outside. Scope defaults to global: every
+ * session this account has, because the reason someone reaches for this is
+ * usually "make this stop being usable", and per-session would be the wrong
+ * answer at exactly the moment it mattered.
+ *
+ * THE BROWSER IS CLEARED EITHER WAY. performSignOut() owns that guarantee and
+ * is tested for it; the ordering matters enough to live in a file Node can
+ * run. What this function adds is the two real effects: the HTTP call, and
+ * localStorage.
+ *
+ * It does NOT invalidate the access token already issued. Nothing here can:
+ * PostgREST checks signature and expiry and consults no session table, so that
+ * token is good until its `exp`. Revoking closes refresh, not the hour already
+ * granted -- signOutMessage() says so rather than letting the UI imply
+ * otherwise.
+ */
+export async function signOut(scope = 'global') {
+  const stored = readStored();
+
+  const revoke = async () => {
+    if (!stored?.access_token) {
+      // Nothing to revoke is not a failure, and calling anyway would send a
+      // request that can only 401 -- then be reported as a revocation that
+      // failed, which is a worse description of "you were not signed in".
+      return { skipped: true };
+    }
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/${logoutPath(scope)}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${stored.access_token}`,
+      },
+    });
+    // 204 is success and carries no body. A 401 here means the token had
+    // already expired, in which case the session it belonged to is closing on
+    // its own -- still worth reporting, because "already gone" and "revoked
+    // just now" are different answers to "is it usable".
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const body = await res.json();
+        detail = body?.msg || body?.error_description || body?.error || detail;
+      } catch { /* 204s and empty bodies */ }
+      throw new Error(detail);
+    }
+    return { skipped: false };
+  };
+
+  return performSignOut(revoke, signOutLocally);
 }
 
 /** Claims, decoded and NOT verified. PostgREST verifies; this only displays. */

@@ -11,11 +11,12 @@
 // look busy: "nothing is waiting" and "you cannot see anything" are completely
 // different states and must never render the same way.
 
-import { getSession, hasSession, signOutLocally, claimsOf } from '/auth.js';
+import { getSession, hasSession, claimsOf } from '/auth.js';
 import {
   isAdmin, reviewQueue, recentlyDecided, approve, reject, markReviewed, AuthExpired,
 } from '/api.js';
-import '/banner.js';   // side effect: names the project when it is not production
+import '/banner.js';
+import '/signout-button.js';   // side effect: names the project when it is not production
 
 const out = () => document.querySelector('#out');
 
@@ -240,7 +241,3 @@ async function boot() {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
-
-document.addEventListener('click', (e) => {
-  if (e.target?.id === 'signout') { signOutLocally(); location.href = '/'; }
-});

@@ -193,10 +193,12 @@ août"* tells a reader more than a week that silently is not there.
 Kept honest rather than aspirational. Each of these is a decision or a known
 gap, not an oversight.
 
-- **No sign-out that revokes.** `signOutLocally()` clears this browser and says
-  so in its own docstring; the session row and its refresh token stay live in
-  the database until they expire. Real revocation is
-  `POST /auth/v1/logout` with the access token in hand.
+- ~~**No sign-out that revokes.**~~ **Closed 2026-09-23.** `POST
+  /auth/v1/logout?scope=global`, with the browser cleared whether or not the
+  server accepts — the reverse ordering leaves someone signed in on the machine
+  in front of them while telling them it failed. Measured: sessions and refresh
+  tokens go to zero, and the access token already issued is still accepted by
+  PostgREST, which is why the message says so.
 - ~~**Dev has no editor.**~~ **Closed 2026-09-23.** The ORIGIN now picks the
   project (`editor/public/target.js`): `editor.nissartango.fr` is production
   and everything else, localhost included, is dev. `npm run dev:editor` serves
@@ -291,9 +293,10 @@ The next items in `AGENTS.md` are public-site work — past-event archive, month
 grouping and type filtering, `/en/` pages — and they touch none of the auth or
 RLS knowledge above. That is a clean seam for a fresh session.
 
-If instead the editor is continued, the one that would change the most is now
-**a revoking sign-out** — `signOutLocally()` still only clears the browser.
-Dev/prod separation was the other, and it landed on 2026-09-23.
+Both of the editor items that were named here as mattering most landed on
+2026-09-23: dev/prod separation, and a revoking sign-out. What is left in the
+editor is smaller — see "Not done here" in `editor/README.md`, which is kept
+honest deliberately.
 
 The method that made all of this work is in `AGENTS.md` — state the expected
 output before running a command, paste raw output rather than summaries, treat a

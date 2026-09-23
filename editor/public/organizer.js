@@ -31,13 +31,14 @@
 // separated on screen and labelled by what happens to them rather than by
 // which column they are.
 
-import { getSession, hasSession, claimsOf, signOutLocally } from '/auth.js';
+import { getSession, hasSession, claimsOf } from '/auth.js';
 import {
   myOrganizers, getOrganizer, updateOrganizer, isAdmin, isOwner, AuthExpired,
 } from '/api.js';
 import { validateOrganizer } from '/validate.js';
 import { consentFor } from '/consent.js';
-import '/banner.js';   // side effect: names the project when it is not production
+import '/banner.js';
+import '/signout-button.js';   // side effect: names the project when it is not production
 
 const out = () => document.querySelector('#out');
 
@@ -375,7 +376,3 @@ async function boot() {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
-
-document.addEventListener('click', (e) => {
-  if (e.target?.id === 'signout') { signOutLocally(); location.href = '/'; }
-});

@@ -20,14 +20,15 @@
 // mistaken for it — it exists so a person is told before a round trip. If it
 // and the database ever disagree, the database is right.
 
-import { getSession, hasSession, claimsOf, signOutLocally } from '/auth.js';
+import { getSession, hasSession, claimsOf } from '/auth.js';
 import {
   myOrganizers, getEvent, createEvent, updateEvent,
   listExceptions, addException, removeException, AuthExpired,
 } from '/api.js';
 import { zonedToInstant, partsInZone } from '/zone.js';
 import { validate } from '/validate.js';
-import '/banner.js';   // side effect: names the project when it is not production
+import '/banner.js';
+import '/signout-button.js';   // side effect: names the project when it is not production
 
 // {value, label}: the VALUE is the database enum and is never translated --
 // events_type_check and events_recurrence_check compare against these exact
@@ -579,7 +580,3 @@ async function boot() {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
-
-document.addEventListener('click', (e) => {
-  if (e.target?.id === 'signout') { signOutLocally(); location.href = '/'; }
-});

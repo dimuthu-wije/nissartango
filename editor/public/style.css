@@ -308,6 +308,20 @@ a.btn { text-decoration: none; display: inline-block; }
 .has-error select,
 .has-error textarea { border-color: var(--bad); }
 
+/* The sign-out result. Not a transient toast: it carries the one thing people
+   get wrong about signing out -- that the access token already issued is still
+   good until it expires -- so it has to stay on screen long enough to read. */
+.signout-note {
+  margin: 0.8rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  border: 1px solid var(--line);
+}
+.signout-note.good { border-color: var(--good); background: var(--good-bg); }
+.signout-note.bad  { border-color: var(--bad);  background: var(--bad-bg); }
+.signout-note a { margin-left: 0.4rem; }
+
 /* Shown only when the editor is NOT pointed at production. Deliberately loud
    and at the very top: its whole job is to be noticed before anything is
    typed. */
