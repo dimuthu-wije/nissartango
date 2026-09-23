@@ -156,37 +156,37 @@ function buildForm(org) {
     if (note) form.appendChild(el('p', note, 'hint'));
   };
 
-  section('Identity');
-  form.appendChild(field('name', 'Name', input('text', { value: org.name ?? '' }),
+  section('Identité');
+  form.appendChild(field('name', 'Nom', input('text', { value: org.name ?? '' }),
     { required: true }));
 
   // Shown, not editable, and the reason is worth one line on screen: `slug` is
   // not in the UPDATE grant, so this is the database's position rather than a
   // UI choice. Every event URL contains it.
   const slug = input('text', { value: org.slug ?? '', disabled: true });
-  form.appendChild(field('slug', 'Slug', slug,
-    { hint: 'Fixed. It is in every link to this organizer, so it cannot move.' }));
+  form.appendChild(field('slug', 'Identifiant d\'URL', slug,
+    { hint: 'Fixe. Il figure dans chaque lien vers cet organisateur, il ne peut donc pas changer.' }));
 
-  section('Links',
-    'Handles, not addresses. Store "nissartango"; the site builds the link.');
-  form.appendChild(field('website', 'Website', input('url', { value: org.website ?? '' }),
-    { hint: 'Full address, starting with https://.' }));
+  section('Liens',
+    'Des identifiants, pas des adresses. Saisissez « nissartango » ; le site construit le lien.');
+  form.appendChild(field('website', 'Site web', input('url', { value: org.website ?? '' }),
+    { hint: 'Adresse complète, commençant par https://.' }));
   for (const [k, label] of [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['tiktok', 'TikTok']]) {
     form.appendChild(field(k, label, input('text', { value: org[k] ?? '' })));
   }
 
-  section('Private contact — never published',
-    'For me to reach you. These are absent from the public view, so they never ' +
-    'reach the built site or the repository, whatever a template does.');
-  form.appendChild(field('email', 'Email (private)', input('email', { value: org.email ?? '' })));
-  form.appendChild(field('phone', 'Phone (private)', input('tel', { value: org.phone ?? '' })));
+  section('Coordonnées privées — jamais publiées',
+    'Pour que je puisse vous joindre. Elles sont absentes de la vue publique : ' +
+    'elles n\'atteignent donc ni le site publié ni le dépôt, quoi que fasse un gabarit.');
+  form.appendChild(field('email', 'E-mail (privé)', input('email', { value: org.email ?? '' })));
+  form.appendChild(field('phone', 'Téléphone (privé)', input('tel', { value: org.phone ?? '' })));
 
-  section('Public contact — published on every one of your events',
-    'These appear on the site as links, and anyone can see them. Leave them ' +
-    'blank if you would rather not publish a way to be contacted.');
+  section('Coordonnées publiques — publiées sur chacun de vos événements',
+    'Elles apparaissent sur le site sous forme de liens, visibles par tout le monde. ' +
+    'Laissez-les vides si vous préférez ne pas publier de moyen de vous contacter.');
 
-  for (const [kind, label, type] of [['email', 'Public email', 'email'],
-                                     ['phone', 'Public phone', 'tel']]) {
+  for (const [kind, label, type] of [['email', 'E-mail public', 'email'],
+                                     ['phone', 'Téléphone public', 'tel']]) {
     const name = `contact_${kind}`;
     const f = field(name, label, input(type, { value: org[name] ?? '' }));
     form.appendChild(f);
@@ -196,10 +196,10 @@ function buildForm(org) {
 
     const cb = input('checkbox');
     cb.checked = !!org[`${name}_consent_at`];
-    const cbWrap = field(`${name}_consented`, 'Publish this, permanently', cb, {
-      hint: 'Publishing is not reversible in the way people expect: pages are ' +
-            'cached, copied and indexed by others. Removing it here removes it ' +
-            'from the site, and not from anywhere it has already been seen.',
+    const cbWrap = field(`${name}_consented`, 'Publier cette information, de façon permanente', cb, {
+      hint: 'La publication n\'est pas réversible comme on l\'imagine : les pages sont ' +
+            'mises en cache, copiées et indexées par d\'autres. La retirer ici la retire ' +
+            'du site, et de nulle part ailleurs où elle a déjà été vue.',
     });
     cbWrap.classList.add('field-check', 'consent');
     form.appendChild(cbWrap);
@@ -213,12 +213,12 @@ async function save(org, status, submit) {
   const problems = validateOrganizer(forValidation(v));
   showErrors(problems);
   if (problems.length) {
-    status.textContent = `${problems.length} thing(s) to fix.`;
+    status.textContent = `${problems.length} point(s) à corriger.`;
     return;
   }
 
   submit.disabled = true;
-  status.textContent = 'Saving…';
+  status.textContent = 'Enregistrement…';
   try {
     const saved = await updateOrganizer(org.id, v);
     if (!saved) {
@@ -226,11 +226,11 @@ async function save(org, status, submit) {
       // return=representation that is what a policy refusal looks like -- not
       // an error. Say what it actually means rather than "saved".
       status.textContent =
-        'Nothing was saved: the database did not accept the change. ' +
-        'Updating an organizer requires being its owner.';
+        'Rien n\'a été enregistré : la base n\'a pas accepté la modification. ' +
+        'Modifier un organisateur demande d\'en être propriétaire.';
       return;
     }
-    status.textContent = 'Saved.';
+    status.textContent = 'Enregistré.';
     // Re-read what the database stored rather than what was sent: the consent
     // stamp may have just been created, and the next save has to preserve it.
     for (const kind of ['email', 'phone']) {
@@ -240,7 +240,7 @@ async function save(org, status, submit) {
     }
   } catch (err) {
     if (err instanceof AuthExpired) return renderExpired();
-    status.textContent = `Refused: ${err.message}`;
+    status.textContent = `Refusé : ${err.message}`;
   } finally {
     submit.disabled = false;
   }
@@ -249,26 +249,26 @@ async function save(org, status, submit) {
 // --- states -----------------------------------------------------------------
 
 function renderSignedOut() {
-  const b = box('idle', 'Not signed in.', 'This page needs a session.');
-  const a = el('a', 'Sign in');
+  const b = box('idle', 'Non connecté.', 'Cette page nécessite une session.');
+  const a = el('a', 'Se connecter');
   a.href = '/';
   b.appendChild(a);
   out().replaceChildren(b);
 }
 
 function renderExpired() {
-  const b = box('bad', 'Your session has expired.',
-    'A refresh was tried and did not work, so signing in again is the only way on.');
-  const a = el('a', 'Sign in');
+  const b = box('bad', 'Votre session a expiré.',
+    'Un rafraîchissement a été tenté sans succès : se reconnecter est le seul moyen de continuer.');
+  const a = el('a', 'Se connecter');
   a.href = '/';
   b.appendChild(a);
   out().replaceChildren(b);
 }
 
 function renderList(organizers) {
-  const b = box('idle', 'Your organizers',
-    'Pick one to edit. Only an owner may save changes; an editor can create ' +
-    'events for an organizer without being able to rename it.');
+  const b = box('idle', 'Vos organisateurs',
+    'Choisissez-en un à modifier. Seul un propriétaire peut enregistrer des ' +
+    'changements ; un éditeur peut créer des événements sans pouvoir renommer l\'organisateur.');
   const ul = el('ul', null, 'list');
   for (const { org, role } of organizers) {
     const li = el('li');
@@ -286,7 +286,7 @@ function renderList(organizers) {
 async function boot() {
   if (!out()) return;
   if (!hasSession()) return renderSignedOut();
-  out().replaceChildren(box('idle', 'Loading…'));
+  out().replaceChildren(box('idle', 'Chargement…'));
 
   let session;
   try { session = await getSession(); } catch { return renderExpired(); }
@@ -302,11 +302,11 @@ async function boot() {
 
     if (!mine.length) {
       const claims = claimsOf(session.access_token);
-      const b = box('bad', 'You are not a member of any organizer.',
-        'There is nothing here to edit. Membership is granted in ' +
-        'organizer_members, and being an admin does not create one.');
+      const b = box('bad', 'Vous n\'êtes membre d\'aucun organisateur.',
+        'Il n\'y a rien à modifier ici. L\'appartenance est accordée dans ' +
+        'organizer_members, et être administrateur n\'en crée pas une.');
       const dl = el('dl');
-      dl.append(el('dt', 'signed in as'), el('dd', claims.email ?? '—'));
+      dl.append(el('dt', 'connecté en tant que'), el('dd', claims.email ?? '—'));
       b.appendChild(dl);
       return out().replaceChildren(b);
     }
@@ -321,20 +321,20 @@ async function boot() {
     ]);
 
     if (!org) {
-      return out().replaceChildren(box('bad', 'That organizer is not visible to you.',
-        'Either it does not exist, or RLS hides it — the database gives the ' +
-        'same answer to both, deliberately.'));
+      return out().replaceChildren(box('bad', 'Cet organisateur ne vous est pas visible.',
+        'Soit il n\'existe pas, soit le RLS le masque — la base donne ' +
+        'délibérément la même réponse aux deux cas.'));
     }
 
     const mayWrite = owner || admin;
-    const wrap = box('idle', `Edit ${org.name}`,
+    const wrap = box('idle', `Modifier ${org.name}`,
       mayWrite
-        ? 'Changes are live as soon as they are saved. Events are not affected.'
+        ? 'Les changements sont en ligne dès l\'enregistrement. Les événements ne sont pas touchés.'
         : null);
 
     const form = buildForm(org);
     const status = el('p', null, 'note');
-    const submit = el('button', 'Save changes', 'btn');
+    const submit = el('button', 'Enregistrer', 'btn');
     submit.type = 'submit';
 
     if (!mayWrite) {
@@ -342,10 +342,10 @@ async function boot() {
       // teaches nothing; this is a membership fact the person can act on.
       submit.disabled = true;
       for (const { control } of fields.values()) control.disabled = true;
-      wrap.appendChild(box('bad', 'You can read this, but not change it.',
-        'organizers_owner_update requires being an OWNER of this organizer. ' +
-        'You are an editor, which lets you create events for it. Ask an owner, ' +
-        'or an admin, to change the details themselves.'));
+      wrap.appendChild(box('bad', 'Vous pouvez consulter, mais pas modifier.',
+        'organizers_owner_update exige d\'être PROPRIÉTAIRE de cet organisateur. ' +
+        'Vous en êtes éditeur, ce qui vous permet de créer des événements. ' +
+        'Demandez à un propriétaire, ou à un administrateur, de modifier ces informations.'));
     }
 
     const actions = el('div', null, 'actions');
@@ -361,14 +361,14 @@ async function boot() {
     const frag = document.createDocumentFragment();
     frag.appendChild(wrap);
     const back = el('p', null, 'note');
-    const a = el('a', '← All your organizers');
+    const a = el('a', '← Tous vos organisateurs');
     a.href = '/organizer/';
     back.appendChild(a);
     frag.appendChild(back);
     out().replaceChildren(frag);
   } catch (err) {
     if (err instanceof AuthExpired) return renderExpired();
-    out().replaceChildren(box('bad', 'The form could not be loaded.', String(err.message)));
+    out().replaceChildren(box('bad', 'Le formulaire n\'a pas pu être chargé.', String(err.message)));
   }
 }
 

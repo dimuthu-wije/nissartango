@@ -6,11 +6,22 @@ review flags, a create/edit form that can also cancel a single date of a
 repeating event, and an organizer form. It is usable end to end — sign in,
 compose, edit, approve, publish.
 
-**It is entirely in English, and every page it edits is in French.** Tolerable
-while the only user is the maintainer. It stops being tolerable the moment an
-organizer signs in — and specifically at `/organizer/`, where the sentence
-beside the consent box is the thing that makes publishing a contact detail an
-informed choice rather than a recorded one.
+**It is in French**, as of 2026-09-23 — labels, hints, validation messages,
+errors thrown from `auth.js` and `api.js`, and the sentence beside the consent
+box at `/organizer/`, which was the point: that sentence is what makes
+publishing a contact detail an informed choice rather than a recorded one.
+
+Code comments stay in English, deliberately. They explain the database to
+whoever is editing the file, they quote constraint and policy names verbatim,
+and they are the same language as `AGENTS.md` and every commit message.
+
+**Database enum values are never translated.** `status`, `type`, `recurrence`
+and `event_exceptions.kind` go to Postgres as they are; only the word on screen
+is French, through a label map in each file with a fallback to the raw value —
+so an enum member added to the database and not to the map shows something true
+rather than nothing. The recurrence wording matches `RECURRENCE_LABELS` in
+`src/lib/occurrences.js`, so the editor and the public site describe the same
+event the same way.
 
 ## Why it exists now, ahead of any editor UI
 

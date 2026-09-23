@@ -63,7 +63,7 @@ export { secondsLeft };
 /** The session is gone and cannot be recovered here. Sign in again. */
 export class AuthExpired extends Error {
   constructor(why) {
-    super(why || 'your session has expired');
+    super(why || 'votre session a expiré');
     this.name = 'AuthExpired';
   }
 }
@@ -113,7 +113,7 @@ export async function requestLink(email) {
   const verifier = newVerifier();
   localStorage.setItem(VERIFIER_KEY, verifier);
   if (localStorage.getItem(VERIFIER_KEY) !== verifier) {
-    throw new Error('this browser is not storing data, so a link could not be completed here');
+    throw new Error('ce navigateur ne stocke pas de données : un lien ne pourrait pas être finalisé ici');
   }
   await api('otp', {
     email,
@@ -139,9 +139,10 @@ export async function exchangeCode(code) {
   const verifier = localStorage.getItem(VERIFIER_KEY);
   if (!verifier) {
     throw new Error(
-      'no sign-in was started in this browser. A PKCE link can only be ' +
-      'completed where it was requested, which is what stops anything else ' +
-      'from spending it -- open the sign-in page here and request a new one.',
+      'aucune connexion n\'a été engagée dans ce navigateur. Un lien PKCE ne peut ' +
+      'être finalisé que là où il a été demandé — c\'est précisément ce qui empêche ' +
+      'quoi que ce soit d\'autre de le consommer. Ouvrez la page de connexion ici ' +
+      'et demandez-en un nouveau.',
     );
   }
   const session = await api('token', { auth_code: code, code_verifier: verifier }, '?grant_type=pkce');
@@ -194,7 +195,7 @@ export function refreshSession() {
   if (inFlight) return inFlight;
   inFlight = (async () => {
     const s = readStored();
-    if (!s?.refresh_token) throw new AuthExpired('no refresh token in this browser');
+    if (!s?.refresh_token) throw new AuthExpired('aucun jeton de rafraîchissement dans ce navigateur');
     let fresh;
     try {
       fresh = await api('token', { refresh_token: s.refresh_token }, '?grant_type=refresh_token');
@@ -219,7 +220,7 @@ export function refreshSession() {
  */
 export async function getSession() {
   const s = readStored();
-  if (!s) throw new AuthExpired('not signed in');
+  if (!s) throw new AuthExpired('non connecté');
   if (!needsRefresh(s)) return s;
   return refreshSession();
 }

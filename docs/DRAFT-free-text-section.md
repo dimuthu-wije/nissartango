@@ -47,12 +47,12 @@ on 2026-09-22.
 > present — so the rule survives a form that forgets it. (`public.organizers`
 > still has private `email` and `phone`; they never moved and are not these.)
 >
-> The form followed on 2026-09-23: `/organizer/` edits both fields with a
-> consent box beside each. So one half remains — **nobody has been told, in
-> French, what publishing means.** The box does say it, in English, because the
-> whole editor is in English while everything it edits is in French. The column
-> records that consent was given; only the wording makes it informed, and that
-> is the half that decides whether any of this was worth doing.
+> The form followed on 2026-09-23 — `/organizer/` edits both fields with a
+> consent box beside each — and the editor was translated to French the same
+> day, so the sentence that makes the consent informed is in the language of
+> the people giving it. **Both halves of this bullet are closed.** What is not
+> yet done is telling people at SIGN-UP, which does not exist: accounts are
+> created by hand, so there is no sign-up to put it on.
 
 ---
 

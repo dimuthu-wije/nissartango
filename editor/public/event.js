@@ -28,8 +28,26 @@ import {
 import { zonedToInstant, partsInZone } from '/zone.js';
 import { validate } from '/validate.js';
 
-const TYPES = ['cours', 'practica', 'milonga', 'stage', 'demo', 'festival'];
-const RECURRENCES = ['none', 'weekly', 'biweekly', 'monthly'];
+// {value, label}: the VALUE is the database enum and is never translated --
+// events_type_check and events_recurrence_check compare against these exact
+// strings. Only the word on screen is French. The recurrence wording matches
+// RECURRENCE_LABELS in src/lib/occurrences.js, so the editor and the site say
+// the same thing about the same event; 'none' has no label there because the
+// site never prints one for a single date.
+const TYPES = [
+  { value: 'cours', label: 'Cours' },
+  { value: 'practica', label: 'Practica' },
+  { value: 'milonga', label: 'Milonga' },
+  { value: 'stage', label: 'Stage' },
+  { value: 'demo', label: 'Démonstration' },
+  { value: 'festival', label: 'Festival' },
+];
+const RECURRENCES = [
+  { value: 'none', label: 'Une seule date' },
+  { value: 'weekly', label: 'Chaque semaine' },
+  { value: 'biweekly', label: 'Toutes les deux semaines' },
+  { value: 'monthly', label: 'Chaque mois' },
+];
 
 // A short list, not every zone the database accepts. `events_validate` checks
 // against pg_timezone_names, so anything here is valid; the point of a short
@@ -39,6 +57,16 @@ const TIMEZONES = [
   'Europe/Paris', 'Europe/London', 'Europe/Madrid', 'Europe/Rome',
   'Europe/Berlin', 'Europe/Lisbon', 'America/Argentina/Buenos_Aires', 'UTC',
 ];
+
+// Exception kinds, shown in French. The VALUE goes to the database --
+// event_exceptions.kind is an enum of exactly these two -- so only the label
+// changes, and the row's tag class still keys off the raw value.
+const EXCEPTION_KINDS = { cancelled: 'annulée', moved: 'déplacée' };
+
+// Same map as queue.js. The VALUE is the database enum; only the word changes.
+const STATUS_LABELS = {
+  pending: 'en attente', approved: 'approuvé', rejected: 'rejeté',
+};
 
 const out = () => document.querySelector('#out');
 const pad = (n) => String(n).padStart(2, '0');
@@ -195,66 +223,66 @@ function buildForm(organizers, existing) {
     form.appendChild(el('h3', title, 'section'));
   };
 
-  section('What and who');
-  form.appendChild(field('organizer_id', 'Organizer',
+  section('Quoi et qui');
+  form.appendChild(field('organizer_id', 'Organisateur',
     selectOf(organizers.map((o) => ({ value: o.id, label: o.name })), existing?.organizer_id),
     { required: true, hint: organizers.length === 1
-      ? 'The only organizer you may create events for.'
-      : 'Only organizers you are a member of are listed — the database refuses the rest.' }));
-  form.appendChild(field('title', 'Title',
+      ? 'Le seul organisateur pour lequel vous pouvez créer des événements.'
+      : 'Seuls les organisateurs dont vous êtes membre sont listés : la base refuse les autres.' }));
+  form.appendChild(field('title', 'Titre',
     input('text', { value: existing?.title ?? '', maxLength: 200 }), { required: true }));
   form.appendChild(field('type', 'Type', selectOf(TYPES, existing?.type ?? 'milonga'),
     { required: true }));
 
-  section('When');
-  form.appendChild(field('starts_at', 'Starts',
+  section('Quand');
+  form.appendChild(field('starts_at', 'Début',
     input('datetime-local', { value: instantToInput(existing?.starts_at, tz) }),
-    { required: true, hint: 'Wall-clock time in the timezone below.' }));
-  form.appendChild(field('timezone', 'Timezone',
+    { required: true, hint: 'Heure locale, dans le fuseau horaire ci-dessous.' }));
+  form.appendChild(field('timezone', 'Fuseau horaire',
     selectOf(TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES], tz),
     { required: true }));
-  form.appendChild(field('duration_minutes', 'Duration (minutes)',
+  form.appendChild(field('duration_minutes', 'Durée (minutes)',
     input('number', { value: existing?.duration_minutes ?? '', min: 1, max: 10080, step: 1 }),
-    { hint: 'Optional. A series has one shape and many occurrences, so there is no end time.' }));
-  form.appendChild(field('recurrence', 'Repeats',
+    { hint: 'Facultatif. Une série a une seule forme et plusieurs occurrences : il n\'y a donc pas d\'heure de fin.' }));
+  form.appendChild(field('recurrence', 'Récurrence',
     selectOf(RECURRENCES, existing?.recurrence ?? 'none')));
-  form.appendChild(field('recurrence_end', 'Repeats until',
+  form.appendChild(field('recurrence_end', 'Jusqu\'au',
     input('date', { value: existing?.recurrence_end ?? '' }),
-    { hint: 'Only for a repeating event, and not before the first one.' }));
+    { hint: 'Uniquement pour un événement récurrent, et pas avant la première occurrence.' }));
 
-  section('Where');
-  form.appendChild(field('location_name', 'Venue',
+  section('Où');
+  form.appendChild(field('location_name', 'Lieu',
     input('text', { value: existing?.location_name ?? '' })));
-  form.appendChild(field('location_address', 'Address',
+  form.appendChild(field('location_address', 'Adresse',
     input('text', { value: existing?.location_address ?? '' })));
-  form.appendChild(field('location_postal_code', 'Postal code',
+  form.appendChild(field('location_postal_code', 'Code postal',
     input('text', { value: existing?.location_postal_code ?? '', inputMode: 'numeric', maxLength: 5 }),
-    { hint: 'Five digits.' }));
-  form.appendChild(field('city', 'City',
+    { hint: 'Cinq chiffres.' }));
+  form.appendChild(field('city', 'Ville',
     input('text', { value: existing?.city ?? 'Nice' }), { required: true }));
 
-  section('Details');
-  form.appendChild(field('teachers', 'Teachers',
+  section('Détails');
+  form.appendChild(field('teachers', 'Professeurs',
     input('text', { value: (existing?.teachers ?? []).join(', ') }),
-    { hint: 'Separated by commas.' }));
-  form.appendChild(field('price_full', 'Price',
+    { hint: 'Séparés par des virgules.' }));
+  form.appendChild(field('price_full', 'Tarif',
     input('number', { value: existing?.price_full ?? '', min: 0, step: '0.01' })));
-  form.appendChild(field('price_member', 'Price, members',
+  form.appendChild(field('price_member', 'Tarif adhérent',
     input('number', { value: existing?.price_member ?? '', min: 0, step: '0.01' })));
-  form.appendChild(field('price_note', 'Price note',
+  form.appendChild(field('price_note', 'Note sur le tarif',
     input('text', { value: existing?.price_note ?? '' }),
-    { hint: 'For what a number cannot say — "participation libre".' }));
-  form.appendChild(field('signup_url', 'Signup link',
+    { hint: 'Pour ce qu\'un chiffre ne dit pas — « participation libre ».' }));
+  form.appendChild(field('signup_url', 'Lien d\'inscription',
     input('url', { value: existing?.signup_url ?? '' }), { hint: 'http:// or https://' }));
-  form.appendChild(field('image_path', 'Image path',
+  form.appendChild(field('image_path', 'Chemin de l\'image',
     input('text', { value: existing?.image_path ?? '' }),
-    { hint: 'A path in Supabase Storage. Nothing serves these yet — see AGENTS.md.' }));
+    { hint: 'Un chemin dans Supabase Storage. Rien ne les sert encore — voir AGENTS.md.' }));
   const body = el('textarea');
   body.rows = 5;
   body.value = existing?.body ?? '';
   form.appendChild(field('body', 'Description', body));
 
-  section('Cancel the whole event');
+  section('Annuler tout l\'événement');
   // A CHECKBOX, not a date. cancelled_at is lifecycle state stored as a
   // timestamp: the site only ever asks Boolean(cancelled_at), so the hour is
   // never read by anything. Offering a datetime picker invited a precision
@@ -265,19 +293,19 @@ function buildForm(organizers, existing) {
   // To cancel ONE DATE of a repeating event, use Exceptions below instead.
   const cancelBox = input('checkbox');
   cancelBox.checked = Boolean(existing?.cancelled_at);
-  const cancelWrap = field('cancelled_at', 'This event is cancelled', cancelBox, {
+  const cancelWrap = field('cancelled_at', 'Cet événement est annulé', cancelBox, {
     hint: existing?.cancelled_at
-      ? `Cancelled on ${instantToInput(existing.cancelled_at, tz).replace('T', ' ')}. ` +
-        'Untick to un-cancel. The page stays either way and says Annulé.'
-      : 'The whole event, every date. It keeps its page and says Annulé. ' +
-        'For a single date of a repeating event, use Exceptions below.',
+      ? `Annulé le ${instantToInput(existing.cancelled_at, tz).replace('T', ' ')}. ` +
+        'Décochez pour rétablir. La page reste dans les deux cas et affiche Annulé.'
+      : 'L\'événement entier, toutes ses dates. Il garde sa page et affiche Annulé. ' +
+        'Pour une seule date d\'un événement récurrent, utilisez les Exceptions ci-dessous.',
   });
   cancelWrap.classList.add('field-check');
   fields.get('cancelled_at').wasCancelledAt = existing?.cancelled_at ?? null;
   form.appendChild(cancelWrap);
-  form.appendChild(field('cancellation_note', 'Why',
+  form.appendChild(field('cancellation_note', 'Motif',
     input('text', { value: existing?.cancellation_note ?? '' }),
-    { hint: 'Shown to readers. Needs the box above ticked.' }));
+    { hint: 'Affiché aux lecteurs. Nécessite la case ci-dessus cochée.' }));
 
   // Recurrence end only makes sense for a series. Disabled rather than hidden,
   // so the rule is visible instead of the control mysteriously not existing.
@@ -298,7 +326,7 @@ async function save(existing, statusEl, submitEl) {
   const problems = validate(v);
   showErrors(problems);
   if (problems.length) {
-    statusEl.textContent = `${problems.length} thing${problems.length > 1 ? 's' : ''} to fix.`;
+    statusEl.textContent = `${problems.length} point${problems.length > 1 ? 's' : ''} à corriger.`;
     return;
   }
 
@@ -314,7 +342,7 @@ async function save(existing, statusEl, submitEl) {
     submitEl.disabled = false;
     // The database's own words. A CHECK constraint or a trigger naming the
     // rule is more useful than anything this page could paraphrase.
-    statusEl.textContent = `Refused: ${err.message}`;
+    statusEl.textContent = `Refusé : ${err.message}`;
   }
 }
 
@@ -324,21 +352,21 @@ function renderSaved(row, created) {
   const add = (k, v2) => { dl.append(el('dt', k), el('dd', String(v2 ?? '—'))); };
   add('title', row?.title);
   add('slug', row?.slug);
-  add('status', row?.status);
-  add('needs review', row?.needs_review ? 'yes' : 'no');
+  add('statut', STATUS_LABELS[row?.status] ?? row?.status);
+  add('à revoir', row?.needs_review ? 'oui' : 'non');
   b.appendChild(dl);
 
   b.appendChild(el('p',
     created
-      ? 'Created as PENDING — the insert policy allows nothing else, for anyone. ' +
-        'It is not on the site until it is approved in the queue.'
+      ? 'Créé EN ATTENTE — la politique d\'insertion n\'autorise rien d\'autre, pour personne. ' +
+        'Il n\'est pas sur le site tant qu\'il n\'est pas approuvé dans la file d\'attente.'
       : row?.status === 'approved' && row?.needs_review
-        ? 'Still published, and flagged for review: editing a live event does not ' +
-          'take it off the site, it puts it in the queue.'
-        : 'Saved.',
+        ? 'Toujours publié, et signalé à revoir : modifier un événement en ligne ne le ' +
+          'retire pas du site, cela le place dans la file d\'attente.'
+        : 'Enregistré.',
     'note'));
 
-  const queue = el('a', 'Open the queue');
+  const queue = el('a', 'Ouvrir la file d\'attente');
   queue.href = '/queue/';
   queue.className = 'btn';
   const again = el('a', 'Add another');
@@ -352,14 +380,14 @@ function renderSaved(row, created) {
 }
 
 function renderExpired() {
-  const b = box('bad', 'Your session has expired.', 'Sign in again to carry on.');
-  const a = el('a', 'Go to sign-in'); a.href = '/'; a.className = 'btn';
+  const b = box('bad', 'Votre session a expiré.', 'Reconnectez-vous pour continuer.');
+  const a = el('a', 'Aller à la connexion'); a.href = '/'; a.className = 'btn';
   b.appendChild(a);
   out().replaceChildren(b);
 }
 
 function renderSignedOut() {
-  const b = box('idle', 'Not signed in.', 'Only a member of an organizer may add events.');
+  const b = box('idle', 'Non connecté.', 'Seul un membre d\'un organisateur peut ajouter des événements.');
   const a = el('a', 'Sign in'); a.href = '/'; a.className = 'btn';
   b.appendChild(a);
   out().replaceChildren(b);
@@ -377,9 +405,9 @@ function renderSignedOut() {
  */
 function exceptionsSection(eventId, tz) {
   const b = box('idle', 'Exceptions',
-    'A single date of a repeating event. Cancelled dates are still SHOWN on ' +
-    'the site, marked — a reader is better served by "pas de practica le 15 ' +
-    'août" than by a week that silently is not there.');
+    'Une seule date d\'un événement récurrent. Les dates annulées restent AFFICHÉES ' +
+    'sur le site, signalées — « pas de practica le 15 août » rend plus service ' +
+    'à un lecteur qu\'une semaine qui disparaît en silence.');
 
   const list = el('div', null, 'ex-list');
   const status = el('p', null, 'note');
@@ -390,24 +418,24 @@ function exceptionsSection(eventId, tz) {
     try { rows = await listExceptions(eventId); }
     catch (err) {
       if (err instanceof AuthExpired) return renderExpired();
-      list.replaceChildren(el('p', `Could not load: ${err.message}`, 'field-error'));
+      list.replaceChildren(el('p', `Chargement impossible : ${err.message}`, 'field-error'));
       return;
     }
     list.replaceChildren();
     if (!rows.length) {
-      list.appendChild(el('p', 'No exceptions. Every occurrence happens as scheduled.', 'note'));
+      list.appendChild(el('p', 'Aucune exception. Chaque occurrence a lieu comme prévu.', 'note'));
       return;
     }
     for (const x of rows) {
       const row = el('div', null, 'ex-row');
       row.appendChild(el('span', x.occurrence_date, 'ex-date'));
-      row.appendChild(el('span', x.kind,
+      row.appendChild(el('span', EXCEPTION_KINDS[x.kind] ?? x.kind,
         `tag tag-${x.kind === 'cancelled' ? 'rejected' : 'pending'}`));
       if (x.kind === 'moved' && x.moved_starts_at) {
         row.appendChild(el('span', `→ ${instantToInput(x.moved_starts_at, tz).replace('T', ' ')}`, 'muted'));
       }
       if (x.note) row.appendChild(el('span', x.note, 'muted'));
-      const rm = el('button', 'Remove', 'btn btn-quiet');
+      const rm = el('button', 'Supprimer', 'btn btn-quiet');
       rm.type = 'button';
       rm.addEventListener('click', async () => {
         rm.disabled = true;
@@ -416,7 +444,7 @@ function exceptionsSection(eventId, tz) {
         catch (err) {
           if (err instanceof AuthExpired) return renderExpired();
           rm.disabled = false;
-          status.textContent = `Failed: ${err.message}`;
+          status.textContent = `Échec : ${err.message}`;
         }
       });
       row.appendChild(rm);
@@ -427,23 +455,24 @@ function exceptionsSection(eventId, tz) {
   // --- add one -------------------------------------------------------------
   const add = el('div', null, 'ex-add');
   const date = input('date');
-  const kind = selectOf(['cancelled', 'moved']);
-  const note = input('text', { placeholder: 'Reason, shown to readers (optional)' });
+  const kind = selectOf([{ value: 'cancelled', label: 'annulée' },
+                         { value: 'moved', label: 'déplacée' }]);
+  const note = input('text', { placeholder: 'Motif, affiché aux lecteurs (facultatif)' });
   const moved = input('datetime-local');
   const movedWrap = el('div', null, 'field');
-  movedWrap.append(Object.assign(el('label', 'Moved to'), { htmlFor: 'ex-moved' }), moved);
+  movedWrap.append(Object.assign(el('label', 'Déplacée au'), { htmlFor: 'ex-moved' }), moved);
   moved.id = 'ex-moved';
 
   const syncKind = () => { movedWrap.hidden = kind.value !== 'moved'; };
   kind.addEventListener('change', syncKind);
   syncKind();
 
-  const addBtn = el('button', 'Add exception', 'btn btn-quiet');
+  const addBtn = el('button', 'Ajouter une exception', 'btn btn-quiet');
   addBtn.type = 'button';
   addBtn.addEventListener('click', async () => {
-    if (!date.value) { status.textContent = 'Pick a date.'; date.focus(); return; }
+    if (!date.value) { status.textContent = 'Choisissez une date.'; date.focus(); return; }
     if (kind.value === 'moved' && !moved.value) {
-      status.textContent = 'A moved occurrence needs a new date and time.';
+      status.textContent = 'Une occurrence déplacée a besoin d\'une nouvelle date et heure.';
       moved.focus();
       return;
     }
@@ -462,7 +491,7 @@ function exceptionsSection(eventId, tz) {
       await refresh();
     } catch (err) {
       if (err instanceof AuthExpired) return renderExpired();
-      status.textContent = `Refused: ${err.message}`;
+      status.textContent = `Refusé : ${err.message}`;
     } finally {
       addBtn.disabled = false;
     }
@@ -477,7 +506,7 @@ function exceptionsSection(eventId, tz) {
 async function boot() {
   if (!out()) return;
   if (!hasSession()) return renderSignedOut();
-  out().replaceChildren(box('idle', 'Loading…'));
+  out().replaceChildren(box('idle', 'Chargement…'));
 
   let session;
   try { session = await getSession(); } catch { return renderExpired(); }
@@ -499,30 +528,30 @@ async function boot() {
       // Signed in and a member of nothing. Say exactly that: it is a
       // membership problem, and signing in again cannot fix it.
       const claims = claimsOf(session.access_token);
-      const b = box('bad', 'You are not a member of any organizer.',
-        'Creating an event requires is_member(organizer_id), and being an admin ' +
-        'does not substitute for it — there is no admin insert policy.');
+      const b = box('bad', 'Vous n\'êtes membre d\'aucun organisateur.',
+        'Créer un événement exige is_member(organizer_id), et être administrateur ' +
+        'ne remplace pas cela : il n\'existe pas de politique d\'insertion pour l\'admin.');
       const dl = el('dl');
-      dl.append(el('dt', 'signed in as'), el('dd', claims.email ?? '—'));
+      dl.append(el('dt', 'connecté en tant que'), el('dd', claims.email ?? '—'));
       b.appendChild(dl);
       return out().replaceChildren(b);
     }
 
     if (id && !existing) {
-      return out().replaceChildren(box('bad', 'That event is not visible to you.',
-        'Either it does not exist, or RLS hides it — those are the same answer ' +
-        'from the database, deliberately, so this page cannot be used to probe ' +
-        'which events exist.'));
+      return out().replaceChildren(box('bad', 'Cet événement ne vous est pas visible.',
+        'Soit il n\'existe pas, soit le RLS le masque — la base donne délibérément ' +
+        'la même réponse aux deux, pour que cette page ne serve pas à deviner ' +
+        'quels événements existent.'));
     }
 
-    const wrap = box('idle', existing ? 'Edit event' : 'New event',
+    const wrap = box('idle', existing ? 'Modifier l\'événement' : 'Nouvel événement',
       existing
-        ? 'Changes to a published event keep it live and put it in the queue.'
-        : 'Created as pending. The queue is what publishes it.');
+        ? 'Modifier un événement publié le laisse en ligne et le place dans la file d\'attente.'
+        : 'Créé en attente. C\'est la file d\'attente qui le publie.');
 
     const form = buildForm(organizers, existing);
     const status = el('p', null, 'note');
-    const submit = el('button', existing ? 'Save changes' : 'Create event', 'btn');
+    const submit = el('button', existing ? 'Enregistrer' : 'Créer l\'événement', 'btn');
     submit.type = 'submit';
     const actions = el('div', null, 'actions');
     actions.appendChild(submit);
@@ -542,7 +571,7 @@ async function boot() {
     out().replaceChildren(frag);
   } catch (err) {
     if (err instanceof AuthExpired) return renderExpired();
-    const b = box('bad', 'The form could not be loaded.', String(err.message));
+    const b = box('bad', 'Le formulaire n\'a pas pu être chargé.', String(err.message));
     out().replaceChildren(b);
   }
 }

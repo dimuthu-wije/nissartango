@@ -71,7 +71,7 @@ async function send(build) {
   if (res.status === 401) {
     res = await build(await refreshSession());   // throws AuthExpired if it cannot
     if (res.status === 401) {
-      throw new AuthExpired('the server rejected a freshly refreshed token');
+      throw new AuthExpired('le serveur a refusé un jeton pourtant fraîchement rafraîchi');
     }
   }
   return handle(res);
@@ -124,7 +124,7 @@ export const approve = (id, note) => rpc('approve_event', { p_event: id, p_note:
  * between a disabled button and a round trip that fails.
  */
 export const reject = (id, note) => {
-  if (!note || !note.trim()) throw new Error('a rejection needs a reason');
+  if (!note || !note.trim()) throw new Error('un rejet exige un motif');
   return rpc('reject_event', { p_event: id, p_note: note.trim() });
 };
 

@@ -28,39 +28,39 @@
  */
 export function validate(v) {
   const p = [];
-  if (!v.organizer_id) p.push(['organizer_id', 'Choose an organizer.']);
-  if (!v.title) p.push(['title', 'A title is required — the database refuses a blank one.']);
-  if (!v.city) p.push(['city', 'A city is required.']);
-  if (!v.starts_at_local) p.push(['starts_at', 'A start date and time are required.']);
+  if (!v.organizer_id) p.push(['organizer_id', 'Choisissez un organisateur.']);
+  if (!v.title) p.push(['title', 'Un titre est obligatoire : la base refuse un titre vide.']);
+  if (!v.city) p.push(['city', 'La ville est obligatoire.']);
+  if (!v.starts_at_local) p.push(['starts_at', 'La date et l\'heure de début sont obligatoires.']);
 
   if (v.duration_minutes != null) {
     if (!Number.isInteger(v.duration_minutes) || v.duration_minutes <= 0 || v.duration_minutes > 10080) {
-      p.push(['duration_minutes', 'Between 1 and 10080 minutes (one week), or leave it blank.']);
+      p.push(['duration_minutes', 'Entre 1 et 10080 minutes (une semaine), ou laissez vide.']);
     }
   }
   if (v.location_postal_code && !/^[0-9]{5}$/.test(v.location_postal_code)) {
-    p.push(['location_postal_code', 'Exactly five digits, or leave it blank.']);
+    p.push(['location_postal_code', 'Exactement cinq chiffres, ou laissez vide.']);
   }
   if (v.signup_url && !/^https?:\/\//.test(v.signup_url)) {
-    p.push(['signup_url', 'Must start with http:// or https://.']);
+    p.push(['signup_url', 'Doit commencer par http:// ou https://.']);
   }
   for (const k of ['price_full', 'price_member']) {
     if (v[k] != null && (Number.isNaN(v[k]) || v[k] < 0)) {
-      p.push([k, 'Zero or more, or leave it blank.']);
+      p.push([k, 'Zéro ou plus, ou laissez vide.']);
     }
   }
   if (v.recurrence === 'none' && v.recurrence_end) {
-    p.push(['recurrence_end', 'Only a repeating event can have an end date.']);
+    p.push(['recurrence_end', 'Seul un événement récurrent peut avoir une date de fin.']);
   }
   // Compared as DATES in the event's own timezone, which is what the trigger
   // does: (starts_at at time zone timezone)::date. Comparing instants instead
   // would reject a valid same-day end for any event after 01:00 CET.
   if (v.recurrence !== 'none' && v.recurrence_end && v.starts_at_date &&
       v.recurrence_end < v.starts_at_date) {
-    p.push(['recurrence_end', `Before the first occurrence (${v.starts_at_date}).`]);
+    p.push(['recurrence_end', `Antérieure à la première occurrence (${v.starts_at_date}).`]);
   }
   if (v.cancellation_note && !v.cancelled_at_local) {
-    p.push(['cancellation_note', 'Tick "This event is cancelled" above, or clear this.']);
+    p.push(['cancellation_note', 'Cochez « Cet événement est annulé » ci-dessus, ou videz ce champ.']);
   }
   return p;
 }
@@ -92,9 +92,9 @@ export function validate(v) {
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const HANDLE = {
-  instagram: [/^[A-Za-z0-9._]{1,40}$/, 'Letters, numbers, dots and underscores, up to 40.'],
-  facebook: [/^[A-Za-z0-9._-]{1,60}$/, 'Letters, numbers, dots, underscores and hyphens, up to 60.'],
-  tiktok: [/^[A-Za-z0-9._]{1,40}$/, 'Letters, numbers, dots and underscores, up to 40.'],
+  instagram: [/^[A-Za-z0-9._]{1,40}$/, 'Lettres, chiffres, points et tirets bas, 40 caractères maximum.'],
+  facebook: [/^[A-Za-z0-9._-]{1,60}$/, 'Lettres, chiffres, points, tirets bas et traits d\'union, 60 caractères maximum.'],
+  tiktok: [/^[A-Za-z0-9._]{1,40}$/, 'Lettres, chiffres, points et tirets bas, 40 caractères maximum.'],
 };
 
 /**
@@ -103,10 +103,10 @@ const HANDLE = {
  */
 export function validateOrganizer(v) {
   const p = [];
-  if (!v.name) p.push(['name', 'A name is required — the database refuses a blank one.']);
+  if (!v.name) p.push(['name', 'Le nom est obligatoire : la base refuse un nom vide.']);
 
   if (v.website && !/^https?:\/\//.test(v.website)) {
-    p.push(['website', 'Must start with http:// or https://.']);
+    p.push(['website', 'Doit commencer par http:// ou https://.']);
   }
 
   // The handles are stored as HANDLES, never URLs, so that the template can
@@ -116,15 +116,15 @@ export function validateOrganizer(v) {
   for (const [k, [re, message]] of Object.entries(HANDLE)) {
     if (!v[k]) continue;
     if (/^https?:\/\/|\//.test(v[k])) {
-      p.push([k, 'A handle, not a link — "nissartango", not "https://instagram.com/nissartango".']);
+      p.push([k, 'Un identifiant, pas un lien : « nissartango », pas « https://instagram.com/nissartango ».']);
     } else if (!re.test(v[k])) {
       p.push([k, message]);
     }
   }
 
-  if (v.email && !EMAIL.test(v.email)) p.push(['email', 'Does not look like an address.']);
+  if (v.email && !EMAIL.test(v.email)) p.push(['email', 'Ne ressemble pas à une adresse e-mail.']);
   if (v.contact_email && !EMAIL.test(v.contact_email)) {
-    p.push(['contact_email', 'Does not look like an address.']);
+    p.push(['contact_email', 'Ne ressemble pas à une adresse e-mail.']);
   }
 
   // The consent half. The database refuses a published value without one, so
@@ -136,10 +136,10 @@ export function validateOrganizer(v) {
     const consent = v[`contact_${kind}_consented`];
     if (value && !consent) {
       p.push([`contact_${kind}`,
-        'Tick the box below to confirm this may be published, or clear the field.']);
+        'Cochez la case ci-dessous pour confirmer la publication, ou videz le champ.']);
     }
     if (!value && consent && !v[`contact_${kind}_was_consented`]) {
-      p.push([`contact_${kind}`, 'Nothing to publish — fill this in, or untick the box.']);
+      p.push([`contact_${kind}`, 'Rien à publier : remplissez ce champ, ou décochez la case.']);
     }
   }
   return p;

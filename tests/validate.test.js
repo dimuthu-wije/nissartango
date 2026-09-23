@@ -166,7 +166,7 @@ test('organizer: a social HANDLE is not a URL', () => {
   for (const k of ['instagram', 'facebook', 'tiktok']) {
     const p = validateOrganizer(org({ [k]: `https://${k}.com/nissartango` }));
     assert.deepEqual(p.map(([f]) => f), [k], k);
-    assert.match(p[0][1], /handle, not a link/i, k);
+    assert.match(p[0][1], /identifiant, pas un lien/i, k);
   }
   assert.deepEqual(validateOrganizer(org({ instagram: 'nissartango' })), []);
 });

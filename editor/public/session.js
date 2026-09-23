@@ -58,9 +58,9 @@ function cleanUrl() {
 function showSession(session, how) {
   let claims;
   try { claims = claimsOf(session.access_token); }
-  catch (e) { return showError('A token arrived but could not be read.', String(e.message)); }
+  catch (e) { return showError('Un jeton est arrivé mais n\'a pas pu être lu.', String(e.message)); }
 
-  const b = box('good', 'Signed in.');
+  const b = box('good', 'Connecté.');
   rows(b, [
     ['user id (sub)', claims.sub],
     ['email', claims.email],
@@ -73,35 +73,36 @@ function showSession(session, how) {
   const note = el('p', null, 'note');
   note.textContent =
     how === 'pkce'
-      ? 'PKCE: the link carried a code that was useless without the verifier ' +
-        'stored in this browser. Anything that fetched the link before you — a ' +
-        'preloading browser, a mail scanner — could not have completed it. The ' +
-        'access token is not shown; it is a bearer credential. These claims are ' +
-        'decoded, NOT verified — PostgREST decides that, on every request.'
-      : 'Implicit flow: the link itself was the credential, so anything that ' +
-        'fetched it first would have spent it. That is what happened on ' +
-        '2026-09-19 at 11:13. Prefer the sign-in form on this site, which uses ' +
-        'PKCE. The access token is not shown, and these claims are decoded, ' +
-        'NOT verified.';
+      ? 'PKCE : le lien portait un code inutilisable sans le vérificateur stocké ' +
+        'dans ce navigateur. Tout ce qui aurait chargé le lien avant vous — un ' +
+        'navigateur qui précharge, un scanner de courrier — n\'aurait pas pu le ' +
+        'finaliser. Le jeton d\'accès n\'est pas affiché : c\'est une information ' +
+        'de porteur. Ces revendications sont décodées, PAS vérifiées — c\'est ' +
+        'PostgREST qui en décide, à chaque requête.'
+      : 'Flux implicite : le lien était lui-même l\'identifiant, donc tout ce qui ' +
+        'l\'aurait chargé en premier l\'aurait consommé. C\'est ce qui s\'est passé ' +
+        'le 2026-09-19 à 11:13. Préférez le formulaire de connexion de ce site, ' +
+        'qui utilise PKCE. Le jeton d\'accès n\'est pas affiché, et ces ' +
+        'revendications sont décodées, PAS vérifiées.';
   b.appendChild(note);
 
   const links = el('div', null, 'actions');
-  const queue = el('a', 'Open the approval queue', 'btn');
+  const queue = el('a', 'Ouvrir la file d\'attente', 'btn');
   queue.href = '/queue/';
-  const add = el('a', 'Add an event', 'btn btn-quiet');
+  const add = el('a', 'Ajouter un événement', 'btn btn-quiet');
   add.href = '/event/';
   links.append(queue, add);
   b.appendChild(links);
 
-  const signOut = el('button', 'Sign out of this browser');
+  const signOut = el('button', 'Se déconnecter de ce navigateur');
   signOut.className = 'btn';
   signOut.addEventListener('click', () => { signOutLocally(); location.href = '/'; });
   b.appendChild(signOut);
 
   const caveat = el('p', null, 'note');
   caveat.textContent =
-    'Signing out clears this browser only. It does not revoke the session in ' +
-    'the database, and the refresh token stays live until it is used or expires.';
+    'Se déconnecter ne vide que ce navigateur. La session n\'est pas révoquée dans ' +
+    'la base, et le jeton de rafraîchissement reste actif jusqu\'à son utilisation ou son expiration.';
   b.appendChild(caveat);
 }
 
@@ -112,7 +113,7 @@ function showError(title, detail, extra = []) {
 }
 
 function showForm(message) {
-  const b = box('idle', 'Sign in', message || 'Enter your email and a sign-in link will be sent.');
+  const b = box('idle', 'Sign in', message || 'Saisissez votre e-mail : un lien de connexion vous sera envoyé.');
   const form = el('form');
   form.className = 'signin';
 
@@ -121,7 +122,7 @@ function showForm(message) {
   const input = el('input');
   Object.assign(input, { type: 'email', id: 'email', name: 'email', required: true, autocomplete: 'email' });
   input.placeholder = 'vous@example.org';
-  const submit = el('button', 'Send me a link');
+  const submit = el('button', 'Envoyez-moi un lien');
   submit.type = 'submit';
   submit.className = 'btn';
 
@@ -130,31 +131,31 @@ function showForm(message) {
 
   const note = el('p', null, 'note');
   note.textContent =
-    'No account is created from this form — only an address that already has ' +
-    'one will receive anything, and an address without one is told nothing, ' +
-    'so this page cannot be used to discover who has an account. Mail is sent ' +
-    'from no-reply@nissartango.fr; if nothing arrives, check spam before ' +
-    'asking for another.';
+    'Ce formulaire ne crée aucun compte — seule une adresse qui en possède déjà ' +
+    'un recevra quelque chose, et une adresse sans compte ne reçoit aucune ' +
+    'indication : cette page ne permet donc pas de découvrir qui a un compte. ' +
+    'Les messages partent de no-reply@nissartango.fr ; si rien n\'arrive, ' +
+    'vérifiez les indésirables avant d\'en redemander un.';
   b.appendChild(note);
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submit.disabled = true;
-    submit.textContent = 'Sending…';
+    submit.textContent = 'Envoi…';
     try {
       await requestLink(input.value.trim());
-      const s = box('good', 'Check your email.',
-        `If ${input.value.trim()} has an account, a link is on its way. It is ` +
-        'valid for one hour and can be used once.');
+      const s = box('good', 'Regardez votre boîte mail.',
+        `Si ${input.value.trim()} a un compte, un lien est en route. Il est ` +
+        'valable une heure et utilisable une seule fois.');
       const n = el('p', null, 'note');
       n.textContent =
-        'Open it in THIS browser. The link is completed with a secret stored ' +
-        'here and nowhere else, so it cannot be finished on another device — ' +
-        'which is also why nothing that merely fetches the link can use it.';
+        'Ouvrez-le dans CE navigateur. Le lien se termine avec un secret stocké ' +
+        'ici et nulle part ailleurs : il ne peut donc pas être finalisé sur un autre ' +
+        'appareil — et c\'est aussi pourquoi rien qui se contente de charger le lien ne peut s\'en servir.';
       s.appendChild(n);
     } catch (err) {
-      showError('The link could not be requested.', String(err.message));
-      const again = el('button', 'Try again');
+      showError('Le lien n\'a pas pu être demandé.', String(err.message));
+      const again = el('button', 'Réessayer');
       again.className = 'btn';
       again.addEventListener('click', () => showForm());
       out().firstChild.appendChild(again);
@@ -176,20 +177,20 @@ async function boot() {
   const errCode = query.get('error_code') || frag.get('error_code');
   if (errCode || query.get('error') || frag.get('error')) {
     const pick = (k) => query.get(k) || frag.get(k);
-    const b = showError('The link did not sign you in.', null, [
+    const b = showError('Le lien ne vous a pas connecté.', null, [
       ['error', pick('error')],
       ['error_code', errCode],
       ['error_description', pick('error_description')],
     ]);
     if (errCode === 'otp_expired') {
       b.appendChild(el('p',
-        'otp_expired covers three different things and does not distinguish ' +
-        'them: an expired link, an ALREADY-USED link, and a malformed token. ' +
-        'Before assuming expiry, check whether a session was created — an ' +
-        'implicit-flow link spent by a preloading browser reports exactly this.',
+        'otp_expired recouvre trois cas différents sans les distinguer : un lien ' +
+        'expiré, un lien DÉJÀ UTILISÉ, et un jeton malformé. Avant de conclure à ' +
+        'une expiration, vérifiez si une session a été créée — un lien en flux ' +
+        'implicite consommé par un navigateur qui préchargeait signale exactement ceci.',
         'note'));
     }
-    const again = el('button', 'Request a new link');
+    const again = el('button', 'Demander un nouveau lien');
     again.className = 'btn';
     again.addEventListener('click', () => { cleanUrl(); showForm(); });
     b.appendChild(again);
@@ -199,15 +200,15 @@ async function boot() {
 
   const code = query.get('code');
   if (code) {
-    box('idle', 'Completing sign-in…');
+    box('idle', 'Finalisation de la connexion…');
     try {
       const session = await exchangeCode(code);
       cleanUrl();
       return showSession(session, 'pkce');
     } catch (err) {
       cleanUrl();
-      const b = showError('The code could not be exchanged.', String(err.message));
-      const again = el('button', 'Request a new link');
+      const b = showError('Le code n\'a pas pu être échangé.', String(err.message));
+      const again = el('button', 'Demander un nouveau lien');
       again.className = 'btn';
       again.addEventListener('click', () => showForm());
       b.appendChild(again);

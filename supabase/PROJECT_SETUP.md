@@ -1118,16 +1118,20 @@ auditing it for a phone number, so this is a deadline and not a reprieve.
   No CREATE there, and that is the database's position rather than an omission:
   `authenticated` holds no INSERT on `public.organizers` at all, so the button
   would 403 every time it was pressed.
-- **Still open, and now the ONLY open half:** tell organizers plainly, **in
-  French**, what is published. The consent box does say it — "Publishing is not
-  reversible in the way people expect: pages are cached, copied and indexed by
-  others" — but it says it in English, because the whole editor is in English
-  while every page it edits is in French.
+- **DONE 2026-09-23.** Organizers are told, in French, beside the field:
+  « La publication n'est pas réversible comme on l'imagine : les pages sont
+  mises en cache, copiées et indexées par d'autres. La retirer ici la retire du
+  site, et de nulle part ailleurs où elle a déjà été vue. »
 
-  Tolerable while the only user is me; the thing that matters the moment an
-  organizer signs in, because the sentence beside the box is what makes the
-  consent informed rather than merely recorded. **Translating the editor is
-  therefore not cosmetic — it is the second half of this decision.**
+  The whole editor was translated to get there, because one French sentence in
+  an English form is not plain — it reads as boilerplate. Enum values are
+  untouched: only the label on screen is French, and each map falls back to the
+  raw value so a new enum member shows something true.
+
+  **Both halves of this decision are now closed.** What remains is not part of
+  it: nobody has yet been told at SIGN-UP what publishing means, because there
+  is no sign-up — accounts are created by hand. That becomes real the day
+  self-service registration does.
 
 **What `npm run verify:build`'s contact-detail check is for afterwards.** It no
 longer guards git. Its remaining job is to tell you that an organizer published
