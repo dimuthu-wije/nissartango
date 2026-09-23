@@ -127,3 +127,105 @@ test('every problem carries a message a person can act on', () => {
     assert.match(message, /[.!]$/, `not a sentence: ${message}`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Organizers.
+//
+// The pair that matters here is consent. The database refuses a published
+// contact value without a timestamp beside it, so these tests pin the form to
+// the same rule -- and, in the other direction, to the case the database has
+// no opinion about: a ticked box with nothing to publish is legal SQL and a
+// mistake on screen.
+// ---------------------------------------------------------------------------
+import { validateOrganizer } from '../editor/public/validate.js';
+
+/** A complete, valid organizer. Each test breaks exactly one thing. */
+const org = (over = {}) => ({
+  name: 'Nissartango',
+  website: null, instagram: null, facebook: null, tiktok: null,
+  email: null, phone: null,
+  contact_email: null, contact_phone: null,
+  contact_email_consented: false, contact_phone_consented: false,
+  contact_email_was_consented: false, contact_phone_was_consented: false,
+  ...over,
+});
+
+const onames = (v) => validateOrganizer(v).map(([f]) => f);
+
+test('organizer: a complete one has nothing to fix', () => {
+  assert.deepEqual(validateOrganizer(org()), []);
+});
+
+test('organizer: only the name is required', () => {
+  assert.deepEqual(onames(org({ name: '' })), ['name']);
+});
+
+test('organizer: a social HANDLE is not a URL', () => {
+  // organizers_instagram_check rejects a pasted profile URL, but its message
+  // would not explain why. This is the mistake the field actually invites.
+  for (const k of ['instagram', 'facebook', 'tiktok']) {
+    const p = validateOrganizer(org({ [k]: `https://${k}.com/nissartango` }));
+    assert.deepEqual(p.map(([f]) => f), [k], k);
+    assert.match(p[0][1], /handle, not a link/i, k);
+  }
+  assert.deepEqual(validateOrganizer(org({ instagram: 'nissartango' })), []);
+});
+
+test('organizer: handle length and charset follow the constraints', () => {
+  // instagram/tiktok are {1,40}; facebook is {1,60} and also allows hyphens.
+  assert.deepEqual(validateOrganizer(org({ instagram: 'a'.repeat(40) })), []);
+  assert.deepEqual(onames(org({ instagram: 'a'.repeat(41) })), ['instagram']);
+  assert.deepEqual(onames(org({ instagram: 'no-hyphens-here' })), ['instagram']);
+  assert.deepEqual(validateOrganizer(org({ facebook: 'hyphens-are-fine' })), []);
+  assert.deepEqual(validateOrganizer(org({ facebook: 'a'.repeat(60) })), []);
+  assert.deepEqual(onames(org({ facebook: 'a'.repeat(61) })), ['facebook']);
+});
+
+test('organizer: a website needs a scheme', () => {
+  assert.deepEqual(validateOrganizer(org({ website: 'https://x.test' })), []);
+  assert.deepEqual(onames(org({ website: 'x.test' })), ['website']);
+});
+
+test('organizer: both email columns are checked, and they are different columns', () => {
+  assert.deepEqual(onames(org({ email: 'not-an-address' })), ['email']);
+  assert.deepEqual(onames(org({
+    contact_email: 'not-an-address', contact_email_consented: true,
+  })), ['contact_email']);
+  // The private one needs no consent: it is never published.
+  assert.deepEqual(validateOrganizer(org({ email: 'me@example.org' })), []);
+});
+
+test('organizer: publishing a contact detail requires the box', () => {
+  // Mirrors organizers_contact_email_needs_consent. Without this the database
+  // refuses the write and the person sees a constraint name.
+  assert.deepEqual(onames(org({ contact_email: 'hi@example.org' })), ['contact_email']);
+  assert.deepEqual(validateOrganizer(org({
+    contact_email: 'hi@example.org', contact_email_consented: true,
+  })), []);
+  assert.deepEqual(onames(org({ contact_phone: '06 12 34 56 78' })), ['contact_phone']);
+  assert.deepEqual(validateOrganizer(org({
+    contact_phone: '06 12 34 56 78', contact_phone_consented: true,
+  })), []);
+});
+
+test('organizer: a ticked box with nothing to publish is caught here, not by the database', () => {
+  // Legal SQL -- the CHECK is one-directional -- so nothing downstream would
+  // complain. It is still somebody ticking a box expecting to publish.
+  assert.deepEqual(onames(org({ contact_email_consented: true })), ['contact_email']);
+});
+
+test('organizer: withdrawing a published detail is allowed and keeps the record', () => {
+  // Cleared value, box still ticked, consent previously given: this is the
+  // withdrawal case. The form sends value=null and KEEPS the stamp, so there
+  // must be no error telling the person to fill it back in.
+  assert.deepEqual(validateOrganizer(org({
+    contact_email: '', contact_email_consented: true, contact_email_was_consented: true,
+  })), []);
+});
+
+test('organizer: every problem carries a message a person can act on', () => {
+  for (const [, message] of validateOrganizer(org({ name: '', website: 'nope' }))) {
+    assert.ok(message.length > 10, `too terse: ${message}`);
+    assert.match(message, /[.!]$/, `not a sentence: ${message}`);
+  }
+});

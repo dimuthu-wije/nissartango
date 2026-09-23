@@ -1109,13 +1109,25 @@ auditing it for a phone number, so this is a deadline and not a reprieve.
   absent from `organizers_public`. They were never the fields this asked for and
   they have not moved.
 
-  **Still open: nothing can SET them but SQL.** The editor has no organizer
-  form at all — it composes events only — so today this is the same position
-  events were in before `73e3880`. The column exists and the consent is
-  enforced; the checkbox has no UI to live in yet.
-- **Still open:** tell organizers plainly, in French, at sign-up and under the
-  free-text fields, what is published. The column records that consent was
-  given; only the wording makes it informed, and that half is not built.
+  **Closed 2026-09-23:** `editor.nissartango.fr/organizer/` edits them, with a
+  consent box beside each field. It reads and writes only the eleven columns in
+  the UPDATE grant — no `id`, no `slug`, both of which are URLs — and it
+  disables itself, saying why, for a member who is not an OWNER, because
+  `organizers_owner_update` requires `is_owner(id)`.
+
+  No CREATE there, and that is the database's position rather than an omission:
+  `authenticated` holds no INSERT on `public.organizers` at all, so the button
+  would 403 every time it was pressed.
+- **Still open, and now the ONLY open half:** tell organizers plainly, **in
+  French**, what is published. The consent box does say it — "Publishing is not
+  reversible in the way people expect: pages are cached, copied and indexed by
+  others" — but it says it in English, because the whole editor is in English
+  while every page it edits is in French.
+
+  Tolerable while the only user is me; the thing that matters the moment an
+  organizer signs in, because the sentence beside the box is what makes the
+  consent informed rather than merely recorded. **Translating the editor is
+  therefore not cosmetic — it is the second half of this decision.**
 
 **What `npm run verify:build`'s contact-detail check is for afterwards.** It no
 longer guards git. Its remaining job is to tell you that an organizer published

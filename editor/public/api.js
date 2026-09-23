@@ -231,3 +231,45 @@ export const addException = (row) => write('POST', 'event_exceptions', row);
 export const removeException = (eventId, occurrenceDate) =>
   del(`event_exceptions?event_id=eq.${encodeURIComponent(eventId)}` +
       `&occurrence_date=eq.${encodeURIComponent(occurrenceDate)}`);
+
+// ---------------------------------------------------------------------------
+// Organizers: read one, update one.
+//
+// NO CREATE, and that is the database's decision rather than an omission.
+// `authenticated` holds no INSERT and no DELETE grant on public.organizers at
+// all -- 20260828190100_rls_policies.sql says so out loud -- so even the admin
+// policy cannot be exercised from a user token. Creating an organizer is the
+// dashboard or service_role. A "New organizer" button would 403 every time.
+//
+// WHO MAY UPDATE. `organizers_owner_update` requires is_owner(id), which is
+// role = 'owner' in organizer_members -- an EDITOR member cannot save, even
+// though they can read the row and create events for it. `organizers_admin_all`
+// is OR'd on top, so an admin may edit any organizer. The form asks the
+// database both questions rather than inferring either.
+//
+// ORGANIZER_WRITABLE mirrors the column grant, which is narrower than the
+// table. Absent on purpose: `id` and `slug`, because both are URLs and a
+// permalink that moves is a broken link -- 20260828190100 puts that reason in
+// the grant itself.
+// ---------------------------------------------------------------------------
+
+export const ORGANIZER_WRITABLE = [
+  'name', 'website', 'instagram', 'facebook', 'tiktok',
+  // PRIVATE. Readable by members, never in organizers_public, never built.
+  'email', 'phone',
+  // PUBLIC, and only with a consent timestamp beside them -- the database
+  // refuses the value otherwise (organizers_contact_*_needs_consent).
+  'contact_email', 'contact_phone',
+  'contact_email_consent_at', 'contact_phone_consent_at',
+];
+
+export const getOrganizer = (id) =>
+  select(`organizers?select=id,slug,${ORGANIZER_WRITABLE.join(',')}` +
+         `&id=eq.${encodeURIComponent(id)}`).then((rows) => rows?.[0] ?? null);
+
+export const updateOrganizer = (id, fields) =>
+  write('PATCH', `organizers?id=eq.${encodeURIComponent(id)}`, fields)
+    .then((rows) => rows?.[0] ?? null);
+
+/** Is this caller an OWNER of that organizer? Asked, never inferred. */
+export const isOwner = (id) => rpc('is_owner', { org: id });

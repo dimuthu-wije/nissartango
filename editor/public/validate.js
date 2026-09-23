@@ -64,3 +64,83 @@ export function validate(v) {
   }
   return p;
 }
+
+// ---------------------------------------------------------------------------
+// Organizers.
+//
+// Same contract as above: every rule is a CHECK on public.organizers, read
+// from 20260828181100_organizers.sql and 20260922120000_organizer_public_contact.sql
+// rather than remembered.
+//
+//   organizers_name_check                     btrim(name) <> ''
+//   organizers_website_check                  ^https?://
+//   organizers_instagram_check                ^[A-Za-z0-9._]{1,40}$
+//   organizers_facebook_check                 ^[A-Za-z0-9._-]{1,60}$
+//   organizers_tiktok_check                   ^[A-Za-z0-9._]{1,40}$
+//   organizers_email_check                    ^[^@\s]+@[^@\s]+\.[^@\s]+$
+//   organizers_phone_check                    btrim(phone) <> ''
+//   organizers_contact_email_check            same shape as email
+//   organizers_contact_phone_check            btrim(contact_phone) <> ''
+//   organizers_contact_email_needs_consent    contact_email IS NULL OR consent IS NOT NULL
+//   organizers_contact_phone_needs_consent    contact_phone IS NULL OR consent IS NOT NULL
+//
+// `slug` is absent on purpose and is not a rule this file enforces: it is not
+// in the UPDATE grant at all, so the form cannot offer it. A slug is a URL.
+
+// Postgres's regex uses [:space:]; JS \s is close enough for a pre-flight and
+// the database is the authority either way.
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+const HANDLE = {
+  instagram: [/^[A-Za-z0-9._]{1,40}$/, 'Letters, numbers, dots and underscores, up to 40.'],
+  facebook: [/^[A-Za-z0-9._-]{1,60}$/, 'Letters, numbers, dots, underscores and hyphens, up to 60.'],
+  tiktok: [/^[A-Za-z0-9._]{1,40}$/, 'Letters, numbers, dots and underscores, up to 40.'],
+};
+
+/**
+ * @param {object} v values read from the organizer form
+ * @returns {[string, string][]} [field, message] pairs; empty means sendable
+ */
+export function validateOrganizer(v) {
+  const p = [];
+  if (!v.name) p.push(['name', 'A name is required — the database refuses a blank one.']);
+
+  if (v.website && !/^https?:\/\//.test(v.website)) {
+    p.push(['website', 'Must start with http:// or https://.']);
+  }
+
+  // The handles are stored as HANDLES, never URLs, so that the template can
+  // build the link. Pasting a profile URL is the mistake this catches, and it
+  // is worth catching here because the constraint's message would not explain
+  // why https://instagram.com/x is refused.
+  for (const [k, [re, message]] of Object.entries(HANDLE)) {
+    if (!v[k]) continue;
+    if (/^https?:\/\/|\//.test(v[k])) {
+      p.push([k, 'A handle, not a link — "nissartango", not "https://instagram.com/nissartango".']);
+    } else if (!re.test(v[k])) {
+      p.push([k, message]);
+    }
+  }
+
+  if (v.email && !EMAIL.test(v.email)) p.push(['email', 'Does not look like an address.']);
+  if (v.contact_email && !EMAIL.test(v.contact_email)) {
+    p.push(['contact_email', 'Does not look like an address.']);
+  }
+
+  // The consent half. The database refuses a published value without one, so
+  // this exists to say WHY before the round trip rather than to permit
+  // anything. Both directions are reported: a ticked box with nothing to
+  // publish is not a database error, but it is certainly a mistake on screen.
+  for (const kind of ['email', 'phone']) {
+    const value = v[`contact_${kind}`];
+    const consent = v[`contact_${kind}_consented`];
+    if (value && !consent) {
+      p.push([`contact_${kind}`,
+        'Tick the box below to confirm this may be published, or clear the field.']);
+    }
+    if (!value && consent && !v[`contact_${kind}_was_consented`]) {
+      p.push([`contact_${kind}`, 'Nothing to publish — fill this in, or untick the box.']);
+    }
+  }
+  return p;
+}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organisateur — Nissartango</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Organisateur</h1>
+  <p class="lede">Vos coordonnées, et ce qui est publié.</p>
+
+  <!--
+    /organizer/            the organizers you belong to
+    /organizer/?id=<uuid>  edit one
+
+    NO CREATE, because the database grants authenticated no INSERT on
+    public.organizers at all. A "new organizer" control would 403 every time.
+
+    NO SLUG EDITING, for the same kind of reason: `slug` is not in the UPDATE
+    grant. It is in every link to the organizer.
+
+    Not every member may save. organizers_owner_update requires is_owner(id),
+    so an editor can create events for an organizer and cannot rename it.
+  -->
+  <div id="out"></div>
+
+  <footer>
+    <a href="/queue/">File d'attente</a> ·
+    <a href="/event/">Nouvel événement</a> ·
+    <a href="/">Accueil</a> ·
+    <button id="signout" class="linkish" type="button">Se déconnecter</button>
+  </footer>
+</main>
+
+<script type="module" src="/organizer.js"></script>
+</body>
+</html>

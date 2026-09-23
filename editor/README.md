@@ -1,10 +1,16 @@
 # nissartango-editor
 
-The editor origin. As of 2026-09-22: a PKCE sign-in form with session refresh,
+The editor origin. As of 2026-09-23: a PKCE sign-in form with session refresh,
 a magic-link callback, an approval queue that can approve, reject and clear
-review flags, and a create/edit form that can also cancel a single date of a
-repeating event. It is usable end to end — sign in, compose, edit, approve,
-publish.
+review flags, a create/edit form that can also cancel a single date of a
+repeating event, and an organizer form. It is usable end to end — sign in,
+compose, edit, approve, publish.
+
+**It is entirely in English, and every page it edits is in French.** Tolerable
+while the only user is the maintainer. It stops being tolerable the moment an
+organizer signs in — and specifically at `/organizer/`, where the sentence
+beside the consent box is the thing that makes publishing a contact detail an
+informed choice rather than a recorded one.
 
 ## Why it exists now, ahead of any editor UI
 
@@ -190,6 +196,62 @@ update — and nothing else. The flag predated it, set by some earlier edit that
 nothing now records; `auth.audit_log_entries` is empty and always has been.
 
 A timestamp that matches is a correlation. The trigger is the mechanism.
+
+## The organizer form — `/organizer/`
+
+Added 2026-09-23, closing the half of the free-text decision that was left open
+when `contact_email` / `contact_phone` were created the day before: the columns
+existed, the consent was enforced by CHECK, and nothing but SQL could fill them.
+
+`/organizer/` lists what you belong to; `/organizer/?id=<uuid>` edits one.
+
+**Two pairs of contact fields, kept apart on screen on purpose.** `email` and
+`phone` are PRIVATE — readable by members here, absent from `organizers_public`,
+never in a build. `contact_email` and `contact_phone` are PUBLIC and permanent.
+They are labelled by what happens to them rather than by which column they are,
+because a form that made the two pairs look alike would recreate the leak the
+new columns exist to prevent.
+
+**What the form cannot do, in each case because the database says so:**
+
+- **No create.** `authenticated` holds no INSERT and no DELETE on
+  `public.organizers` at all, so even the admin policy cannot be exercised from
+  a user token. A "new organizer" button would 403 every time.
+- **No slug editing.** `slug` is not in the UPDATE grant. It is in every link.
+- **No saving unless you are an OWNER.** `organizers_owner_update` requires
+  `is_owner(id)`, so an EDITOR can create events for an organizer and cannot
+  rename it. The form asks `is_owner` and `is_admin` rather than trusting the
+  role in the membership list it already has, and when it cannot save it
+  disables every control and names the policy instead of failing at submit.
+
+### A bug that only pressing the button could find
+
+The consent check was written, unit-tested and wrong. `readForm()` nulls a
+contact value whose box is unticked — that is its job — and validation was
+reading *that output*, so it asked "is there an unconsented value here?" of an
+object that could never contain one. The answer was always no.
+
+Typing an address and pressing Save without ticking the box therefore **dropped
+what was typed and reported "Saved."** Every unit test passed throughout: they
+hand raw values straight to `validateOrganizer`, which is correct, and so never
+touched the wiring between the two. Found in a throwaway harness that loaded
+the real `organizer.js` against a stubbed `/api.js`; fixed by validating the
+raw controls.
+
+Worth keeping in mind for the next form: a pure function and its tests can both
+be right while the thing on screen is wrong, and only using it shows that.
+
+### `consent.js` exists for one silent mistake
+
+Re-stamping `contact_*_consent_at` on every save satisfies the CHECK, shows the
+right thing on screen, publishes the right address — and destroys the only fact
+the column holds, which is *when* the person agreed. Nothing downstream can
+complain, because nothing downstream knows what the date should have been.
+
+It is a separate file for the same reason `pkce.js` and `expiry.js` are: no DOM,
+so Node can test it. `tests/consent.test.js` pins all three cases, including the
+withdrawal — value cleared, stamp KEPT — which the one-directional CHECK permits
+deliberately.
 
 ## Not done here
 

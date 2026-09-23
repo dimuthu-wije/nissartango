@@ -1,5 +1,9 @@
-/* Deliberately one small stylesheet and no framework. This deployment exists
-   to resolve a hostname and receive a token; it is not the editor yet. */
+/* Deliberately one small stylesheet and no framework.
+
+   This said "this deployment exists to resolve a hostname and receive a token;
+   it is not the editor yet" until 2026-09-23, which had been false since the
+   queue opened on 2026-09-19. It is now the editor: sign in, compose and edit
+   events, moderate them, and edit an organizer. */
 
 :root {
   color-scheme: light dark;
@@ -303,6 +307,22 @@ a.btn { text-decoration: none; display: inline-block; }
 .has-error input,
 .has-error select,
 .has-error textarea { border-color: var(--bad); }
+
+/* A consent box is not an ordinary checkbox and should not look like one:
+   ticking it publishes something permanently. Boxed and tinted so it reads as
+   a decision rather than a preference. */
+.consent {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--idle);
+  border-radius: 6px;
+  padding: 0.7rem 0.8rem;
+  background: var(--idle-bg);
+}
+
+/* The organizer picker at /organizer/. */
+.list { list-style: none; padding: 0; margin: 0.8rem 0 0; }
+.list li { padding: 0.5rem 0; border-top: 1px solid var(--line); }
+.list li:first-child { border-top: 0; }
 
 /* --- exceptions --------------------------------------------------------- */
 

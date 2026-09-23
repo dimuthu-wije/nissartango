@@ -57,3 +57,13 @@
 
 /event/
   Cache-Control: no-store, must-revalidate
+
+/organizer
+  # Stronger reason than either: this form shows organizers.email and .phone,
+  # which are PRIVATE and are absent from every public view precisely so they
+  # cannot be built or committed. An intermediary holding a rendered copy would
+  # be the one place they existed outside the database.
+  Cache-Control: no-store, must-revalidate
+
+/organizer/
+  Cache-Control: no-store, must-revalidate
