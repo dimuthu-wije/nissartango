@@ -220,6 +220,14 @@ leave it out of git: nothing in one should need a secret to be useful.
    A stale cache can only return an older `built_at`, never a newer one, so a
    move is conclusive while a non-move is ambiguous. See
    `workers/build-notifier/README.md` for why that asymmetry is the whole test.
+
+   **That file is PRETTY-PRINTED** — `JSON.stringify(body, null, 2)` — so every
+   field reads `"commit": "..."` with a space after the colon. A grep for
+   `'"commit":"'` matches nothing and yields an empty string, which in a polling
+   loop is indistinguishable from "the site returned nothing" and from "not
+   deployed yet". That cost three false alarms on 2026-09-26. Parse it (`jq`,
+   `python3 -m json.tool`) or strip whitespace first; do not pattern-match
+   compact JSON against it.
 4. **Always `git pull` before working.** The reason is no longer the CMS —
    nothing commits to GitHub on its own now. Content lives in Supabase and
    reaches the site through the poller's deploy hook, which produces a
