@@ -13,7 +13,8 @@
 
 import { getSession, hasSession, claimsOf } from '/auth.js';
 import {
-  isAdmin, reviewQueue, recentlyDecided, approve, reject, markReviewed, AuthExpired,
+  isAdmin, reviewQueue, recentlyDecided, allEvents,
+  approve, reject, markReviewed, AuthExpired,
 } from '/api.js';
 import '/banner.js';
 import '/signout-button.js';   // side effect: names the project when it is not production
@@ -180,7 +181,9 @@ function renderNotAdmin(claims) {
 }
 
 async function render() {
-  const [queue, decided] = await Promise.all([reviewQueue(), recentlyDecided()]);
+  const [queue, decided, all] = await Promise.all([
+    reviewQueue(), recentlyDecided(), allEvents(),
+  ]);
   const frag = document.createDocumentFragment();
 
   const top = el('div', null, 'actions');
@@ -208,8 +211,35 @@ async function render() {
     const ul = el('ul', null, 'decided');
     for (const d of decided) {
       const li = el('li');
-      li.append(el('span', d.status, `tag tag-${d.status}`), el('span', ` ${d.title}`));
+      // STATUS_LABELS, not the raw enum: this list printed "approved" and
+      // "rejected" in English while every other tag on the page was French.
+      li.append(el('span', STATUS_LABELS[d.status] ?? d.status, `tag tag-${d.status}`),
+                el('span', ` ${d.title}`));
       if (d.review_note) li.appendChild(el('span', ` — ${d.review_note}`, 'muted'));
+      const edit = el('a', 'Modifier', 'linkish');
+      edit.href = `/event/?id=${encodeURIComponent(d.id)}`;
+      li.append(el('span', ' '), edit);
+      ul.appendChild(li);
+    }
+    b.appendChild(ul);
+    frag.appendChild(b);
+  }
+
+  // Everything, because the two lists above are "waiting" and "the last five
+  // decisions" -- an event approved a week ago appeared in neither, and the
+  // only route to its edit form was knowing its uuid.
+  if (all.length) {
+    const b = box('idle', `Tous les événements (${all.length})`,
+      'Pour modifier un événement déjà approuvé — y compris pour lui ajouter une affiche.');
+    const ul = el('ul', null, 'decided');
+    for (const ev of all) {
+      const li = el('li');
+      li.append(el('span', STATUS_LABELS[ev.status] ?? ev.status, `tag tag-${ev.status}`));
+      if (ev.needs_review) li.appendChild(el('span', 'à revoir', 'tag tag-flag'));
+      li.appendChild(el('span', ` ${when(ev.starts_at)} — ${ev.title}`));
+      const edit = el('a', 'Modifier', 'linkish');
+      edit.href = `/event/?id=${encodeURIComponent(ev.id)}`;
+      li.append(el('span', ' '), edit);
       ul.appendChild(li);
     }
     b.appendChild(ul);

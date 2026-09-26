@@ -86,13 +86,8 @@ export const TYPE_LABELS: Record<string, string> = {
 };
 
 /** "12 € / 10 € adhérent", or the free-text note when there is no number. */
-export function priceSummary(e: any): string | null {
-  const n = (v: any) => (v == null ? null : `${Number(v).toFixed(2).replace(/\.00$/, '')} €`);
-  const full = n(e.price_full);
-  const member = n(e.price_member);
-  if (!full && !member) return e.price_note ?? null;
-  return [full, member && `${member} adhérent`].filter(Boolean).join(' / ');
-}
+export { priceSummary } from './price.js';
+
 
 /**
  * Formatting is always done in the EVENT's timezone, never the builder's.

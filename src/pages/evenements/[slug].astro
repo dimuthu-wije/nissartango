@@ -223,12 +223,9 @@ const jsonLd = nodes.length === 1
     {(e.price_full != null || e.price_member != null || e.price_note) && (
       <>
         <dt>Tarif</dt>
-        <dd>
-          {price}
-          {e.price_note && (e.price_full != null || e.price_member != null) && (
-            <span class="note">{e.price_note}</span>
-          )}
-        </dd>
+        {/* priceSummary carries the note now, so this no longer appends it
+            separately -- doing both would print it twice. */}
+        <dd>{price}</dd>
       </>
     )}
 

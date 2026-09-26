@@ -222,8 +222,25 @@ function buildForm(organizers, existing) {
   const form = el('form', null, 'event-form');
   fields.clear();
 
-  const section = (title) => {
+  // NATIVE VALIDATION OFF, deliberately, and validate.js is the authority.
+  //
+  // It mirrors the CHECK constraints on public.events with the constraint
+  // names written beside each rule, and reports in French next to the field.
+  // The browser's constraint validation duplicates a subset of that, reports
+  // in a bubble this page does not control, in the browser's locale rather
+  // than the site's — and blocks the submit event before our handler runs, so
+  // a value it dislikes produces no message of ours at all.
+  //
+  // Concretely: step="1" on the price fields makes 12,50 step-mismatched.
+  // Without this, entering a price with centimes would make the save button do
+  // nothing visible.
+  form.noValidate = true;
+
+  // Same shape as organizer.js's: a heading, and an optional line under it for
+  // a section whose rule is not obvious from the field labels.
+  const section = (title, note) => {
     form.appendChild(el('h3', title, 'section'));
+    if (note) form.appendChild(el('p', note, 'hint'));
   };
 
   section('Quoi et qui');
@@ -236,6 +253,11 @@ function buildForm(organizers, existing) {
     input('text', { value: existing?.title ?? '', maxLength: 200 }), { required: true }));
   form.appendChild(field('type', 'Type', selectOf(TYPES, existing?.type ?? 'milonga'),
     { required: true }));
+  // Teachers are part of "who", and moving prices out of "Détails" had left
+  // that section holding this one field under a heading that said nothing.
+  form.appendChild(field('teachers', 'Professeurs',
+    input('text', { value: (existing?.teachers ?? []).join(', ') }),
+    { hint: 'Séparés par des virgules.' }));
 
   section('Quand');
   form.appendChild(field('starts_at', 'Début',
@@ -264,19 +286,36 @@ function buildForm(organizers, existing) {
   form.appendChild(field('city', 'Ville',
     input('text', { value: existing?.city ?? 'Nice' }), { required: true }));
 
-  section('Détails');
-  form.appendChild(field('teachers', 'Professeurs',
-    input('text', { value: (existing?.teachers ?? []).join(', ') }),
-    { hint: 'Séparés par des virgules.' }));
+  // Prices get their own section rather than sitting among teachers, links and
+  // the flyer: three fields that answer one question, and the one a reader
+  // looks for second after the date.
+  //
+  // step: '1', so the arrows move by a whole euro. They moved by a CENTIME,
+  // which is a silly way to get from 10 € to 12 €.
+  //
+  // 'any' was tried first and is worse: measured in a browser, the arrows then
+  // do NOTHING at all, and stepUp() throws "this form element does not have an
+  // allowed value step". Stepping by one requires step="1".
+  //
+  // Which makes 12.50 fail the browser's OWN validity check, and native
+  // validation runs before our submit handler — so the form would silently
+  // refuse to submit with no message we control. Hence form.noValidate below.
+  section('Tarif',
+    'Les trois champs sont facultatifs et tous les trois sont publiés. '
+    + 'Un chiffre seul, une note seule, ou les deux ensemble.');
   form.appendChild(field('price_full', 'Tarif',
-    input('number', { value: existing?.price_full ?? '', min: 0, step: '0.01' })));
+    input('number', { value: existing?.price_full ?? '', min: 0, step: '1' }),
+    { hint: '0 est un tarif : cela affiche « 0 € », pas « gratuit » par accident.' }));
   form.appendChild(field('price_member', 'Tarif adhérent',
-    input('number', { value: existing?.price_member ?? '', min: 0, step: '0.01' })));
+    input('number', { value: existing?.price_member ?? '', min: 0, step: '1' })));
   form.appendChild(field('price_note', 'Note sur le tarif',
     input('text', { value: existing?.price_note ?? '' }),
-    { hint: 'Pour ce qu\'un chiffre ne dit pas — « participation libre ».' }));
+    { hint: 'Pour ce qu\'un chiffre ne dit pas — « au chapeau », '
+      + '« gratuit pour les étudiants ». Affichée À CÔTÉ des chiffres, plus à leur place.' }));
+
+  section('Détails pratiques');
   form.appendChild(field('signup_url', 'Lien d\'inscription',
-    input('url', { value: existing?.signup_url ?? '' }), { hint: 'http:// or https://' }));
+    input('url', { value: existing?.signup_url ?? '' }), { hint: 'http:// ou https://' }));
   form.appendChild(imageField(existing));
   const body = el('textarea');
   body.rows = 5;

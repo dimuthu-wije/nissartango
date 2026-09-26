@@ -116,6 +116,26 @@ export const recentlyDecided = () =>
     '&status=in.(approved,rejected)&order=updated_at.desc&limit=5',
   );
 
+/**
+ * EVERY event this caller can see, newest first.
+ *
+ * Without it an approved event had no route in the editor at all. The queue
+ * lists only `status = pending OR needs_review`, and recentlyDecided() is
+ * capped at five -- so approving something removed the only link to its edit
+ * form, and anything older than the last five decisions was unreachable
+ * without knowing its uuid. That mattered more once the flyer upload became
+ * edit-mode-only: approve an event, then be unable to give it a flyer.
+ *
+ * Capped, because this is every event forever and the site expects ~200 a
+ * year. When the cap starts hiding things the answer is a search box, not a
+ * bigger number.
+ */
+export const allEvents = (limit = 100) =>
+  select(
+    'events?select=id,slug,title,type,starts_at,city,status,needs_review' +
+    `&order=starts_at.desc&limit=${Number(limit)}`,
+  );
+
 export const approve = (id, note) => rpc('approve_event', { p_event: id, p_note: note || null });
 
 /**
