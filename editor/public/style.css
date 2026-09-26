@@ -308,6 +308,18 @@ a.btn { text-decoration: none; display: inline-block; }
 .has-error select,
 .has-error textarea { border-color: var(--bad); }
 
+/* A value the editor computed and a person must not type -- the storage path.
+   Shown because it is what gets saved, dimmed because editing it is not a
+   thing you can usefully do. */
+.field input.readonly {
+  background: var(--bg);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+}
+.note.good-text { color: var(--good); }
+.note.bad-text { color: var(--bad); }
+
 /* The sign-out result. Not a transient toast: it carries the one thing people
    get wrong about signing out -- that the access token already issued is still
    good until it expires -- so it has to stay on screen long enough to read. */

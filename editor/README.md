@@ -362,6 +362,59 @@ One module handles the button on all four pages. It used to be the same
 listener copied four times, which is how three of them would have gone on
 clearing `localStorage` and calling it done.
 
+## The flyer — uploading to Storage
+
+`image_path` was a free-text box whose hint said "Rien ne les sert encore",
+which had stopped being true long before anyone noticed. The pipeline was
+finished: a private `event-images` bucket, `fetch-content.mjs` downloading each
+referenced object with the anon key, Astro optimising it into a hashed WebP
+with a srcset. Nothing had ever put a path in the column, so nothing had ever
+run it.
+
+Proven end to end on 2026-09-26 against the local stack — upload, anon read
+(byte-identical), download into `src/assets/events/`, `<img srcset>` with 400w
+and 600w WebP, and no `supabase.co` anywhere in the built HTML.
+
+**The path is computed, never typed.** The bucket's write policy is
+
+    is_member(uuid_or_null((storage.foldername(name))[1]))
+
+so the first segment must be an organizer you belong to. A typed path could be
+refused by RLS for a reason nothing on screen explained, and a correct one
+needed two uuids nobody has memorised. `image.js` builds
+`<organizer_id>/<event_id>/<filename>` from the event in hand.
+
+**Edit mode only**, for the same reason the exceptions section is: the path
+contains the event's id, and a new event has none until the database assigns
+one. Create mode says that rather than offering a picker that could only fail.
+
+**The upload does not write the row.** It fills the field; you still press
+save. An upload that succeeded with an unsaved row leaves an unreferenced
+object, which is recoverable — a row pointing at an object that failed to
+upload is a broken image on the site.
+
+Uploads use `x-upsert`, so replacing a flyer under the same filename replaces
+the object and `image_path` does not change. A *different* filename leaves the
+old object in the bucket: deleting it would mean destroying a file the saved
+row may still point at, and an orphan in a private 5 MB-per-object bucket is
+the cheaper mistake.
+
+### Two things the filename rules exist for
+
+`fetch-content.mjs` names the local file `flatten(image_path)`, replacing every
+`[^a-zA-Z0-9._-]` run with a dash. So `safeName()` keeps uploads already
+flatten-safe — otherwise two objects differing only in characters flattening
+collapses would land on one local file and one would silently win.
+
+Both of its rules came from a failing test, not from foresight:
+
+- **Accents are folded, not stripped.** `"Affiche Été 2026.PNG"` became
+  `"affiche-t-2026.png"` — the É and é vanished and took the word with them.
+  NFD-decomposing first lets the letter survive and removes only the combining
+  mark. These are French flyers.
+- **Dot names are refused.** `"..."` produced `".."`, a filename that names the
+  parent directory. Now `"flyer"`.
+
 ## Not done here
 
 This list has now gone stale TWICE. The three bullets originally here were true

@@ -273,3 +273,46 @@ export const updateOrganizer = (id, fields) =>
 
 /** Is this caller an OWNER of that organizer? Asked, never inferred. */
 export const isOwner = (id) => rpc('is_owner', { org: id });
+
+// ---------------------------------------------------------------------------
+// Event images: upload one object into the event-images bucket.
+//
+// NOT PostgREST. Storage is a different API on the same origin, so `send()`'s
+// 401-retry-after-refresh still applies but `headers()`'s PostgREST bits do
+// not -- Prefer and Content-Type here describe a binary body, not a row.
+//
+// WHO MAY WRITE. The bucket policy is
+//
+//     is_member(uuid_or_null((storage.foldername(name))[1]))
+//
+// so the FIRST path segment must be an organizer this caller belongs to. That
+// is why image.js computes the path from the event rather than accepting one:
+// a typed path could be refused for a reason nothing on screen explained.
+//
+// UPSERT, deliberately. Without it a second upload of the same filename 409s,
+// and replacing a flyer with a corrected version under the same name is the
+// ordinary case. With it, the stored object is replaced and image_path does
+// not change -- so the row needs no edit and the next build re-downloads by
+// the same path.
+//
+// WHAT THIS DOES NOT DO: delete the previous object when a DIFFERENT filename
+// is uploaded. The old object stays in the bucket, unreferenced. Deleting it
+// would mean destroying a file that the SAVED row may still point at, because
+// the form does not write image_path until the person presses save. An orphan
+// in a private 5 MB-per-object bucket is the cheaper mistake.
+// ---------------------------------------------------------------------------
+
+const STORAGE = `${SUPABASE_URL}/storage/v1/object/event-images`;
+
+export async function uploadEventImage(storagePath, file) {
+  return send((s) => fetch(`${STORAGE}/${storagePath}`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${s.access_token}`,
+      'Content-Type': file.type,
+      'x-upsert': 'true',
+    },
+    body: file,
+  }));
+}

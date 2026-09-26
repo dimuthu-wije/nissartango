@@ -23,8 +23,9 @@
 import { getSession, hasSession, claimsOf } from '/auth.js';
 import {
   myOrganizers, getEvent, createEvent, updateEvent,
-  listExceptions, addException, removeException, AuthExpired,
+  listExceptions, addException, removeException, uploadEventImage, AuthExpired,
 } from '/api.js';
+import { ALLOWED, checkImage, storagePathFor } from '/image.js';
 import { zonedToInstant, partsInZone } from '/zone.js';
 import { validate } from '/validate.js';
 import '/banner.js';
@@ -276,9 +277,7 @@ function buildForm(organizers, existing) {
     { hint: 'Pour ce qu\'un chiffre ne dit pas — « participation libre ».' }));
   form.appendChild(field('signup_url', 'Lien d\'inscription',
     input('url', { value: existing?.signup_url ?? '' }), { hint: 'http:// or https://' }));
-  form.appendChild(field('image_path', 'Chemin de l\'image',
-    input('text', { value: existing?.image_path ?? '' }),
-    { hint: 'Un chemin dans Supabase Storage. Rien ne les sert encore — voir AGENTS.md.' }));
+  form.appendChild(imageField(existing));
   const body = el('textarea');
   body.rows = 5;
   body.value = existing?.body ?? '';
@@ -503,6 +502,92 @@ function exceptionsSection(eventId, tz) {
   b.append(add, movedWrap, status);
   refresh();
   return b;
+}
+
+/**
+ * The flyer.
+ *
+ * READ-ONLY IN CREATE MODE, and the reason is the same one the exceptions
+ * section has: the storage path contains the event's id, and a new event does
+ * not have one until the database assigns it. Offering a file picker that
+ * could only fail would be worse than saying so.
+ *
+ * `image_path` is still the field that gets saved -- the upload only fills it
+ * in. Nothing is written to the events row here; press save as usual. That
+ * separation is deliberate: an upload that succeeded and a row that was never
+ * saved leaves an unreferenced object, which is recoverable, while a row
+ * pointing at an object that failed to upload is a broken image on the site.
+ */
+function imageField(existing) {
+  const wrap = el('div', null, 'field');
+  wrap.appendChild(el('label', 'Affiche'));
+
+  // The saved value. Shown, never typed: image.js builds the path, because the
+  // bucket policy checks the first segment against is_member() and a typed
+  // path could be refused for a reason nothing on screen explains.
+  const pathInput = input('text', { value: existing?.image_path ?? '', readOnly: true });
+  pathInput.id = 'image_path';
+  pathInput.name = 'image_path';
+  pathInput.className = 'readonly';
+  fields.set('image_path', { control: pathInput, err: el('p'), wrap });
+
+  if (!existing) {
+    wrap.appendChild(pathInput);
+    wrap.appendChild(el('p',
+      'Enregistrez d\'abord l\'événement : le chemin de l\'affiche contient son '
+      + 'identifiant, qui n\'existe pas encore.', 'hint'));
+    return wrap;
+  }
+
+  const row = el('div', null, 'ex-add');
+  const picker = input('file');
+  picker.accept = Object.keys(ALLOWED).join(',');
+  const upBtn = el('button', 'Téléverser', 'btn btn-quiet');
+  upBtn.type = 'button';
+  const clearBtn = el('button', 'Retirer', 'btn btn-quiet');
+  clearBtn.type = 'button';
+  row.append(picker, upBtn, clearBtn);
+
+  const status = el('p', null, 'note');
+  const setStatus = (text, cls) => {
+    status.textContent = text;
+    status.className = cls ? `note ${cls}` : 'note';
+  };
+
+  upBtn.addEventListener('click', async () => {
+    const file = picker.files?.[0];
+    const problems = checkImage(file);
+    if (problems.length) return setStatus(problems.join(' '), 'bad-text');
+
+    upBtn.disabled = true;
+    setStatus('Téléversement…');
+    try {
+      const target = storagePathFor(existing.organizer_id, existing.id, file.name);
+      await uploadEventImage(target, file);
+      pathInput.value = target;
+      setStatus('Téléversée. Enregistrez pour l\'associer à l\'événement.', 'good-text');
+    } catch (err) {
+      if (err instanceof AuthExpired) return renderExpired();
+      // A 403 here is the bucket policy, not the session: the first path
+      // segment has to be an organizer you belong to.
+      setStatus(`Refusé : ${err.message}`, 'bad-text');
+    } finally {
+      upBtn.disabled = false;
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    pathInput.value = '';
+    setStatus('Chemin effacé. Le fichier reste dans Storage ; enregistrez pour '
+      + 'retirer l\'affiche de la page.', 'good-text');
+  });
+
+  wrap.append(pathInput, row, status);
+  wrap.appendChild(el('p',
+    'JPEG, PNG, WebP ou AVIF, 5 Mo maximum. L\'image est téléchargée depuis '
+    + 'Storage au moment de la construction du site et optimisée par Astro ; '
+    + 'rien sur le site public ne pointe vers Supabase.', 'hint'));
+  return wrap;
 }
 
 async function boot() {

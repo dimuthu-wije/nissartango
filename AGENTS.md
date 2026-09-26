@@ -172,12 +172,27 @@ leave it out of git: nothing in one should need a secret to be useful.
 - **Email and phone never reach the build.** Not "deliberately not rendered",
   which is what this line used to say: they are excluded from the public view,
   so the build never receives them and no template mistake can leak them.
-- **Media would go in `public/uploads/events`**, not `src/assets` — Astro
-  processes and hashes `src/assets`, so a path stored as a plain string (by the
-  old CMS then, by `image_path` in the database now) wouldn't resolve. Recorded
-  as a decision, not as a description: `public/uploads/` does not exist, and as
-  of 2026-09-19 those two AGENTS.md lines were the only references to it
-  anywhere in the repo. Nothing serves `/uploads/events/...` today.
+- **Media lives in Supabase Storage and is pulled into `src/assets/events` at
+  build time.** Proven end to end on 2026-09-26; before that these lines said
+  media "would go in `public/uploads/events`, not `src/assets`", which was the
+  markdown-era plan and had been superseded without the note being updated. It
+  is what made `image_path` look unbuilt when it was finished.
+
+  The actual pipeline:
+
+      events.image_path  <organizer_id>/<event_id>/<filename> in the PRIVATE
+                         event-images bucket (20260828190200_storage.sql)
+      fetch-content.mjs  downloads each referenced object with the ANON key,
+                         via the bucket's read policy, into src/assets/events/
+                         named flatten(image_path)
+      events.image_file  that flattened filename, set by fetch-content
+      [slug].astro       import.meta.glob over src/assets/events, rendered
+                         through Astro's <Image>
+
+  `src/assets` and not `public/uploads` precisely BECAUSE Astro processes and
+  hashes it: the flyer comes out as a hashed WebP with a srcset. Measured with
+  a real 600x400 PNG — one upload, one download, `<img srcset>` with 400w and
+  600w WebP, and **no `supabase.co` anywhere in the built HTML**.
 
 ## Gotchas learned the hard way
 
@@ -259,10 +274,14 @@ leave it out of git: nothing in one should need a secret to be useful.
 ## Outstanding
 
 **Unverified from the last round:**
-- Confirm no stray `image=` text renders on event pages
-- Decide what `image_path` / `image_file` are supposed to resolve to. Nothing
-  serves `/uploads/events/...` and `public/uploads/` does not exist, so this is
-  an open design question, not a verification step.
+- ~~Confirm no stray `image=` text renders on event pages~~ — **DONE
+  2026-09-26.** Zero occurrences of `image=` in the visible text of a page that
+  actually HAS an image, which is the only state in which it could have failed.
+- ~~Decide what `image_path` / `image_file` resolve to~~ — **ANSWERED
+  2026-09-26**, and the answer was "they already resolve": Supabase Storage →
+  `src/assets/events` → Astro. See the media decision above. The open question
+  was never the design; it was that the design had been built and the note not
+  updated.
 - Confirm organizer social links render on event detail
 
 **Next up:**
