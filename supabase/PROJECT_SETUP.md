@@ -318,9 +318,10 @@ does not exist. `dmarc@nissartango.fr` forwards to Outlook through Email
 Routing instead, which needs no such authorisation. A DMARC record that looks
 configured and delivers no reports is the easy mistake here.
 
-### `no-reply@` should RECEIVE, and the name is not the reason it shouldn't
+### `no-reply@` receives — DONE 2026-09-26
 
-Decided 2026-09-26. Every magic link, every sign-in, every organizer's first
+An Email Routing rule forwards it to the same inbox as `dmarc@`. Decided and
+added the same day. Every magic link, every sign-in, every organizer's first
 contact with this project arrives from `no-reply@nissartango.fr`, and replies
 to it bounced — the address had no Email Routing rule, so Cloudflare rejected
 mail for it.
@@ -360,10 +361,20 @@ publish `v=spf1 include:amazonses.com ~all`, so DMARC has BOTH legs, SPF
 aligned by subdomain and DKIM aligned at the apex. An earlier reading of the
 apex record alone suggested DKIM was carrying DMARC on its own; it is not.
 
-Verify afterwards by replying to any magic link and watching it arrive. There
-is no probe from here: Cloudflare's MX refuses an SMTP conversation from a
-residential IP on reverse-DNS grounds (`550 Sender IP reverse lookup rejected`,
-2026-09-26), so a RCPT check cannot answer whether an address is routed.
+**What was verified, and what was not.** The mail DNS was re-read after the
+rule was added and is undisturbed: 3 Cloudflare MX, exactly ONE apex SPF (still
+Email Routing's), `rsend.`/`send.` carrying Resend's SPF, DKIM and DMARC
+present. That is the check that matters, because a botched Email Routing change
+is how a second apex SPF record appears — the permanent error this file warns
+about two sections up.
+
+**Delivery itself is unconfirmed from here and can only be confirmed by using
+it**: reply to any magic link and watch it arrive. Cloudflare's MX accepts a
+connection from a residential IP and then refuses the conversation on
+reverse-DNS grounds (`550 Sender IP reverse lookup rejected`, 2026-09-26), so
+RCPT TO cannot answer whether an address is routed. A rule that exists in the
+dashboard and a message that arrives are different claims; only the second one
+is the feature.
 
 **Do not raise `p=none` without reading the reports first.** The build-failure
 notifier also sends as `nissartango.fr`, through Cloudflare's `send_email`

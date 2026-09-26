@@ -205,11 +205,12 @@ gap, not an oversight.
   on port 3000 — the port is not a preference, it is dev's `site_url` — and
   `./scripts/seed-dev-editor.sh` fills dev with an admin, an organizer and a
   queue. A banner names the project whenever it is not production.
-- **`no-reply@nissartango.fr` does not receive.** Replies bounce, because the
-  address has no Email Routing rule. Decided 2026-09-26 that it SHOULD receive
-  and why — see "`no-reply@` should RECEIVE" in `supabase/PROJECT_SETUP.md`,
-  which also has the two-click recipe. Prerequisites are already live: Email
-  Routing runs on this zone for `dmarc@`. Pending one dashboard action.
+- ~~**`no-reply@nissartango.fr` does not receive.**~~ **Closed 2026-09-26** — an
+  Email Routing rule forwards it to the same inbox as `dmarc@`. The reasoning,
+  including why a bounce is not obviously the wrong answer, is in
+  `supabase/PROJECT_SETUP.md`. The mail DNS was re-read afterwards and is
+  undisturbed; delivery itself is confirmed by replying to a magic link, not
+  from here.
 - **Email OTP Expiration is unread on both projects.** Never checked in the
   dashboard, on either.
 - **`image_path` / `image_file` resolve to nothing.** `public/uploads/` does not
