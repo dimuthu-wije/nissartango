@@ -16,6 +16,18 @@ import { partsInZone, zonedToInstant, localDateKey, shiftParts } from './zone.js
 const HORIZON_MONTHS = 6;
 const MAX_OCCURRENCES = 200;
 
+// A NOTE ON THAT CAP, because the archive makes it visible where the agenda
+// did not. expand() counts from the series START, so a weekly event running
+// longer than 200 occurrences -- about 3.8 years; biweekly 7.6; monthly 16 --
+// stops generating before it reaches `now`. Every occurrence it returns is
+// then in the past, the agenda shows nothing, and the event silently moves to
+// the archive while still running.
+//
+// Not reachable with today's content: the oldest event here starts in August
+// 2026. Left alone deliberately rather than fixed in passing -- the fix is to
+// expand from a point near `now` instead of from the series start, which
+// changes tested behaviour and deserves its own change. Measured 2026-09-26.
+
 /** @typedef {{ id:string, slug:string, title:string, type:string, starts_at:string,
  *   duration_minutes:number|null, timezone:string, recurrence:string,
  *   recurrence_end:string|null, cancelled_at:string|null, cancellation_note:string|null,
@@ -146,6 +158,79 @@ export function nextDate(event, exceptions = [], opts = {}) {
   const found = expand(event, exceptions, { now })
     .find((o) => o.start >= now && !o.cancelled);
   return found ? found.start : new Date(event.starts_at);
+}
+
+/**
+ * The LAST occurrence of an event — the date it finished.
+ *
+ * What the archive sorts and labels by, because "when was this?" about a
+ * finished weekly series means the last night it ran, not the first. A single
+ * date is its own last.
+ *
+ * Cancelled occurrences count: a series whose final Tuesday was called off
+ * still ended that week, and saying otherwise would move it in the archive for
+ * a reason a reader cannot see.
+ *
+ * Falls back to starts_at when expansion yields nothing, which happens only if
+ * MAX_OCCURRENCES is reached before the series ends — see the note there.
+ *
+ * @param {EventRow} event @param {ExceptionRow[]} exceptions
+ * @param {{ now?: Date }} [opts] @returns {Date}
+ */
+export function lastDate(event, exceptions = [], opts = {}) {
+  const all = expand(event, exceptions, opts);
+  return all.length ? all[all.length - 1].start : new Date(event.starts_at);
+}
+
+/**
+ * Split every event into what is still to come and what is not.
+ *
+ * THE INVARIANT: the two sets are complementary. Every event lands in exactly
+ * one of them, so no event can be unreachable and none can appear twice. That
+ * is the whole reason this is one function rather than two filters in two
+ * pages -- before 2026-09-26 the agenda filtered and nothing else did, and
+ * four of five events on this site were in neither set.
+ *
+ * `archived` is defined as "produced no listed occurrence", never by comparing
+ * dates itself. So it cannot drift from the agenda: whatever the agenda shows
+ * is current, and everything else is archived, by construction.
+ *
+ * A wholly-cancelled series is archived even when its dates are still ahead.
+ * It has nothing forthcoming, and it needs to be reachable -- somebody linked
+ * to that milonga before it was called off.
+ *
+ * `ended` is when an event STOPPED BEING FORTHCOMING, which is what an archive
+ * sorts by: the last night for a completed series, the moment of cancellation
+ * for a cancelled one. `shown` is the date to print, which for a cancelled
+ * series is when it was DUE to start rather than a night it never reached.
+ *
+ * @param {EventRow[]} events
+ * @param {Map<string, ExceptionRow[]>} exceptionsByEvent
+ * @param {{ now?: Date }} [opts]
+ */
+export function partition(events, exceptionsByEvent = new Map(), opts = {}) {
+  const now = opts.now ?? new Date();
+
+  const listed = upcoming(events, exceptionsByEvent, { now })
+    .filter((o) => !o.event.cancelled_at);
+  const current = new Set(listed.map((o) => o.event.id));
+
+  const archived = events
+    .filter((e) => !current.has(e.id))
+    .map((e) => {
+      const ex = exceptionsByEvent.get(e.id) ?? [];
+      const last = lastDate(e, ex, { now });
+      const cancelled = e.cancelled_at ? new Date(e.cancelled_at) : null;
+      return {
+        event: e,
+        last,
+        ended: cancelled ?? last,
+        shown: cancelled ? new Date(e.starts_at) : last,
+      };
+    })
+    .sort((a, b) => b.ended.getTime() - a.ended.getTime());
+
+  return { listed, archived };
 }
 
 export const RECURRENCE_LABELS = {

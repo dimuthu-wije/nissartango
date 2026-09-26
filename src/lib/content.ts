@@ -3,7 +3,7 @@
  * Keeps getCollection() plumbing out of the templates.
  */
 import { getCollection } from 'astro:content';
-import { upcoming, expand } from './occurrences.js';
+import { expand, partition } from './occurrences.js';
 
 /** An Astro entry back into a plain database row: db_id becomes id again. */
 export function toRow(entry: { data: Record<string, any> }) {
@@ -30,11 +30,17 @@ export async function loadAgenda(now = new Date()) {
     exceptionsByEvent.set(x.data.event_id, list);
   }
 
+  // The agenda and the archive, split once so they cannot disagree. The
+  // invariant and the reasoning live with the logic, in occurrences.js, where
+  // tests/occurrences.test.js can reach them.
+  const { listed, archived } = partition(events, exceptionsByEvent, { now });
+
   return {
     events,
     organizers,
     exceptionsByEvent,
-    occurrences: upcoming(events, exceptionsByEvent, { now }),
+    occurrences: listed,
+    archived,
   };
 }
 

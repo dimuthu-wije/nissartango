@@ -99,6 +99,7 @@ scripts/db-push.sh            migrations to a HOSTED project, naming the ref fir
 src/data/site.ts              SITE_ORGANIZER_ID
 src/layouts/Layout.astro      shell, global CSS vars, OG tags
 src/pages/index.astro         agenda listing
+src/pages/archives/index.astro  past events, grouped by year
 src/pages/evenements/[slug].astro      event detail
 src/pages/build-info.json.ts  the deploy's own receipt: ref, commit, counts
 scripts/fetch-content.mjs     fetches Supabase -> snapshot
@@ -261,8 +262,19 @@ leave it out of git: nothing in one should need a secret to be useful.
    then report which fields are missing or annoying at volume. Bicilonga should
    be `weekly` + `recurrence_end`.
 2. Convert `organizer` city/name free-text drift to selects once real values exist
-3. Past-event archive — currently past events vanish entirely, which is bad for
-   SEO and for anyone linking to a past workshop
+3. ~~Past-event archive~~ — **DONE 2026-09-26.** `/archives/`, grouped by year,
+   newest first.
+
+   This line said past events "vanish entirely". They did not: their pages were
+   built, live and in the sitemap. What vanished was any route TO them — four
+   of five event pages were linked from nowhere, reachable only from a search
+   result or a saved link. Worth the distinction, because it changed the fix
+   from "keep the pages" to "list them".
+
+   The agenda and the archive are now complementary BY CONSTRUCTION —
+   `partition()` in `src/lib/occurrences.js` defines archived as "produced no
+   listed occurrence", so no event can fall between them. `verify-build.mjs`
+   check 8b fails the build if any event page is unreachable from either.
 4. Month grouping and type filtering (needed around 30-40 events)
 5. English pages (`/en/`) — UI and practical pages only
 6. Event submission form for other organizers, so I'm the editor rather than the

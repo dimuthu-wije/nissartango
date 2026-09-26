@@ -44,6 +44,16 @@ const futureOccurrences = allOccurrences.filter((o) => o.start >= now);
 // because the markup follows this list, dates the markup never mentioned.
 const dates = e.recurrence === 'none' ? [] : futureOccurrences;
 
+// Has this already happened? Nothing still to come, which is the same test
+// loadAgenda() uses to decide the archive -- so a page that says "passé"
+// is exactly a page listed there, and neither can contradict the other.
+//
+// Worth saying out loud on the page: most arrivals at a past event come from
+// a search result or a shared link, months later, and the page otherwise
+// reads as an invitation. Cancelled events already say Annulé and are not
+// also labelled past -- one banner, the more specific one.
+const past = !cancelled && futureOccurrences.length === 0;
+
 const when = nextDate(e, exceptions, { now });
 
 // Images are downloaded into src/assets/events by scripts/fetch-content.mjs,
@@ -169,7 +179,9 @@ const jsonLd = nodes.length === 1
   canonical={canonical}
   jsonLd={jsonLd}
 >
-  <a href="/" class="back">← Agenda</a>
+  <a href={past || cancelled ? '/archives/' : '/'} class="back">
+    {past || cancelled ? '← Archives' : '← Agenda'}
+  </a>
 
   <span class="type">{TYPE_LABELS[e.type] ?? e.type}</span>
   <h1>{e.title}</h1>
@@ -177,6 +189,13 @@ const jsonLd = nodes.length === 1
   {cancelled && (
     <p class="banner">
       Annulé{e.cancellation_note ? ` — ${e.cancellation_note}` : ''}
+    </p>
+  )}
+
+  {past && (
+    <p class="banner past">
+      Événement passé. Il est conservé pour mémoire ;
+      voir l'<a href="/">agenda</a> pour ce qui vient.
     </p>
   )}
 
@@ -269,6 +288,13 @@ const jsonLd = nodes.length === 1
     background: #fdecea; color: #b3261e; font-weight: 600;
     padding: 0.7rem 1rem; border-radius: 4px; margin: 0 0 1.5rem;
   }
+  /* Past is not an error: a neutral note, not the red a cancellation gets.
+     Both are banners so they occupy the same place; only one ever shows. */
+  .banner.past {
+    background: var(--surface, #f1efec); color: var(--muted);
+    font-weight: 500;
+  }
+  .banner.past a { color: inherit; }
   .flyer { width: 100%; height: auto; border-radius: 4px; margin-bottom: 1.75rem; }
   .details {
     display: grid; grid-template-columns: 7rem 1fr; gap: 0.5rem 1rem;

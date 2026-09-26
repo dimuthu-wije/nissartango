@@ -1,0 +1,132 @@
+---
+/**
+ * Événements passés.
+ *
+ * WHY THIS PAGE EXISTS. Every approved event already had a page, and four of
+ * the five on this site had nothing linking to them — the agenda shows only
+ * what is still to come, and there was no second place to look. A page that
+ * exists, is in the sitemap, and is reachable from nowhere is a page a reader
+ * can only arrive at from Google, and a page the site itself does not admit to
+ * having.
+ *
+ * WHAT COUNTS AS PAST is not decided here. `loadAgenda()` returns `archived`
+ * as exactly the events that produced no listed occurrence, so the agenda and
+ * this page are complementary by construction: no event can fall between them
+ * and none can appear in both. If that ever stops being true it is a bug in
+ * one computation rather than a disagreement between two.
+ *
+ * That includes wholly-cancelled series, which have a date in the future and
+ * nothing still to come. They belong here rather than nowhere, marked Annulé —
+ * somebody linked to that milonga before it was called off.
+ *
+ * GROUPED BY YEAR, newest first. At ~200 events a year this page will want
+ * splitting per year well before it wants pagination; the grouping is already
+ * the seam to split on.
+ */
+import Layout from '../../layouts/Layout.astro';
+import { loadAgenda, TYPE_LABELS, fmtDay } from '../../lib/content';
+
+const { archived, organizers } = await loadAgenda();
+
+// The year an event ENDED, which for a series is its last night, not its
+// first. A weekly practica that ran from November into January belongs under
+// the year it finished — that is the year a reader remembers it by.
+const byYear = new Map<number, typeof archived>();
+for (const row of archived) {
+  const year = Number(
+    new Intl.DateTimeFormat('fr-FR', {
+      year: 'numeric', timeZone: row.event.timezone || 'Europe/Paris',
+    }).format(row.ended),
+  );
+  byYear.set(year, [...(byYear.get(year) ?? []), row]);
+}
+const years = [...byYear.keys()].sort((a, b) => b - a);
+
+const title = 'Archives — événements passés | Nissartango';
+---
+
+<Layout title={title} description="Les événements passés de l'agenda tango de Nice et de la Côte d'Azur.">
+  <h1>Archives</h1>
+  <p class="intro">
+    Les événements qui ont eu lieu. Pour ce qui vient, voir l'<a href="/">agenda</a>.
+  </p>
+
+  {archived.length === 0 && (
+    <p class="empty">Rien encore aux archives — tout ce qui est publié est à venir.</p>
+  )}
+
+  {years.map((year) => (
+    <section class="year">
+      <h2>{year}</h2>
+      <ul class="events">
+        {byYear.get(year)!.map(({ event: e, ended, shown, last }) => {
+          const organizer = organizers.get(e.organizer_id);
+          const series = e.recurrence && e.recurrence !== 'none';
+          const started = new Date(e.starts_at);
+          return (
+            <li data-event={e.slug} data-ended={ended.toISOString().slice(0, 10)}
+                class={e.cancelled_at ? 'cancelled' : undefined}>
+              <div class="when">
+                {/* A completed series gets its span, because "when was that?"
+                    about one is a range. A single date, and a series cancelled
+                    before it finished, get the one date that means anything. */}
+                <span class="date">{fmtDay(shown, e.timezone)}</span>
+                {series && !e.cancelled_at && started < last && (
+                  <span class="since">depuis le {fmtDay(started, e.timezone)}</span>
+                )}
+                {series && e.cancelled_at && (
+                  <span class="since">série annulée</span>
+                )}
+              </div>
+              <div class="what">
+                <span class="type">{TYPE_LABELS[e.type] ?? e.type}</span>
+                <h3><a href={`/evenements/${e.slug}/`}>{e.title}</a></h3>
+                <p class="meta">
+                  {e.location_name}{e.location_name && ', '}{e.city}
+                  {organizer && <> · {organizer.name}</>}
+                </p>
+                {e.cancelled_at && (
+                  <p class="off">Annulé{e.cancellation_note ? ` — ${e.cancellation_note}` : ''}</p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  ))}
+</Layout>
+
+<style>
+  h1 { font-size: 1.9rem; margin: 2rem 0 0.25rem; letter-spacing: -0.02em; }
+  .intro { color: var(--muted); margin: 0 0 2rem; }
+  .empty { color: var(--muted); }
+  .year { margin: 0 0 2.5rem; }
+  .year h2 {
+    font-size: 1.1rem; color: var(--muted); font-weight: 600;
+    margin: 0 0 0.25rem; letter-spacing: 0.02em;
+  }
+  .events { list-style: none; padding: 0; margin: 0; }
+  .events li {
+    display: grid; grid-template-columns: 8.5rem 1fr; gap: 1rem;
+    padding: 1.1rem 0; border-top: 1px solid var(--line);
+  }
+  .when { display: flex; flex-direction: column; }
+  .date { font-size: 0.9rem; text-transform: capitalize; }
+  .since { font-size: 0.8rem; color: var(--muted); text-transform: capitalize; }
+  .what h3 { margin: 0.15rem 0 0.25rem; font-size: 1.05rem; }
+  .what h3 a { color: inherit; text-decoration: none; }
+  .what h3 a:hover { text-decoration: underline; }
+  .type {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  .meta { margin: 0; color: var(--muted); font-size: 0.9rem; }
+  .off { margin: 0.3rem 0 0; font-size: 0.9rem; color: var(--bad); }
+  .cancelled .what h3 { text-decoration: line-through; }
+
+  @media (max-width: 34rem) {
+    .events li { grid-template-columns: 1fr; gap: 0.25rem; }
+    .when { flex-direction: row; gap: 0.5rem; align-items: baseline; }
+  }
+</style>

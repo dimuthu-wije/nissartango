@@ -327,11 +327,34 @@ else {
       missing++;
     }
   }
-  const locs = (xml.match(/<loc>/g) ?? []).length;
-  if (locs !== eventPages.length + 1) {
-    fail(`sitemap.xml has ${locs} <loc> entries; expected ${eventPages.length + 1} (${eventPages.length} events + the agenda)`);
-  } else if (!missing) {
-    ok(`sitemap.xml lists all ${locs} URLs`);
+  // EVERY html page, not a hard-coded count.
+  //
+  // This compared `locs` against `eventPages.length + 1` -- events plus the
+  // agenda -- and adding /archives/ on 2026-09-26 made a correct sitemap fail
+  // it. A count that has to be edited whenever a page is added is a count that
+  // will be edited to whatever silences it. Comparing SETS says which page is
+  // missing instead of only that a number moved, and it needs no maintenance
+  // when the next page appears.
+  const expected = new Set(html.map((f) => {
+    const dir = path.dirname(rel(f));
+    return dir === '.' ? '/' : `/${dir.split(path.sep).join('/')}/`;
+  }));
+  const listed = new Set();
+  for (const m of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
+    try { listed.add(decodeURIComponent(new URL(m[1]).pathname)); }
+    catch { listed.add(m[1]); }
+  }
+
+  const absent = [...expected].filter((u) => !listed.has(u));
+  const extra = [...listed].filter((u) => !expected.has(u));
+  if (absent.length) {
+    absent.forEach((u) => fail(`sitemap.xml does not list ${u}, which was built`));
+  }
+  if (extra.length) {
+    extra.forEach((u) => fail(`sitemap.xml lists ${u}, which is not in dist/`));
+  }
+  if (!missing && !absent.length && !extra.length) {
+    ok(`sitemap.xml lists all ${listed.size} built page(s)`);
   }
 }
 
@@ -443,6 +466,61 @@ for (const [source, raw] of emitted) {
   }
 }
 if (!redirecting) ok(`${checked} internal URL(s) emitted, every one served directly`);
+
+// 8b. Every event page must be REACHABLE from the agenda or the archive.
+//
+//     Before 2026-09-26 four of this site's five event pages were linked from
+//     nowhere. They were built, live, and in the sitemap -- so nothing here
+//     complained -- and the only way to arrive at one was a search result or a
+//     link somebody had saved. The site did not admit to having them.
+//
+//     The two listings are complementary by construction (see loadAgenda), so
+//     this should be structurally true. That is the reason to assert it: the
+//     failure mode is a filter drifting on one side, which produces a page
+//     that exists and cannot be found rather than an error.
+{
+  const listings = ['index.html', path.join('archives', 'index.html')];
+  const linked = new Set();
+  for (const name of listings) {
+    const file = path.join(DIST, name);
+    let text;
+    try {
+      text = await readFile(file, 'utf8');
+    } catch (err) {
+      // ENOENT is a real answer -- a build with no archive page has none to
+      // read. Anything else is this check breaking, and must say so rather
+      // than be swallowed: the first version of this block called a
+      // readFileSync that is not imported here, caught the ReferenceError
+      // with a bare `catch { continue }`, and reported "the listings are
+      // empty" -- a finding about the SITE, produced by a bug in the checker.
+      if (err?.code === 'ENOENT') continue;
+      fail(`could not read ${name} to check reachability: ${err?.message ?? err}`);
+      continue;
+    }
+    for (const m of text.matchAll(/href="\/evenements\/([^"#?]+?)\/?"/g)) {
+      linked.add(decodeURIComponent(m[1]));
+    }
+  }
+
+  const orphans = [];
+  for (const f of eventPages) {
+    // dist/evenements/<slug>/index.html -> <slug>
+    const slug = rel(f).split(path.sep)[1];
+    if (!linked.has(slug)) orphans.push(slug);
+  }
+
+  if (!eventPages.length) {
+    // Already failed above; do not also print a vacuous pass here.
+  } else if (!linked.size) {
+    fail('neither / nor /archives/ links to any event page — the listings are empty');
+  } else if (orphans.length) {
+    orphans.slice(0, 5).forEach((slug) => fail(
+      `/evenements/${slug}/ is built and in the sitemap but nothing links to it. ` +
+      'It should be on the agenda or in the archive; it is in neither.'));
+  } else {
+    ok(`${eventPages.length} event page(s), every one reachable from / or /archives/`);
+  }
+}
 
 // 9. The agenda and the detail pages must agree about which dates exist.
 //

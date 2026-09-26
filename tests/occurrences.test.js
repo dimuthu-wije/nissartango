@@ -186,3 +186,129 @@ test('zonedToInstant round-trips through both changeovers', () => {
     assert.equal(utc(zonedToInstant(parts, PARIS)), wantUtc, JSON.stringify(parts));
   }
 });
+
+// ---------------------------------------------------------------------------
+// The archive.
+//
+// These exist for a failure that produced no error for weeks: four of this
+// site's five event pages were built, live, in the sitemap, and linked from
+// nowhere. The agenda showed only what was still to come and there was no
+// second place to look, so an event simply stopped being reachable the day it
+// happened.
+//
+// The property that prevents it is not "the archive lists past events" but
+// "the two sets are complementary" — every event in exactly one of them. A
+// test for the first would pass while an event fell between them.
+// ---------------------------------------------------------------------------
+import { partition, lastDate } from '../src/lib/occurrences.js';
+
+const NOW = new Date('2026-09-26T12:00:00Z');
+
+const ev = (over = {}) => ({
+  id: over.id ?? 'e1',
+  slug: over.slug ?? 's1',
+  title: 'T',
+  type: 'milonga',
+  starts_at: '2026-09-01T18:00:00Z',
+  duration_minutes: 120,
+  timezone: PARIS,
+  recurrence: 'none',
+  recurrence_end: null,
+  cancelled_at: null,
+  ...over,
+});
+
+test('lastDate: a single date is its own last', () => {
+  assert.equal(lastDate(ev(), [], { now: NOW }).toISOString(), '2026-09-01T18:00:00.000Z');
+});
+
+test('lastDate: a series ends on its last night, with the wall clock held', () => {
+  // Starts 20:00 Paris in August (CEST, +2 = 18:00Z) and ends 20:00 Paris in
+  // November (CET, +1 = 19:00Z). A naive +7 days in UTC would drift an hour
+  // across the changeover and report 18:00Z.
+  const last = lastDate(
+    ev({ starts_at: '2026-08-27T18:00:00Z', recurrence: 'weekly', recurrence_end: '2026-11-26' }),
+    [], { now: NOW });
+  assert.equal(last.toISOString(), '2026-11-26T19:00:00.000Z');
+  assert.equal(paris(last).slice(-5), '20:00', 'the wall clock must not drift');
+});
+
+test('a past single date is archived; a running series is not', () => {
+  const past = ev({ id: 'past', starts_at: '2026-09-01T18:00:00Z' });
+  const running = ev({
+    id: 'run', starts_at: '2026-08-27T18:00:00Z',
+    recurrence: 'weekly', recurrence_end: '2026-11-26',
+  });
+  const { listed, archived } = partition([past, running], new Map(), { now: NOW });
+
+  assert.deepEqual(archived.map((a) => a.event.id), ['past']);
+  assert.ok(listed.length > 0, 'the running series must still be on the agenda');
+  assert.ok(listed.every((o) => o.event.id === 'run'));
+});
+
+test('a wholly-cancelled series is archived even though its dates are ahead', () => {
+  // It has nothing forthcoming and must still be reachable: somebody linked to
+  // that milonga before it was called off.
+  const cancelled = ev({
+    id: 'off', starts_at: '2026-09-24T15:50:00Z', recurrence: 'weekly',
+    recurrence_end: '2026-12-31', cancelled_at: '2026-10-01T15:50:00Z',
+  });
+  const { listed, archived } = partition([cancelled], new Map(), { now: NOW });
+  assert.equal(listed.length, 0, 'a cancelled series occupies no slot in the agenda');
+  assert.deepEqual(archived.map((a) => a.event.id), ['off']);
+});
+
+test('THE INVARIANT: every event is in exactly one of the two sets', () => {
+  // Swept over a deliberately awkward mixture rather than asserted per case.
+  // This is the property that was false in production: an event in neither.
+  const events = [
+    ev({ id: 'a', starts_at: '2026-08-25T14:30:00Z' }),                       // past single
+    ev({ id: 'b', starts_at: '2026-12-01T19:00:00Z' }),                       // future single
+    ev({ id: 'c', starts_at: '2026-08-27T18:00:00Z',                          // running series
+         recurrence: 'weekly', recurrence_end: '2026-11-26' }),
+    ev({ id: 'd', starts_at: '2026-01-06T18:00:00Z',                          // finished series
+         recurrence: 'weekly', recurrence_end: '2026-03-31' }),
+    ev({ id: 'e', starts_at: '2026-09-24T15:50:00Z', recurrence: 'weekly',    // cancelled series
+         recurrence_end: '2026-12-31', cancelled_at: '2026-10-01T15:50:00Z' }),
+    ev({ id: 'f', starts_at: '2026-12-01T19:00:00Z',                          // cancelled single
+         cancelled_at: '2026-09-20T10:00:00Z' }),
+    ev({ id: 'g', starts_at: '2026-10-05T18:00:00Z', recurrence: 'monthly',   // open-ended series
+         recurrence_end: null }),
+  ];
+
+  const { listed, archived } = partition(events, new Map(), { now: NOW });
+  const onAgenda = new Set(listed.map((o) => o.event.id));
+  const inArchive = new Set(archived.map((a) => a.event.id));
+
+  for (const e of events) {
+    const here = Number(onAgenda.has(e.id)) + Number(inArchive.has(e.id));
+    assert.equal(here, 1, `${e.id} is in ${here} set(s); every event belongs to exactly one`);
+  }
+  assert.equal(onAgenda.size + inArchive.size, events.length);
+  assert.deepEqual([...inArchive].sort(), ['a', 'd', 'e', 'f']);
+});
+
+test('the archive is ordered by when each event stopped being forthcoming', () => {
+  const events = [
+    ev({ id: 'old', starts_at: '2026-08-25T14:30:00Z' }),
+    ev({ id: 'recent', starts_at: '2026-09-01T18:00:00Z' }),
+    // Cancelled on 1 October: it left the agenda AFTER both of those, even
+    // though its own dates run to December. Sorting it by its schedule put a
+    // future date at the top of an archive.
+    ev({ id: 'cancelled', starts_at: '2026-09-24T15:50:00Z', recurrence: 'weekly',
+         recurrence_end: '2026-12-31', cancelled_at: '2026-10-01T15:50:00Z' }),
+  ];
+  const { archived } = partition(events, new Map(), { now: NOW });
+  assert.deepEqual(archived.map((a) => a.event.id), ['cancelled', 'recent', 'old']);
+});
+
+test('a cancelled series is SHOWN by when it was due, not a night it never reached', () => {
+  const e = ev({
+    id: 'off', starts_at: '2026-09-24T15:50:00Z', recurrence: 'weekly',
+    recurrence_end: '2026-12-31', cancelled_at: '2026-10-01T15:50:00Z',
+  });
+  const [row] = partition([e], new Map(), { now: NOW }).archived;
+  assert.equal(row.shown.toISOString(), '2026-09-24T15:50:00.000Z', 'the start it was due');
+  assert.equal(row.ended.toISOString(), '2026-10-01T15:50:00.000Z', 'sorted by the cancellation');
+  assert.equal(row.last.toISOString().slice(0, 10), '2026-12-31', 'the schedule is still available');
+});

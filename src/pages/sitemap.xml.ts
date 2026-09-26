@@ -16,6 +16,11 @@ export const GET: APIRoute = async ({ site }) => {
 
   const urls = [
     { loc: new URL('/', site).href, lastmod: null as string | null, priority: '1.0' },
+    // The archive. Lower priority than the agenda and higher than nothing:
+    // it is the only route to every event that has already happened, and it
+    // was omitted here when it was first built -- caught by a verify:build
+    // check rather than by reading this file.
+    { loc: new URL('/archives/', site).href, lastmod: null as string | null, priority: '0.5' },
     ...events.map((e) => ({
       loc: new URL(`/evenements/${e.data.slug}/`, site).href,
       lastmod: (e.data.updated_at ?? e.data.created_at ?? null)?.slice(0, 10) ?? null,
