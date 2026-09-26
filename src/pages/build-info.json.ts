@@ -59,6 +59,12 @@ export const GET: APIRoute = async () => {
     },
     fetched_at: snap.fetched_at ?? null,
     built_at: new Date().toISOString(),
+    // WHICH NODE BUILT THIS. Added with the version pin on 2026-09-26, and the
+    // only way to confirm from outside that the pin took: Cloudflare's build
+    // image defaults to 24.18.0 and reads .node-version, so a deploy still
+    // reporting 24 means the file is not being read. Four bytes that turn "we
+    // pinned it" from a claim into an observation.
+    node: process.version,
   };
 
   return new Response(JSON.stringify(body, null, 2) + '\n', {
