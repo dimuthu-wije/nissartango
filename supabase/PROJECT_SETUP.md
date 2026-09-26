@@ -318,6 +318,53 @@ does not exist. `dmarc@nissartango.fr` forwards to Outlook through Email
 Routing instead, which needs no such authorisation. A DMARC record that looks
 configured and delivers no reports is the easy mistake here.
 
+### `no-reply@` should RECEIVE, and the name is not the reason it shouldn't
+
+Decided 2026-09-26. Every magic link, every sign-in, every organizer's first
+contact with this project arrives from `no-reply@nissartango.fr`, and replies
+to it bounced — the address had no Email Routing rule, so Cloudflare rejected
+mail for it.
+
+**A bounce is not obviously the wrong answer**, which is why this is written
+down rather than just done. A bounce at least tells the sender the message did
+not arrive, so they try another way. Forwarding an address called *no-reply* to
+an inbox nobody reads would be worse: the sender gets silence and believes they
+have been heard.
+
+It is the right answer HERE because the inbox is read. There is one maintainer,
+the volume is a handful of organizers, and the realistic message is "je n'arrive
+pas à me connecter" from somebody who has just been sent a link. A bounce loses
+that; forwarding does not. If this ever becomes an unread address, the rule
+should be removed and the bounce restored — the rule is only correct while
+somebody is on the other end of it.
+
+**The prerequisites were already in place** (measured 2026-09-26): Email
+Routing is live on the zone — 3 Cloudflare MX, apex SPF
+`v=spf1 include:_spf.mx.cloudflare.net ~all` — because `dmarc@` already
+forwards through it. This is one more destination on machinery that is running.
+
+    Cloudflare dashboard -> nissartango.fr -> Email -> Email Routing
+      -> Routing rules -> Create address
+         Custom address:  no-reply@nissartango.fr
+         Action:          Send to an existing destination
+         Destination:     the same inbox dmarc@ uses
+
+A specific rule, NOT a catch-all: a catch-all on a domain this public collects
+whatever spam finds it, and the addresses worth receiving are two.
+
+**This changes nothing about sending.** Outbound still goes through Resend from
+`no-reply@nissartango.fr`, whose SPF lives on the `rsend.`/`send.` subdomains —
+so the apex SPF stays Email Routing's alone and the one-SPF-per-domain rule
+above is not disturbed. Verified while doing this: `rsend.nissartango.fr` does
+publish `v=spf1 include:amazonses.com ~all`, so DMARC has BOTH legs, SPF
+aligned by subdomain and DKIM aligned at the apex. An earlier reading of the
+apex record alone suggested DKIM was carrying DMARC on its own; it is not.
+
+Verify afterwards by replying to any magic link and watching it arrive. There
+is no probe from here: Cloudflare's MX refuses an SMTP conversation from a
+residential IP on reverse-DNS grounds (`550 Sender IP reverse lookup rejected`,
+2026-09-26), so a RCPT check cannot answer whether an address is routed.
+
 **Do not raise `p=none` without reading the reports first.** The build-failure
 notifier also sends as `nissartango.fr`, through Cloudflare's `send_email`
 binding rather than Resend. At `p=none` that is fine. At `p=reject`, if that
