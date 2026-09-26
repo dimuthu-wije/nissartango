@@ -305,35 +305,38 @@ leave it out of git: nothing in one should need a secret to be useful.
    `build-info.json` now reports `node`, which is the only way to confirm from
    outside that the pin took: a deploy still saying v24.18.0 means the file is
    not being read.
-8. Redirect `www` to the naked domain — **blocked on a dashboard action, and
-   it is NOT a repo change.** Measured 2026-09-26: `https://www.nissartango.fr/`
-   returns **200**, serving the same content as the naked domain, because
-   `wrangler.jsonc` lists both as `custom_domain` routes on the same Worker.
-   That is duplicate content, mitigated only by the canonical tag (which
-   `Layout.astro` builds from `Astro.site`, so www pages already declare the
-   naked URL).
+8. ~~Redirect `www` to the naked domain~~ — **DONE 2026-09-26**, with a
+   Cloudflare **Redirect Rule**. Measured from outside:
 
-   **`public/_redirects` cannot do it.** Cloudflare's static-asset redirects
+       /                          301 -> https://nissartango.fr/
+       /archives/                 301 -> https://nissartango.fr/archives/
+       /evenements/<slug>/        301 -> https://nissartango.fr/evenements/<slug>/
+       /?utm_source=flyer&x=1     301 -> https://nissartango.fr/?utm_source=flyer&x=1
+
+   One hop to a 200, path and query preserved, and the naked domain still 200s.
+
+   **`public/_redirects` cannot do this.** Cloudflare's static-asset redirects
    documentation lists "Domain-level redirects" as NOT supported and defines
-   `source` as a file path — checked against the docs rather than assumed,
-   after `_redirects` was the obvious first guess. So this needs a Cloudflare
-   **Redirect Rule**, which lives in the dashboard and does not travel with
-   this repo.
+   `source` as a file path. `_redirects` was the obvious first guess and was
+   checked against the docs before anything was written, which is the only
+   reason it was not tried and quietly left half-working.
 
-   **Do not remove `www` from `wrangler.jsonc` first.** Wrangler provisioned
-   that hostname's DNS record; removing the route deletes it, and www stops
-   resolving at all — worse than a 200. Add the rule, verify it, and only then
-   decide whether the custom domain is still wanted.
+   **A Redirect Rule fires even though `www` is still a Worker custom domain.**
+   Recorded here as a CLAIM from Cloudflare's docs — requests handled by
+   Workers "will not suppress actions from modern Rules features" — and then
+   measured on this zone, which is what promotes it to a fact about this
+   project. So `wrangler.jsonc` keeps both routes and www keeps resolving;
+   nothing had to be removed.
 
-   Cloudflare's own docs say requests handled by Workers "will not suppress
-   actions from modern Rules features", and Redirect Rules are one — so a rule
-   should fire even with the custom domain in place. Recorded as a CLAIM with
-   its source, not as a property of this project: verify with
+   That ordering matters if it is ever revisited: wrangler provisioned www's
+   DNS record, so deleting the route would take www from a working 301 to not
+   resolving at all. Add or change the rule first; touch the route second, if
+   ever.
 
-       curl -sSI --max-redirs 0 https://www.nissartango.fr/ | head -3
+   Re-check with:
 
-   expecting `301` and a `location:` of `https://nissartango.fr/`. A 200 means
-   the rule is not firing and the custom domain does have to go.
+       curl -sS -o /dev/null -D- --max-redirs 0 https://www.nissartango.fr/ \
+         | tr -d '\r' | grep -i '^location'
 9. Listings on tango aggregators + Google Business Profile — the site won't
    generate its own audience
 
