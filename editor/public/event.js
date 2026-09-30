@@ -281,9 +281,25 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
   form.appendChild(field('starts_at', 'Début',
     input('datetime-local', { value: instantToInput(existing?.starts_at, tz) }),
     { required: true, hint: 'Heure locale.' }));
-  form.appendChild(field('timezone', 'Fuseau horaire',
-    selectOf(TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES], tz),
-    { required: true }));
+  // FOLDED AWAY, because every event so far is in France and the column
+  // defaults to Europe/Paris in the database anyway. It stays a real field --
+  // readForm sends it, and `events_validate` checks it against
+  // pg_timezone_names -- but it is not worth a line of the form for a value
+  // that is right by default.
+  //
+  // Open by default when it is NOT Europe/Paris: a stage in Buenos Aires is
+  // exactly the case where hiding the field would hide the thing that matters.
+  const tzField = field('timezone', 'Fuseau horaire',
+    selectOf(TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES], tz));
+  const tzWrap = el('details', null, 'tz');
+  const tzSummary = el('summary', tz === 'Europe/Paris'
+    ? 'Fuseau horaire : Europe/Paris' : `Fuseau horaire : ${tz}`);
+  tzWrap.append(tzSummary, tzField);
+  tzWrap.open = tz !== 'Europe/Paris';
+  fields.get('timezone').control.addEventListener('change', (e) => {
+    tzSummary.textContent = `Fuseau horaire : ${e.target.value}`;
+  });
+  form.appendChild(tzWrap);
   form.appendChild(field('duration_minutes', 'Durée (minutes)',
     input('number', { value: existing?.duration_minutes ?? '', min: 1, max: 10080, step: 1 })));
   form.appendChild(field('recurrence', 'Récurrence',
@@ -324,7 +340,7 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
     input('number', { value: existing?.price_member ?? '', min: 0, step: '1' })));
   form.appendChild(field('price_note', 'Note sur le tarif',
     input('text', { value: existing?.price_note ?? '' }),
-    { hint: 'Affichée à côté des chiffres — « au chapeau ».' }));
+    { hint: '« au chapeau », « gratuit pour les étudiants », « 15 € les deux soirs », « prix libre »' }));
 
   section('Détails pratiques');
   form.appendChild(field('signup_url', 'Lien d\'inscription',
@@ -691,10 +707,7 @@ function imageField(existing, isEdit = Boolean(existing)) {
   });
 
   wrap.append(pathInput, row, status);
-  wrap.appendChild(el('p',
-    'JPEG, PNG, WebP ou AVIF, 5 Mo maximum. L\'image est téléchargée depuis '
-    + 'Storage au moment de la construction du site et optimisée par Astro ; '
-    + 'rien sur le site public ne pointe vers Supabase.', 'hint'));
+  wrap.appendChild(el('p', 'JPEG, PNG, WebP ou AVIF, 5 Mo maximum.', 'hint'));
   return wrap;
 }
 

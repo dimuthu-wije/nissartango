@@ -308,6 +308,17 @@ a.btn { text-decoration: none; display: inline-block; }
 .has-error select,
 .has-error textarea { border-color: var(--bad); }
 
+/* The timezone disclosure. Present, unobtrusive, and not a field until asked
+   for -- every event so far is in France. */
+.event-form .tz { margin: 0 0 1rem; }
+.event-form .tz > summary {
+  cursor: pointer; color: var(--muted); font-size: 0.85rem;
+  padding: 0.2rem 0;
+}
+.event-form .tz[open] > summary { margin-bottom: 0.4rem; }
+.event-form .tz .field { margin-bottom: 0; }
+.event-form .tz .field label { display: none; }
+
 /* A value the editor computed and a person must not type -- the storage path.
    Shown because it is what gets saved, dimmed because editing it is not a
    thing you can usefully do. */

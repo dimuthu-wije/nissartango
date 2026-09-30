@@ -118,7 +118,25 @@ function card(ev, refresh) {
       run(() => approve(ev.id, noteInput.value), 'Approbation…')));
   }
   if (ev.status !== 'rejected') {
-    actions.appendChild(button('Rejeter', 'btn btn-quiet', () => {
+    // REJECTING AN APPROVED EVENT UNPUBLISHES THE WHOLE EVENT, which the word
+    // "Rejeter" does not say. events_public filters status = 'approved', so
+    // rejecting takes the event, its page and every one of its dates off the
+    // site -- it does not reject "the modification", because there is no
+    // pending modification to reject: an edit to an approved event is applied
+    // to the row immediately and needs_review is only a notification.
+    //
+    // Nothing is deleted and approving again restores it. The confirm exists
+    // because the button's label and its effect disagree, and the disagreement
+    // is expensive in one direction only.
+    const rejectLabel = ev.status === 'approved' ? 'Rejeter (retirer du site)' : 'Rejeter';
+    actions.appendChild(button(rejectLabel, 'btn btn-quiet', () => {
+      if (ev.status === 'approved'
+          && !confirm(`« ${ev.title} » est en ligne. Le rejeter le retire entièrement `
+            + 'du site, avec toutes ses dates — ce n\'est pas un refus de la seule '
+            + 'modification. Rien n\'est supprimé : l\'approuver à nouveau le remet en ligne.\n\n'
+            + 'Pour dire seulement « j\'ai vu ce changement », utilisez « Marquer comme revu ».')) {
+        return;
+      }
       if (!noteInput.value.trim()) {
         // The function refuses a blank reason anyway. Saying so here avoids a
         // round trip that returns an error the person could have been told
