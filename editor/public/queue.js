@@ -239,7 +239,11 @@ async function render() {
       li.appendChild(el('span', ` ${when(ev.starts_at)} — ${ev.title}`));
       const edit = el('a', 'Modifier', 'linkish');
       edit.href = `/event/?id=${encodeURIComponent(ev.id)}`;
-      li.append(el('span', ' '), edit);
+      // Duplicating is how three dates that are not a series get entered: the
+      // schema has `recurrence`, which is a rhythm, and no "extra dates".
+      const dup = el('a', 'Dupliquer', 'linkish');
+      dup.href = `/event/?from=${encodeURIComponent(ev.id)}`;
+      li.append(el('span', ' '), edit, el('span', ' · '), dup);
       ul.appendChild(li);
     }
     b.appendChild(ul);

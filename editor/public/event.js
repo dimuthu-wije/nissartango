@@ -150,7 +150,11 @@ function selectOf(options, value) {
   return s;
 }
 
-const val = (n) => fields.get(n).control.value.trim();
+// Empty for a field that is not on this form, rather than a TypeError. The
+// cancellation controls are edit-mode only, so `val('cancellation_note')` has
+// no entry to read when creating -- and a form that dies on save with
+// "cannot read properties of undefined" tells the person nothing.
+const val = (n) => fields.get(n)?.control.value.trim() ?? '';
 const num = (n) => (val(n) === '' ? null : Number(val(n)));
 
 function showErrors(problems) {
@@ -171,11 +175,17 @@ function readForm() {
   const tz = val('timezone');
   const startsLocal = fields.get('starts_at').control.value;
   const startsIso = inputToInstant(startsLocal, tz);
+  // The cancellation controls exist in EDIT mode only, so this has to cope
+  // with their absence rather than assume the field map is complete. Reading
+  // `.wasCancelledAt` off an undefined entry threw, which would have made the
+  // create form fail on save with a TypeError and no message.
+  //
   // The checkbox carries no time of its own. Keep the original stamp when it
   // was already cancelled, so re-saving an edit does not rewrite when the
   // cancellation happened.
-  const wasCancelled = fields.get('cancelled_at').wasCancelledAt ?? null;
-  const cancelledNow = fields.get('cancelled_at').control.checked;
+  const cancelField = fields.get('cancelled_at');
+  const wasCancelled = cancelField?.wasCancelledAt ?? null;
+  const cancelledNow = Boolean(cancelField?.control.checked);
   const cancelledIso = cancelledNow ? (wasCancelled ?? new Date().toISOString()) : null;
   return {
     organizer_id: val('organizer_id'),
@@ -217,7 +227,17 @@ function payload(v) {
 
 // --- the page ---------------------------------------------------------------
 
-function buildForm(organizers, existing) {
+/**
+ * @param organizers  what this caller may create for
+ * @param existing    values to prefill: the event being edited, OR the one
+ *                    being copied, OR null
+ * @param isEdit      whether this form UPDATES. A copy has values and is a
+ *                    CREATE, so truthiness of `existing` cannot decide it --
+ *                    doing that put the cancellation section on a copy and
+ *                    sent imageField down its edit branch, where the template's
+ *                    deliberately-absent id made storagePathFor throw.
+ */
+function buildForm(organizers, existing, isEdit = Boolean(existing)) {
   const tz = existing?.timezone ?? 'Europe/Paris';
   const form = el('form', null, 'event-form');
   fields.clear();
@@ -246,9 +266,7 @@ function buildForm(organizers, existing) {
   section('Quoi et qui');
   form.appendChild(field('organizer_id', 'Organisateur',
     selectOf(organizers.map((o) => ({ value: o.id, label: o.name })), existing?.organizer_id),
-    { required: true, hint: organizers.length === 1
-      ? 'Le seul organisateur pour lequel vous pouvez créer des événements.'
-      : 'Seuls les organisateurs dont vous êtes membre sont listés : la base refuse les autres.' }));
+    { required: true }));
   form.appendChild(field('title', 'Titre',
     input('text', { value: existing?.title ?? '', maxLength: 200 }), { required: true }));
   form.appendChild(field('type', 'Type', selectOf(TYPES, existing?.type ?? 'milonga'),
@@ -262,18 +280,16 @@ function buildForm(organizers, existing) {
   section('Quand');
   form.appendChild(field('starts_at', 'Début',
     input('datetime-local', { value: instantToInput(existing?.starts_at, tz) }),
-    { required: true, hint: 'Heure locale, dans le fuseau horaire ci-dessous.' }));
+    { required: true, hint: 'Heure locale.' }));
   form.appendChild(field('timezone', 'Fuseau horaire',
     selectOf(TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES], tz),
     { required: true }));
   form.appendChild(field('duration_minutes', 'Durée (minutes)',
-    input('number', { value: existing?.duration_minutes ?? '', min: 1, max: 10080, step: 1 }),
-    { hint: 'Facultatif. Une série a une seule forme et plusieurs occurrences : il n\'y a donc pas d\'heure de fin.' }));
+    input('number', { value: existing?.duration_minutes ?? '', min: 1, max: 10080, step: 1 })));
   form.appendChild(field('recurrence', 'Récurrence',
     selectOf(RECURRENCES, existing?.recurrence ?? 'none')));
   form.appendChild(field('recurrence_end', 'Jusqu\'au',
-    input('date', { value: existing?.recurrence_end ?? '' }),
-    { hint: 'Uniquement pour un événement récurrent, et pas avant la première occurrence.' }));
+    input('date', { value: existing?.recurrence_end ?? '' })));
 
   section('Où');
   form.appendChild(field('location_name', 'Lieu',
@@ -300,52 +316,52 @@ function buildForm(organizers, existing) {
   // Which makes 12.50 fail the browser's OWN validity check, and native
   // validation runs before our submit handler — so the form would silently
   // refuse to submit with no message we control. Hence form.noValidate below.
-  section('Tarif',
-    'Les trois champs sont facultatifs et tous les trois sont publiés. '
-    + 'Un chiffre seul, une note seule, ou les deux ensemble.');
+  section('Tarif');
   form.appendChild(field('price_full', 'Tarif',
     input('number', { value: existing?.price_full ?? '', min: 0, step: '1' }),
-    { hint: '0 est un tarif : cela affiche « 0 € », pas « gratuit » par accident.' }));
+    { hint: '0 est un tarif : cela affiche « 0 € », pas « gratuit » par défaut.' }));
   form.appendChild(field('price_member', 'Tarif adhérent',
     input('number', { value: existing?.price_member ?? '', min: 0, step: '1' })));
   form.appendChild(field('price_note', 'Note sur le tarif',
     input('text', { value: existing?.price_note ?? '' }),
-    { hint: 'Pour ce qu\'un chiffre ne dit pas — « au chapeau », '
-      + '« gratuit pour les étudiants ». Affichée À CÔTÉ des chiffres, plus à leur place.' }));
+    { hint: 'Affichée à côté des chiffres — « au chapeau ».' }));
 
   section('Détails pratiques');
   form.appendChild(field('signup_url', 'Lien d\'inscription',
     input('url', { value: existing?.signup_url ?? '' }), { hint: 'http:// ou https://' }));
-  form.appendChild(imageField(existing));
+  form.appendChild(imageField(existing, isEdit));
   const body = el('textarea');
   body.rows = 5;
   body.value = existing?.body ?? '';
   form.appendChild(field('body', 'Description', body));
 
-  section('Annuler tout l\'événement');
+  // EDIT MODE ONLY. Cancelling something that does not exist yet is not a
+  // state the schema has: `cancelled_at` is set ON an event, and an event
+  // created already-cancelled would go straight into the queue asking to be
+  // approved as cancelled. The control was on the create form for no better
+  // reason than that both forms were built from one function.
+  //
   // A CHECKBOX, not a date. cancelled_at is lifecycle state stored as a
   // timestamp: the site only ever asks Boolean(cancelled_at), so the hour is
-  // never read by anything. Offering a datetime picker invited a precision
-  // that does not exist and made people wonder what time to put. Ticking
-  // stamps now(); unticking nulls it, which is exactly how the schema
-  // describes un-cancelling.
+  // never read by anything. Ticking stamps now(); unticking nulls it.
   //
-  // To cancel ONE DATE of a repeating event, use Exceptions below instead.
-  const cancelBox = input('checkbox');
-  cancelBox.checked = Boolean(existing?.cancelled_at);
-  const cancelWrap = field('cancelled_at', 'Cet événement est annulé', cancelBox, {
-    hint: existing?.cancelled_at
-      ? `Annulé le ${instantToInput(existing.cancelled_at, tz).replace('T', ' ')}. ` +
-        'Décochez pour rétablir. La page reste dans les deux cas et affiche Annulé.'
-      : 'L\'événement entier, toutes ses dates. Il garde sa page et affiche Annulé. ' +
-        'Pour une seule date d\'un événement récurrent, utilisez les Exceptions ci-dessous.',
-  });
-  cancelWrap.classList.add('field-check');
-  fields.get('cancelled_at').wasCancelledAt = existing?.cancelled_at ?? null;
-  form.appendChild(cancelWrap);
-  form.appendChild(field('cancellation_note', 'Motif',
-    input('text', { value: existing?.cancellation_note ?? '' }),
-    { hint: 'Affiché aux lecteurs. Nécessite la case ci-dessus cochée.' }));
+  // To cancel ONE DATE of a repeating event, use Exceptions instead.
+  if (isEdit) {
+    section('Annuler tout l\'événement');
+    const cancelBox = input('checkbox');
+    cancelBox.checked = Boolean(existing.cancelled_at);
+    const cancelWrap = field('cancelled_at', 'Cet événement est annulé', cancelBox, {
+      hint: existing.cancelled_at
+        ? `Annulé le ${instantToInput(existing.cancelled_at, tz).replace('T', ' ')}.`
+        : 'Toutes ses dates. Pour une seule, utilisez les Exceptions ci-dessous.',
+    });
+    cancelWrap.classList.add('field-check');
+    fields.get('cancelled_at').wasCancelledAt = existing.cancelled_at ?? null;
+    form.appendChild(cancelWrap);
+    form.appendChild(field('cancellation_note', 'Motif',
+      input('text', { value: existing.cancellation_note ?? '' }),
+      { hint: 'Nécessite la case ci-dessus cochée.' }));
+  }
 
   // Recurrence end only makes sense for a series. Disabled rather than hidden,
   // so the rule is visible instead of the control mysteriously not existing.
@@ -370,12 +386,46 @@ async function save(existing, statusEl, submitEl) {
     return;
   }
 
+  // A flyer chosen on the CREATE form, waiting for an id to exist.
+  const picker = fields.get('image_path')?.pendingPicker;
+  const pendingFile = picker?.files?.[0] ?? null;
+  if (pendingFile) {
+    const imageProblems = checkImage(pendingFile);
+    if (imageProblems.length) {
+      statusEl.textContent = imageProblems.join(' ');
+      return;
+    }
+  }
+
   submitEl.disabled = true;
-  statusEl.textContent = existing ? 'Saving…' : 'Creating…';
+  statusEl.textContent = existing ? 'Enregistrement…' : 'Création…';
   try {
-    const row = existing
+    let row = existing
       ? await updateEvent(existing.id, payload(v))
       : await createEvent(payload(v));
+
+    // THE SECOND STEP, and it is deliberately after the row exists rather
+    // than folded into it: the storage path contains the event's id.
+    //
+    // A failure here must NOT read as a failed save. The event is created and
+    // approved-able; only the flyer is missing, and the fix is to reopen it
+    // and upload again. Saying "Refusé" would send someone looking for an
+    // event that is already there.
+    if (pendingFile && row?.id) {
+      statusEl.textContent = 'Téléversement de l\'affiche…';
+      try {
+        const target = storagePathFor(row.organizer_id, row.id, pendingFile.name);
+        await uploadEventImage(target, pendingFile);
+        row = await updateEvent(row.id, { image_path: target }) ?? row;
+      } catch (imgErr) {
+        if (imgErr instanceof AuthExpired) throw imgErr;
+        renderSaved(row, !existing,
+          `L'événement est créé, mais l'affiche n'a pas pu être téléversée : `
+          + `${imgErr.message}. Rouvrez-le pour réessayer.`);
+        return;
+      }
+    }
+
     renderSaved(row, !existing);
   } catch (err) {
     if (err instanceof AuthExpired) return renderExpired();
@@ -386,8 +436,9 @@ async function save(existing, statusEl, submitEl) {
   }
 }
 
-function renderSaved(row, created) {
-  const b = box('good', created ? 'Created.' : 'Saved.');
+function renderSaved(row, created, warning) {
+  const b = box(warning ? 'bad' : 'good', created ? 'Créé.' : 'Enregistré.');
+  if (warning) b.appendChild(el('p', warning));
   const dl = el('dl');
   const add = (k, v2) => { dl.append(el('dt', k), el('dd', String(v2 ?? '—'))); };
   add('title', row?.title);
@@ -557,7 +608,7 @@ function exceptionsSection(eventId, tz) {
  * saved leaves an unreferenced object, which is recoverable, while a row
  * pointing at an object that failed to upload is a broken image on the site.
  */
-function imageField(existing) {
+function imageField(existing, isEdit = Boolean(existing)) {
   const wrap = el('div', null, 'field');
   wrap.appendChild(el('label', 'Affiche'));
 
@@ -570,14 +621,6 @@ function imageField(existing) {
   pathInput.className = 'readonly';
   fields.set('image_path', { control: pathInput, err: el('p'), wrap });
 
-  if (!existing) {
-    wrap.appendChild(pathInput);
-    wrap.appendChild(el('p',
-      'Enregistrez d\'abord l\'événement : le chemin de l\'affiche contient son '
-      + 'identifiant, qui n\'existe pas encore.', 'hint'));
-    return wrap;
-  }
-
   const row = el('div', null, 'ex-add');
   const picker = input('file');
   picker.accept = Object.keys(ALLOWED).join(',');
@@ -585,13 +628,39 @@ function imageField(existing) {
   upBtn.type = 'button';
   const clearBtn = el('button', 'Retirer', 'btn btn-quiet');
   clearBtn.type = 'button';
-  row.append(picker, upBtn, clearBtn);
 
   const status = el('p', null, 'note');
   const setStatus = (text, cls) => {
     status.textContent = text;
     status.className = cls ? `note ${cls}` : 'note';
   };
+
+  // CREATE MODE: the file is chosen now and sent AFTER the event exists.
+  //
+  // The storage path is <organizer_id>/<event_id>/<filename>, so there is
+  // genuinely nowhere to put the bytes until the database has assigned an id.
+  // That was previously the end of the story and the form just said so —
+  // which is a true explanation of an annoying answer. save() now does the
+  // second step itself: create, upload, patch image_path. The person picks a
+  // file and presses one button.
+  //
+  // The picker is the carrier; save() reads pendingFile off this field entry.
+  if (!isEdit) {
+    row.append(picker);
+    wrap.append(pathInput, row, status);
+    fields.get('image_path').pendingPicker = picker;
+    picker.addEventListener('change', () => {
+      const file = picker.files?.[0];
+      if (!file) return setStatus('');
+      const problems = checkImage(file);
+      setStatus(problems.length ? problems.join(' ') : `${file.name} — envoyée à la création.`,
+        problems.length ? 'bad-text' : 'good-text');
+    });
+    wrap.appendChild(el('p', 'JPEG, PNG, WebP ou AVIF, 5 Mo maximum.', 'hint'));
+    return wrap;
+  }
+
+  row.append(picker, upBtn, clearBtn);
 
   upBtn.addEventListener('click', async () => {
     const file = picker.files?.[0];
@@ -637,12 +706,21 @@ async function boot() {
   let session;
   try { session = await getSession(); } catch { return renderExpired(); }
 
-  const id = new URLSearchParams(location.search).get('id');
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  // ?from=<uuid> — a COPY. Loads that event's fields into a create form.
+  //
+  // Three dates that are not a series (13, 14 and 15 November) are three
+  // events in this schema: `recurrence` describes a rhythm, and there is no
+  // "extra dates" column. Rather than invent one, duplication makes the
+  // second and third cheap — change the day and press create.
+  const copyOf = !id ? params.get('from') : null;
 
   try {
-    const [memberships, existing] = await Promise.all([
+    const [memberships, existing, template] = await Promise.all([
       myOrganizers(),
       id ? getEvent(id) : Promise.resolve(null),
+      copyOf ? getEvent(copyOf) : Promise.resolve(null),
     ]);
 
     const organizers = memberships
@@ -663,6 +741,11 @@ async function boot() {
       return out().replaceChildren(b);
     }
 
+    if (copyOf && !template) {
+      return out().replaceChildren(box('bad', 'Cet événement ne vous est pas visible.',
+        'Impossible de le copier.'));
+    }
+
     if (id && !existing) {
       return out().replaceChildren(box('bad', 'Cet événement ne vous est pas visible.',
         'Soit il n\'existe pas, soit le RLS le masque — la base donne délibérément ' +
@@ -670,21 +753,42 @@ async function boot() {
         'quels événements existent.'));
     }
 
-    const wrap = box('idle', existing ? 'Modifier l\'événement' : 'Nouvel événement',
+    // What the COPY does not carry, and why each one:
+    //   id, slug     derived; a copy is a new event with its own permalink
+    //   image_path   points at the SOURCE event's storage folder. Copying it
+    //                would leave two rows sharing one object, and deleting
+    //                either event's flyer would break the other.
+    //   cancelled_*  a copy of a cancelled event is not itself cancelled
+    const prefill = template
+      ? { ...template, id: undefined, slug: undefined, image_path: null,
+          cancelled_at: null, cancellation_note: null }
+      : existing;
+
+    const wrap = box('idle',
+      existing ? 'Modifier l\'événement' : (template ? 'Copie d\'un événement' : 'Nouvel événement'),
       existing
         ? 'Modifier un événement publié le laisse en ligne et le place dans la file d\'attente.'
-        : 'Créé en attente. C\'est la file d\'attente qui le publie.');
+        : (template
+          ? `Copié depuis « ${template.title} ». Changez la date, puis créez.`
+          : 'Créé en attente. C\'est la file d\'attente qui le publie.'));
 
-    const form = buildForm(organizers, existing);
+    const form = buildForm(organizers, prefill, Boolean(existing));
     const status = el('p', null, 'note');
     const submit = el('button', existing ? 'Enregistrer' : 'Créer l\'événement', 'btn');
     submit.type = 'submit';
     const actions = el('div', null, 'actions');
     actions.appendChild(submit);
+    if (existing) {
+      const dup = el('a', 'Dupliquer', 'btn btn-quiet');
+      dup.href = `/event/?from=${encodeURIComponent(existing.id)}`;
+      actions.appendChild(dup);
+    }
     form.append(actions, status);
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
+      // `existing`, never `prefill`: a copy has to INSERT. Passing the
+      // template here would have updated the event being copied from.
       save(existing, status, submit);
     });
 
