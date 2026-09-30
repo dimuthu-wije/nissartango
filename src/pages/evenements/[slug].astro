@@ -3,7 +3,7 @@ import { getCollection, render } from 'astro:content';
 import { Image } from 'astro:assets';
 import Layout from '../../layouts/Layout.astro';
 import {
-  loadAgenda, socialLinks, contactLinks, TYPE_LABELS, priceSummary,
+  loadAgenda, socialLinks, contactLinks, TYPE_LABELS, priceSummary, paymentSummary,
   fmtFull, fmtTime, isoWithOffset, toRow,
 } from '../../lib/content';
 import { expand, nextDate, RECURRENCE_LABELS } from '../../lib/occurrences.js';
@@ -28,6 +28,7 @@ const tz = e.timezone || 'Europe/Paris';
 const now = new Date();
 const recurrenceLabel = RECURRENCE_LABELS[e.recurrence];
 const price = priceSummary(e);
+const payment = paymentSummary(e);
 const cancelled = Boolean(e.cancelled_at);
 
 // One expansion feeds both the visible list and the markup. Google's rule for
@@ -220,12 +221,17 @@ const jsonLd = nodes.length === 1
 
     {e.teachers.length > 0 && (<><dt>Avec</dt><dd>{e.teachers.join(', ')}</dd></>)}
 
-    {(e.price_full != null || e.price_member != null || e.price_note) && (
+    {(e.price_full != null || e.price_member != null || e.price_note || payment) && (
       <>
         <dt>Tarif</dt>
         {/* priceSummary carries the note now, so this no longer appends it
             separately -- doing both would print it twice. */}
-        <dd>{price}</dd>
+        <dd>
+          {price}
+          {/* Only when the organizer said. An empty array renders nothing
+              rather than implying cash. */}
+          {payment && <span class="note">Paiement : {payment}</span>}
+        </dd>
       </>
     )}
 

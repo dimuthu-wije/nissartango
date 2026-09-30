@@ -101,6 +101,11 @@ const events = defineCollection({
     // slug is whatever the URL once was, which is the entire reason it needs
     // redirecting.
     legacy_slugs: z.array(z.string()).default([]),
+    // How you may pay on the door. Slugs, not labels -- the French words live
+    // in PAYMENT_LABELS. Empty means the organizer did not say, which renders
+    // nothing: a default of "espèces" would put a claim on the page that
+    // nobody made.
+    payment_methods: z.array(z.string()).default([]),
     title: z.string(),
     type: z.enum(['cours', 'practica', 'milonga', 'stage', 'demo', 'festival']),
     starts_at: z.string(),

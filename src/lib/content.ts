@@ -80,6 +80,8 @@ export function contactLinks(o: any) {
   ].filter(Boolean) as { label: string; href: string }[];
 }
 
+export { PAYMENT_LABELS, paymentSummary } from './payment.js';
+
 export const TYPE_LABELS: Record<string, string> = {
   cours: 'Cours', practica: 'Practica', milonga: 'Milonga',
   stage: 'Stage', demo: 'Démonstration', festival: 'Festival',
@@ -112,6 +114,11 @@ function fmt(kind: 'day' | 'full' | 'time', tz: string) {
   return f;
 }
 
+// fmtDay ('mardi 1 décembre', no year) is no longer used by any page: the
+// agenda and the archive both moved to the full form on 2026-09-30, because a
+// date without a year is ambiguous the moment an agenda spans a new year --
+// and it always does by December. Kept because it costs nothing and the
+// formatter cache is keyed by kind, not because anything calls it.
 export const fmtDay = (d: Date, tz = 'Europe/Paris') => fmt('day', tz).format(d);
 export const fmtFull = (d: Date, tz = 'Europe/Paris') => fmt('full', tz).format(d);
 export const fmtTime = (d: Date, tz = 'Europe/Paris') => fmt('time', tz).format(d);

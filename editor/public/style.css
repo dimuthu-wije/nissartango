@@ -308,6 +308,13 @@ a.btn { text-decoration: none; display: inline-block; }
 .has-error select,
 .has-error textarea { border-color: var(--bad); }
 
+/* A small set of checkboxes on one row -- payment methods. Not .field-check,
+   which is built for one box with a long explanation beside it. */
+.checks { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin-top: 0.3rem; }
+.checks .check { display: flex; align-items: center; gap: 0.4rem; }
+.checks input[type="checkbox"] { width: auto; margin: 0; }
+.checks label { margin: 0; font-weight: 400; }
+
 /* The timezone disclosure. Present, unobtrusive, and not a field until asked
    for -- every event so far is in France. */
 .event-form .tz { margin: 0 0 1rem; }

@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { loadAgenda, TYPE_LABELS, priceSummary, fmtDay, fmtTime } from '../lib/content';
+import { loadAgenda, TYPE_LABELS, priceSummary, fmtFull, fmtTime } from '../lib/content';
 
 // `occurrences` already excludes wholly-cancelled series: loadAgenda does that
 // filter so the agenda and the archive are complementary by construction. A
@@ -30,7 +30,7 @@ const { occurrences: rows, organizers, archived } = await loadAgenda();
         <li class={o.cancelled ? 'cancelled' : undefined}
             data-event={e.slug} data-date={o.dateKey}>
           <div class="when">
-            <span class="date">{fmtDay(o.start, e.timezone)}</span>
+            <span class="date">{fmtFull(o.start, e.timezone)}</span>
             <span class="time">{fmtTime(o.start, e.timezone)}</span>
           </div>
           <div class="what">
@@ -69,7 +69,9 @@ const { occurrences: rows, organizers, archived } = await loadAgenda();
     padding: 1.1rem 0; border-top: 1px solid var(--line);
   }
   .when { display: flex; flex-direction: column; }
-  .date { font-size: 0.9rem; text-transform: capitalize; }
+  /* No text-transform. `capitalize` title-cases every word, which gave
+     "Jeudi 1 Octobre" -- French writes days and months in lower case. */
+  .date { font-size: 0.9rem; }
   .time { color: var(--muted); font-size: 0.85rem; }
   .type {
     font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;

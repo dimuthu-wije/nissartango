@@ -45,6 +45,17 @@ const TYPES = [
   { value: 'demo', label: 'Démonstration' },
   { value: 'festival', label: 'Festival' },
 ];
+// Mirrors events_payment_methods_known. The VALUE is the slug the database
+// stores and constrains; the label is French and lives only here and in
+// src/lib/content.ts's PAYMENT_LABELS. Adding one means the migration first --
+// the CHECK refuses anything not in its list, whatever this array says.
+const PAYMENT_METHODS = [
+  { value: 'especes', label: 'Espèces' },
+  { value: 'cb', label: 'Carte bancaire' },
+  { value: 'cheque', label: 'Chèque' },
+  { value: 'virement', label: 'Virement' },
+];
+
 const RECURRENCES = [
   { value: 'none', label: 'Une seule date' },
   { value: 'weekly', label: 'Chaque semaine' },
@@ -202,12 +213,27 @@ function readForm() {
     location_address: val('location_address') || null,
     location_postal_code: val('location_postal_code') || null,
     city: val('city'),
-    // Split on commas, drop blanks. `teachers` is NOT NULL with a '{}' default,
-    // so an empty field must send [] and never null.
-    teachers: val('teachers').split(',').map((s) => s.trim()).filter(Boolean),
+    // WHY IT IS SPLIT AT ALL, since the page just joins it back with commas:
+    // each name becomes its own schema.org Person in the event's JSON-LD
+    // (`performer`). "Ana & Luis" left whole is ONE performer with that name,
+    // which is wrong in the structured data even though the page looks right.
+    //
+    // Comma, ampersand and slash all separate, because people type all three
+    // and the old hint could only ask. " et " is deliberately NOT a separator:
+    // it appears inside real names far too easily to guess at.
+    //
+    // `teachers` is NOT NULL with a '{}' default, so an empty field must send
+    // [] and never null.
+    teachers: val('teachers').split(/\s*[,&/]\s*/).map((s) => s.trim()).filter(Boolean),
     price_full: num('price_full'),
     price_member: num('price_member'),
     price_note: val('price_note') || null,
+    // The checkbox set, in the order PAYMENT_METHODS declares rather than the
+    // order they were ticked, so two events with the same methods store the
+    // same array and the content checksum does not move for a reordering.
+    payment_methods: [...(fields.get('payment_methods')?.control
+      .querySelectorAll('input[type=checkbox]') ?? [])]
+      .filter((c) => c.checked).map((c) => c.value),
     signup_url: val('signup_url') || null,
     image_path: val('image_path') || null,
     body: fields.get('body').control.value.trim() || null,
@@ -275,7 +301,7 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
   // that section holding this one field under a heading that said nothing.
   form.appendChild(field('teachers', 'Professeurs',
     input('text', { value: (existing?.teachers ?? []).join(', ') }),
-    { hint: 'Séparés par des virgules.' }));
+    { hint: 'Ana, Luis — ou « Ana & Luis », ou « Ana / Luis ».' }));
 
   section('Quand');
   form.appendChild(field('starts_at', 'Début',
@@ -341,6 +367,32 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
   form.appendChild(field('price_note', 'Note sur le tarif',
     input('text', { value: existing?.price_note ?? '' }),
     { hint: '« au chapeau », « gratuit pour les étudiants », « 15 € les deux soirs », « prix libre »' }));
+
+  // CHECKBOXES, which is also why the database has no distinctness constraint:
+  // a checkbox set cannot contain the same value twice.
+  //
+  // Nothing ticked means "not said" and renders nothing on the site. It does
+  // NOT mean cash only -- defaulting to that would publish a claim no
+  // organizer made.
+  const payWrap = el('div', null, 'field');
+  payWrap.appendChild(el('label', 'Moyens de paiement acceptés'));
+  const payBoxes = el('div', null, 'checks');
+  const chosen = new Set(existing?.payment_methods ?? []);
+  for (const { value, label } of PAYMENT_METHODS) {
+    const id = `pay_${value}`;
+    const cb = input('checkbox', { value });
+    cb.id = id;
+    cb.checked = chosen.has(value);
+    const lab = el('label', label);
+    lab.setAttribute('for', id);
+    const one = el('div', null, 'check');
+    one.append(cb, lab);
+    payBoxes.appendChild(one);
+  }
+  payWrap.appendChild(payBoxes);
+  payWrap.appendChild(el('p', 'Laissez tout décoché si vous ne voulez pas le préciser.', 'hint'));
+  fields.set('payment_methods', { control: payBoxes, err: el('p'), wrap: payWrap });
+  form.appendChild(payWrap);
 
   section('Détails pratiques');
   form.appendChild(field('signup_url', 'Lien d\'inscription',
