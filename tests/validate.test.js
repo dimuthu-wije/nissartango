@@ -184,6 +184,56 @@ test('organizer: a social HANDLE is not a URL', () => {
   assert.deepEqual(validateOrganizer(org({ instagram: 'nissartango' })), []);
 });
 
+test('organizer: the message quotes the handle out of the pasted link', () => {
+  // Until 2026-10-01 all three fields answered with ONE message naming
+  // instagram.com, so pasting a Facebook URL into Facebook was told about
+  // Instagram. The useful message is the one that points at the part of your
+  // own URL that was wanted.
+  const m = (k, value) => validateOrganizer(org({ [k]: value }))[0][1];
+
+  assert.match(m('instagram', 'https://instagram.com/bicilonga'), /« bicilonga »/);
+  assert.match(m('facebook', 'https://facebook.com/bicilonga'), /« bicilonga »/);
+  assert.match(m('tiktok', 'https://tiktok.com/@bicilonga'), /« bicilonga »/);
+
+  // Trailing slash, query and fragment are all things a copied URL carries.
+  assert.match(m('instagram', 'https://www.instagram.com/bicilonga/?hl=fr'), /« bicilonga »/);
+
+  // No platform should be named but its own.
+  assert.doesNotMatch(m('facebook', 'https://facebook.com/bicilonga'), /instagram/i);
+  assert.doesNotMatch(m('tiktok', 'https://tiktok.com/@bicilonga'), /instagram/i);
+});
+
+test('organizer: a link with no usable handle says what to do instead', () => {
+  // A Facebook Page without a username has a numeric address; there is nothing
+  // to extract, and "enter the identifier" is useless advice.
+  const fb = validateOrganizer(org({ facebook: 'https://facebook.com/profile.php?id=61550000000000' }));
+  assert.deepEqual(fb.map(([f]) => f), ['facebook']);
+  assert.match(fb[0][1], /nom d'utilisateur/i);
+
+  // And a bare domain, where the last segment is the host.
+  const ig = validateOrganizer(org({ instagram: 'https://instagram.com/' }));
+  assert.match(ig[0][1], /le site construit l'adresse/i);
+  assert.match(ig[0][1], /instagram\.com\//);
+});
+
+test('organizer: a leading @ is named as the problem, with the @ removed', () => {
+  // How these are written everywhere except in the column that stores them --
+  // and for TikTok the @ belongs to the address the template builds.
+  const ig = validateOrganizer(org({ instagram: '@bicilonga' }));
+  assert.deepEqual(ig.map(([f]) => f), ['instagram']);
+  assert.match(ig[0][1], /Sans le « @ » : « bicilonga »/);
+  assert.match(ig[0][1], /https:\/\/instagram\.com\/bicilonga/);
+
+  const tt = validateOrganizer(org({ tiktok: '@bicilonga' }));
+  assert.match(tt[0][1], /https:\/\/tiktok\.com\/@bicilonga/,
+    'the @ belongs in the built address, not in the stored handle');
+
+  // An @ in front of something still invalid falls through to the charset
+  // message rather than suggesting a value the database would also refuse.
+  assert.match(validateOrganizer(org({ instagram: '@no-hyphens' }))[0][1],
+    /Lettres, chiffres/);
+});
+
 test('organizer: handle length and charset follow the constraints', () => {
   // instagram/tiktok are {1,40}; facebook is {1,60} and also allows hyphens.
   assert.deepEqual(validateOrganizer(org({ instagram: 'a'.repeat(40) })), []);

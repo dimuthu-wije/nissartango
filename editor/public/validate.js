@@ -98,11 +98,46 @@ export function validate(v) {
 // the database is the authority either way.
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+// One entry per platform, because one message for three fields is what was
+// here until 2026-10-01: pasting a Facebook URL into the Facebook field
+// answered « pas « https://instagram.com/nissartango » », naming the wrong site
+// and giving no help with the one in front of you. `url` is the prefix
+// socialLinks() in src/lib/content.ts builds, so a message quoting it shows the
+// address that will actually be produced -- including TikTok's @, which is in
+// the prefix and must NOT be in the stored handle.
 const HANDLE = {
-  instagram: [/^[A-Za-z0-9._]{1,40}$/, 'Lettres, chiffres, points et tirets bas, 40 caractères maximum.'],
-  facebook: [/^[A-Za-z0-9._-]{1,60}$/, 'Lettres, chiffres, points, tirets bas et traits d\'union, 60 caractères maximum.'],
-  tiktok: [/^[A-Za-z0-9._]{1,40}$/, 'Lettres, chiffres, points et tirets bas, 40 caractères maximum.'],
+  instagram: {
+    re: /^[A-Za-z0-9._]{1,40}$/,
+    url: 'https://instagram.com/',
+    chars: 'Lettres, chiffres, points et tirets bas, 40 caractères maximum.',
+  },
+  facebook: {
+    re: /^[A-Za-z0-9._-]{1,60}$/,
+    url: 'https://facebook.com/',
+    chars: 'Lettres, chiffres, points, tirets bas et traits d\'union, 60 caractères maximum.',
+    // A Page with no username has no handle to extract -- its address is
+    // numeric. Telling someone to "enter the identifier" when there isn't one
+    // is the kind of advice that makes people retype the URL twice.
+    noHandle: /profile\.php|\/pages\//i,
+    noHandleHelp: 'Cette page n\'a pas encore de nom d\'utilisateur : son adresse '
+      + 'contient « profile.php?id=… ». Créez-en un (Paramètres de la Page → '
+      + 'Nom d\'utilisateur), ou laissez ce champ vide.',
+  },
+  tiktok: {
+    re: /^[A-Za-z0-9._]{1,40}$/,
+    url: 'https://tiktok.com/@',
+    chars: 'Lettres, chiffres, points et tirets bas, 40 caractères maximum.',
+  },
 };
+
+/**
+ * The handle inside a pasted profile link: last path segment, without a query,
+ * a fragment or a leading @. '' when there is nothing to take.
+ */
+function handleInLink(value) {
+  const path = String(value).replace(/^https?:\/\/[^/]*/i, '').split(/[?#]/)[0];
+  return (path.split('/').filter(Boolean).pop() ?? '').replace(/^@/, '');
+}
 
 /**
  * @param {object} v values read from the organizer form
@@ -117,16 +152,41 @@ export function validateOrganizer(v) {
   }
 
   // The handles are stored as HANDLES, never URLs, so that the template can
-  // build the link. Pasting a profile URL is the mistake this catches, and it
-  // is worth catching here because the constraint's message would not explain
-  // why https://instagram.com/x is refused.
-  for (const [k, [re, message]] of Object.entries(HANDLE)) {
-    if (!v[k]) continue;
-    if (/^https?:\/\/|\//.test(v[k])) {
-      p.push([k, 'Un identifiant, pas un lien : « nissartango », pas « https://instagram.com/nissartango ».']);
-    } else if (!re.test(v[k])) {
-      p.push([k, message]);
+  // build the link. Pasting a profile URL is the mistake the field invites, and
+  // it is worth catching here because the constraint's message would not
+  // explain why https://instagram.com/x is refused.
+  //
+  // Each message names the platform in front of you and, where the link
+  // contains a usable handle, QUOTES IT -- "in this link it is « bicilonga »"
+  // beats "enter an identifier", which leaves the reader to work out which part
+  // of their own URL was meant.
+  for (const [k, rule] of Object.entries(HANDLE)) {
+    const value = v[k];
+    if (!value) continue;
+
+    if (/^https?:\/\/|\//.test(value)) {
+      if (rule.noHandle?.test(value)) {
+        p.push([k, rule.noHandleHelp]);
+        continue;
+      }
+      const found = handleInLink(value);
+      p.push([k, rule.re.test(found)
+        ? `Un identifiant, pas un lien. Dans ce lien, c'est « ${found} » : `
+          + 'saisissez seulement cela.'
+        : 'Un identifiant, pas un lien. Le site construit l\'adresse : '
+          + `« ${rule.url}votre-identifiant ».`]);
+      continue;
     }
+
+    // A leading @ is how these are written everywhere except in the field that
+    // stores them, and for TikTok the @ is part of the address the site builds.
+    const bare = value.replace(/^@/, '');
+    if (bare !== value && rule.re.test(bare)) {
+      p.push([k, `Sans le « @ » : « ${bare} ». Le site construit « ${rule.url}${bare} ».`]);
+      continue;
+    }
+
+    if (!rule.re.test(value)) p.push([k, rule.chars]);
   }
 
   if (v.email && !EMAIL.test(v.email)) p.push(['email', 'Ne ressemble pas à une adresse e-mail.']);

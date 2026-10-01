@@ -173,8 +173,18 @@ function buildForm(org) {
     'Des identifiants, pas des adresses. Saisissez « nissartango » ; le site construit le lien.');
   form.appendChild(field('website', 'Site web', input('url', { value: org.website ?? '' }),
     { hint: 'Adresse complète, commençant par https://.' }));
-  for (const [k, label] of [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['tiktok', 'TikTok']]) {
-    form.appendChild(field(k, label, input('text', { value: org[k] ?? '' })));
+  // Per-field hints, because the section heading saying "identifiants, pas
+  // adresses" was not enough: all three were filled with URLs, and a hint that
+  // names the platform's own address form is what makes the ask concrete.
+  const LINK_HINTS = [
+    ['instagram', 'Instagram', 'La partie après instagram.com/ — « nissartango ».'],
+    ['facebook', 'Facebook',
+      'Le nom d\'utilisateur de votre page, après facebook.com/ — « nissartango ». '
+      + 'Si votre adresse contient « profile.php?id=… », la page n\'en a pas encore.'],
+    ['tiktok', 'TikTok', 'La partie après tiktok.com/@, sans le « @ » — « nissartango ».'],
+  ];
+  for (const [k, label, hint] of LINK_HINTS) {
+    form.appendChild(field(k, label, input('text', { value: org[k] ?? '' }), { hint }));
   }
 
   section('Coordonnées privées — jamais publiées',

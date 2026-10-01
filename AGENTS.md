@@ -332,7 +332,24 @@ leave it out of git: nothing in one should need a secret to be useful.
   `src/assets/events` → Astro. See the media decision above. The open question
   was never the design; it was that the design had been built and the note not
   updated.
-- Confirm organizer social links render on event detail
+- ~~Confirm organizer social links render on event detail~~ — **DONE
+  2026-10-01**, and it had been unverifiABLE rather than unverified: no
+  organizer held a handle, so there was nothing for the template to render and
+  no outcome that distinguished "works" from "silently drops it". Measured in
+  the built page once Nissartango had all three:
+
+      Site       https://tango-guinguette.com/
+      Instagram  https://instagram.com/bicilonga
+      Facebook   https://facebook.com/bicilonga
+      TikTok     https://tiktok.com/@bicilonga
+
+  TikTok's `@` is in the prefix `socialLinks()` builds and NOT in the stored
+  handle, which is the one asymmetry among the three and the one a copied
+  profile URL gets wrong.
+
+  Filling those three fields is also what found the next item: every one of
+  them was first filled with a URL, and the refusal said the same thing three
+  times.
 
 **Next up:**
 1. ~~Add ~10 real events~~ — **DONE 2026-10-01**, 11 events by 3 organizers,
