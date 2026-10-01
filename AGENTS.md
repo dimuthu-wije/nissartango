@@ -265,7 +265,49 @@ leave it out of git: nothing in one should need a secret to be useful.
    `./scripts/db-push.sh dev|prod`, which pushes by `--db-url` and prints the
    ref — read out of the connection string, not out of the argument — before it
    touches anything.
-9. **`public/_redirects` is generated and gitignored.** It comes from
+9. **A dry run and a real push look almost the same on screen.** Both name the
+   same migration and both end `Finished supabase db push.` Measured
+   2026-10-01, pushing `20260930120000_payment_methods.sql` to production:
+
+       dry run  {"upToDate":false,"dryRun":true, "migrations":[...],"message":"Finished supabase db push."}
+       real     {"upToDate":false,"dryRun":false,"migrations":[...],"message":"Finished supabase db push."}
+
+   One field differs. The line above it differs too — `Would push these
+   migrations:` against `Applying migration ...` — but it scrolls away, and the
+   habit is to read the last line. On 2026-10-01 this migration was reported
+   as applied to production twice before it had been — the second time with
+   `--dry-run` still on the command line — and both times the database said
+   otherwise.
+
+   **`Applying migration <file>...` is the only line that means it happened**,
+   and `"dryRun":false` is the only field.
+
+   So do not take the push's own word for it. Two readings that do not depend
+   on it:
+
+       supabase migration list --db-url "$PROD_DB_URL"
+           -> {"local":"20260930120000","remote":"20260930120000", ...}
+              `"remote":""` is local-only, whatever the push said.
+
+       curl "$SUPABASE_URL/rest/v1/events_public?select=<new column>&limit=1"
+           -> 200, with the column
+
+   **The API alone is not sufficient.** PostgREST caches the schema, so
+   `column ... does not exist` means either "not applied" or "applied, cache
+   not reloaded yet" — one answer for two states, which is the shape this file
+   calls an instrument that lies quietly. The migration history is read from
+   the table and does not pass through PostgREST, so the two together settle
+   what neither settles alone.
+
+   Column-level grants are worth a third look, because this schema uses them as
+   the whitelist: the column existing and the editor being allowed to write it
+   are separate facts, and a migration can land one without the other.
+
+   Finally, a schema change reaching a public view moves `content_checksum`
+   even though no content changed — the digest is over each row's full text.
+   Counts unchanged and digest moved is the signature; the poller rebuilds
+   within ten minutes on it.
+10. **`public/_redirects` is generated and gitignored.** It comes from
    `events.legacy_slugs` via `scripts/fetch-content.mjs` on every build. Do not
    edit it and do not commit it: the copy on disk is output. It was hand-written
    until 2026-09-19, when it turned out that rejecting the one event it pointed
