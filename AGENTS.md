@@ -25,9 +25,17 @@ Consult these guides before working on related tasks:
 
 ## What this is
 
-A French-language agenda for tango across Nice and the Côte d'Azur — classes,
-practicas, milongas, stages, demos, festivals. Covers both my own events and
-other organizers'. Roughly 200 events a year expected. I'm the sole maintainer.
+A French-language agenda for social dance across Nice and the Côte d'Azur —
+classes, practicas, milongas, stages, demos, festivals. Covers both my own
+events and other organizers'. Roughly 200 events a year expected. I'm the sole
+maintainer.
+
+**Tango-first but not tango-only**, confirmed 2026-10-01. Bachata, kizomba and
+danse corse are on the agenda on purpose. This line said "an agenda for tango"
+until then, and the schema still assumes it: `event_type` is entirely tango
+vocabulary, so a Corsican dance evening is currently stored as a `milonga` and
+the page shows a reader the badge **Milonga**. Format and dance style are two
+axes and there is only one column; see Outstanding.
 
 Live at **https://nissartango.fr**
 
@@ -327,11 +335,34 @@ leave it out of git: nothing in one should need a secret to be useful.
 - Confirm organizer social links render on event detail
 
 **Next up:**
-1. Add ~10 real events — directly in Supabase until the stage-5 editor exists —
-   then report which fields are missing or annoying at volume. Bicilonga should
-   be `weekly` + `recurrence_end`.
-2. Convert `organizer` city/name free-text drift to selects once real values exist
-3. ~~Past-event archive~~ — **DONE 2026-09-26.** `/archives/`, grouped by year,
+1. ~~Add ~10 real events~~ — **DONE 2026-10-01**, 11 events by 3 organizers,
+   entered through the editor rather than directly in Supabase. The friction it
+   was meant to surface is what the 2026-09-26..10-01 editor commits fixed.
+
+   Still open from it: **Bicilonga is `recurrence: none`** where it should be
+   `weekly` + `recurrence_end`, and **Milonga de Cécile is typed `demo`** — a
+   weekly demonstration running to 31 December reads as a slip for `milonga`.
+
+   What the 11 do NOT cover, which is where to spend the next few rather than
+   on volume: no `monthly` or `biweekly` series, no `festival`, no `signup_url`
+   on any of the 11, 10 of 11 in Nice, and **no organizer with a social handle**
+   — which is why "confirm organizer social links render" below is not merely
+   unverified, it is unverifiable until one exists.
+2. **One column holds two axes: format and dance style.** Confirmed 2026-10-01
+   that the agenda covers bachata, kizomba and danse corse deliberately, and
+   `event_type` is ('cours','practica','milonga','stage','demo','festival') —
+   all of it tango vocabulary. So Danse corse is stored as `milonga` and its
+   page shows **Milonga**; Bachata and Kizomba are stored as `practica`.
+
+   A reader notices that, and the type filter in item 5 is worthless while one
+   column means two things. The shape of the fix is a second axis rather than
+   more values in the first: `milonga` is what a tango social evening is called,
+   not what any social evening is called.
+
+   Free text is the wrong form for it — same drift as item 3, which is already
+   on this list for the same reason.
+3. Convert `organizer` city/name free-text drift to selects once real values exist
+4. ~~Past-event archive~~ — **DONE 2026-09-26.** `/archives/`, grouped by year,
    newest first.
 
    This line said past events "vanish entirely". They did not: their pages were
@@ -344,16 +375,16 @@ leave it out of git: nothing in one should need a secret to be useful.
    `partition()` in `src/lib/occurrences.js` defines archived as "produced no
    listed occurrence", so no event can fall between them. `verify-build.mjs`
    check 8b fails the build if any event page is unreachable from either.
-4. Month grouping and type filtering (needed around 30-40 events)
-5. English pages (`/en/`) — UI and practical pages only
-6. Event submission form for other organizers, so I'm the editor rather than the
+5. Month grouping and type filtering (needed around 30-40 events)
+6. English pages (`/en/`) — UI and practical pages only
+7. Event submission form for other organizers, so I'm the editor rather than the
    data-entry clerk. This line used to say that is why we're on Workers rather
    than Pages, with the route getting `export const prerender = false`.
    Superseded: `wrangler.jsonc` now deliberately has no `main`, so the public
    site is static assets with no runtime code path to Supabase at all, and the
    editor is a **separate deployment**. Read the comment in `wrangler.jsonc`
    before reopening this.
-7. ~~Pin Node version~~ — **DONE 2026-09-26.** `.node-version` and `.nvmrc`
+8. ~~Pin Node version~~ — **DONE 2026-09-26.** `.node-version` and `.nvmrc`
    both say `22.23.2`, `engines` is `>=22.12.0 <23`, and
    `tests/node-version.test.js` binds the three so they cannot drift.
 
@@ -366,7 +397,7 @@ leave it out of git: nothing in one should need a secret to be useful.
    `build-info.json` now reports `node`, which is the only way to confirm from
    outside that the pin took: a deploy still saying v24.18.0 means the file is
    not being read.
-8. ~~Redirect `www` to the naked domain~~ — **DONE 2026-09-26**, with a
+9. ~~Redirect `www` to the naked domain~~ — **DONE 2026-09-26**, with a
    Cloudflare **Redirect Rule**. Measured from outside:
 
        /                          301 -> https://nissartango.fr/
@@ -398,7 +429,7 @@ leave it out of git: nothing in one should need a secret to be useful.
 
        curl -sS -o /dev/null -D- --max-redirs 0 https://www.nissartango.fr/ \
          | tr -d '\r' | grep -i '^location'
-9. Listings on tango aggregators + Google Business Profile — the site won't
+10. Listings on tango aggregators + Google Business Profile — the site won't
    generate its own audience
 
 ## How I'd like to work
