@@ -143,6 +143,24 @@ select must_fail_code('unknown timezone',
   $$insert into public.events (title, formats, starts_at, organizer_id, timezone)
     values ('X',array['cours'], now(), '22222222-2222-2222-2222-222222222222', 'Europe/Nice')$$, 'NT003');
 
+-- === extra_dates (20261001150000) ==========================================
+-- Two date generators on one row is a thing no reader of this schema could
+-- reason about, so the combination is refused rather than given a precedence
+-- rule. Distinctness and "after the first date" are NOT here: a CHECK may not
+-- contain a subquery (0A000) and `starts_at at time zone timezone` is STABLE,
+-- so those live in validate.js and in occurrences.js instead.
+select must_fail('extra_dates on a recurring event',
+  $$insert into public.events (title, formats, starts_at, organizer_id, recurrence, recurrence_end, extra_dates)
+    values ('X',array['cours'], timestamptz '2026-09-01 20:00+02',
+            '22222222-2222-2222-2222-222222222222', 'weekly', date '2026-10-01',
+            array['2026-09-05']::date[])$$);
+
+select must_fail('more than thirty extra dates',
+  $$insert into public.events (title, formats, starts_at, organizer_id, extra_dates)
+    values ('X',array['cours'], timestamptz '2026-09-01 20:00+02',
+            '22222222-2222-2222-2222-222222222222',
+            (select array_agg((date '2026-09-02' + n)) from generate_series(1,31) n))$$);
+
 select must_fail('negative price',
   $$insert into public.events (title, formats, starts_at, organizer_id, price_full)
     values ('X',array['cours'], now(), '22222222-2222-2222-2222-222222222222', -5)$$);

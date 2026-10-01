@@ -112,6 +112,9 @@ const events = defineCollection({
     // NOT a z.enum: the database constrains this with a CHECK it can extend in
     // one line, and a build must not fail on a value the database accepted.
     formats: z.array(z.string()).default([]),
+    // The other days a multi-day event also happens on, each at starts_at's
+    // time of day. Not a recurrence: "13, 14 and 15 November" is a list.
+    extra_dates: z.array(z.string()).default([]),
     title: z.string(),
     starts_at: z.string(),
     duration_minutes: z.number().nullable().optional(),

@@ -30,7 +30,8 @@ const MAX_OCCURRENCES = 200;
 
 /** @typedef {{ id:string, slug:string, title:string, type:string, starts_at:string,
  *   duration_minutes:number|null, timezone:string, recurrence:string,
- *   recurrence_end:string|null, cancelled_at:string|null, cancellation_note:string|null,
+ *   recurrence_end:string|null, extra_dates:string[],
+ *   cancelled_at:string|null, cancellation_note:string|null,
  *   [k:string]: any }} EventRow */
 /** @typedef {{ event_id:string, occurrence_date:string, kind:'cancelled'|'moved',
  *   note:string|null, moved_starts_at:string|null }} ExceptionRow */
@@ -73,7 +74,7 @@ export function expand(event, exceptions = [], opts = {}) {
   const limit = endLimit && endLimit < horizon ? endLimit : horizon;
 
   const step = STEP[event.recurrence];
-  if (!step) return [occurrence(event, first, tz, byDate)];
+  if (!step) return explicitDates(event, first, tz, byDate);
 
   const base = partsInZone(first, tz);
   const out = [];
@@ -95,6 +96,49 @@ export function expand(event, exceptions = [], opts = {}) {
     if (n > MAX_OCCURRENCES * 2) break; // paranoia against a bad step
   }
   return out;
+}
+
+/**
+ * A non-recurring event: its own date, plus every day in `extra_dates`.
+ *
+ * This is how a workshop over several days is ONE event (20261001150000). The
+ * array holds the days BESIDES `starts_at`, each taken at `starts_at`'s time of
+ * day in the event's own zone — through zonedToInstant, so a workshop spanning
+ * the last Sunday of October keeps its local hour instead of sliding an hour.
+ *
+ * NOT BOUNDED BY THE HORIZON, matching what a single date has always done: the
+ * horizon exists to stop a recurrence generating forever, and an explicit list
+ * is finite. A workshop eight months out is announced eight months out.
+ *
+ * SORTED AND DE-DUPLICATED HERE because the database cannot do either — a CHECK
+ * may not contain the subquery that distinctness needs (0A000), and comparing a
+ * date against `starts_at at time zone timezone` needs a STABLE expression a
+ * CHECK will not take. So whatever is stored, what renders is in order and
+ * each day appears once. The editor refuses both at the form, with a message;
+ * this is what makes the refusal unnecessary for correctness.
+ */
+function explicitDates(event, first, tz, byDate) {
+  const extra = Array.isArray(event.extra_dates) ? event.extra_dates : [];
+  if (!extra.length) return [occurrence(event, first, tz, byDate)];
+
+  const base = partsInZone(first, tz);
+  const seen = new Set([localDateKey(first, tz)]);
+  const starts = [first];
+
+  for (const value of extra) {
+    const key = String(value ?? '').slice(0, 10);
+    // A malformed entry is skipped rather than thrown on: this runs at build
+    // time over database rows, and one bad date must not take the site down.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || seen.has(key)) continue;
+    seen.add(key);
+    starts.push(zonedToInstant({
+      ...datePartsFromIso(key),
+      hour: base.hour, minute: base.minute, second: base.second,
+    }, tz));
+  }
+
+  starts.sort((a, b) => a - b);
+  return starts.map((start) => occurrence(event, start, tz, byDate));
 }
 
 function datePartsFromIso(isoDate) {

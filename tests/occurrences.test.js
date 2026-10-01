@@ -312,3 +312,116 @@ test('a cancelled series is SHOWN by when it was due, not a night it never reach
   assert.equal(row.ended.toISOString(), '2026-10-01T15:50:00.000Z', 'sorted by the cancellation');
   assert.equal(row.last.toISOString().slice(0, 10), '2026-12-31', 'the schedule is still available');
 });
+
+// ---------------------------------------------------------------------------
+// extra_dates: a workshop over several days is ONE event (20261001150000).
+// ---------------------------------------------------------------------------
+const workshop = (over = {}) => ({
+  id: 'w1', slug: '2026-11-13-stage', title: 'Stage',
+  starts_at: '2026-11-13T14:00:00+01:00',
+  duration_minutes: 180, timezone: 'Europe/Paris',
+  recurrence: 'none', recurrence_end: null,
+  extra_dates: ['2026-11-14', '2026-11-15'],
+  cancelled_at: null, cancellation_note: null,
+  ...over,
+});
+
+const keys = (rows) => rows.map((o) => o.dateKey);
+
+test('three days, one event', () => {
+  const rows = expand(workshop(), [], { now: new Date('2026-10-01T12:00:00Z') });
+  assert.deepEqual(keys(rows), ['2026-11-13', '2026-11-14', '2026-11-15']);
+});
+
+test('every day keeps the anchor time of day, in the event zone', () => {
+  const rows = expand(workshop(), [], { now: new Date('2026-10-01T12:00:00Z') });
+  for (const o of rows) {
+    const hhmm = new Intl.DateTimeFormat('fr-FR', {
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Paris',
+    }).format(o.start);
+    assert.equal(hhmm, '14:00', `${o.dateKey} drifted`);
+  }
+});
+
+test('a workshop spanning the autumn changeover does NOT slide an hour', () => {
+  // 2026-10-25 is the last Sunday of October: 03:00 becomes 02:00. A workshop
+  // on the 24th and 25th at 14:00 is at 14:00 on both days, which is only true
+  // if the conversion goes through the zone rather than adding 24 hours.
+  const rows = expand(workshop({
+    starts_at: '2026-10-24T14:00:00+02:00',   // CEST
+    extra_dates: ['2026-10-25'],              // CET
+  }), [], { now: new Date('2026-10-01T12:00:00Z') });
+
+  assert.deepEqual(keys(rows), ['2026-10-24', '2026-10-25']);
+  assert.equal(rows[0].start.toISOString(), '2026-10-24T12:00:00.000Z');
+  assert.equal(rows[1].start.toISOString(), '2026-10-25T13:00:00.000Z',
+    'the same wall-clock 14:00 is a DIFFERENT instant either side of the change');
+});
+
+test('stored order does not matter, and a repeated day appears once', () => {
+  // The database can enforce neither: a CHECK may not contain the subquery
+  // distinctness needs (0A000), and comparing against `starts_at at time zone
+  // timezone` is STABLE, which a CHECK will not take. So this is where it holds.
+  const rows = expand(workshop({
+    extra_dates: ['2026-11-15', '2026-11-13', '2026-11-14', '2026-11-15'],
+  }), [], { now: new Date('2026-10-01T12:00:00Z') });
+  assert.deepEqual(keys(rows), ['2026-11-13', '2026-11-14', '2026-11-15'],
+    'the duplicate of the anchor date and of the 15th both collapse');
+});
+
+test('a day before the anchor still renders, in its true order', () => {
+  // The editor refuses this, but a row written by hand must not render
+  // nonsensically: the point of sorting here is that storage cannot be trusted
+  // to be tidy.
+  const rows = expand(workshop({ extra_dates: ['2026-11-10'] }), [],
+    { now: new Date('2026-10-01T12:00:00Z') });
+  assert.deepEqual(keys(rows), ['2026-11-10', '2026-11-13']);
+});
+
+test('a malformed entry is skipped, not thrown on', () => {
+  // This runs at build time over database rows. One bad value must not take the
+  // whole site's content down.
+  const rows = expand(workshop({ extra_dates: ['', null, 'demain', '2026-11-14'] }), [],
+    { now: new Date('2026-10-01T12:00:00Z') });
+  assert.deepEqual(keys(rows), ['2026-11-13', '2026-11-14']);
+});
+
+test('an exception still matches a day that came from extra_dates', () => {
+  // Occurrences are keyed by local date, which is what makes this work without
+  // the exception machinery knowing extra_dates exists at all.
+  const rows = expand(workshop(), [
+    { event_id: 'w1', occurrence_date: '2026-11-14', kind: 'cancelled',
+      note: 'salle indisponible', moved_starts_at: null },
+  ], { now: new Date('2026-10-01T12:00:00Z') });
+
+  assert.deepEqual(keys(rows), ['2026-11-13', '2026-11-14', '2026-11-15']);
+  assert.equal(rows[1].cancelled, true);
+  assert.equal(rows[1].note, 'salle indisponible');
+  assert.equal(rows[0].cancelled, false);
+});
+
+test('a moved exception relocates a day that came from extra_dates', () => {
+  const rows = expand(workshop(), [
+    { event_id: 'w1', occurrence_date: '2026-11-15', kind: 'moved',
+      note: null, moved_starts_at: '2026-11-15T10:00:00+01:00' },
+  ], { now: new Date('2026-10-01T12:00:00Z') });
+  assert.equal(rows[2].moved, true);
+  assert.equal(rows[2].start.toISOString(), '2026-11-15T09:00:00.000Z');
+});
+
+test('no extra dates behaves exactly as a single date always did', () => {
+  for (const value of [[], undefined, null]) {
+    const rows = expand(workshop({ extra_dates: value }), [],
+      { now: new Date('2026-10-01T12:00:00Z') });
+    assert.deepEqual(keys(rows), ['2026-11-13'], String(value));
+  }
+});
+
+test('a recurrence ignores extra_dates entirely', () => {
+  // The database refuses the combination (events_extra_dates_need_single_date),
+  // so this is about what happens to a row that predates the constraint or was
+  // written around it: the recurrence wins and nothing silently doubles up.
+  const rows = expand(workshop({ recurrence: 'weekly', recurrence_end: '2026-11-27' }),
+    [], { now: new Date('2026-10-01T12:00:00Z') });
+  assert.deepEqual(keys(rows), ['2026-11-13', '2026-11-20', '2026-11-27']);
+});

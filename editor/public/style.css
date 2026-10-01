@@ -319,6 +319,15 @@ a.btn { text-decoration: none; display: inline-block; }
 
 /* A small set of checkboxes on one row -- payment methods. Not .field-check,
    which is built for one box with a long explanation beside it. */
+/* The extra dates of a multi-day event: one row per day, each removable.
+   The date input is sized to its content rather than stretched to the form
+   width, so a column of them reads as a list of days and not as a stack of
+   full-width fields. */
+.dates { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.3rem; }
+.date-row { display: flex; align-items: center; gap: 0.5rem; }
+.date-row input[type="date"] { width: auto; margin: 0; }
+.btn-small { margin-top: 0; padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+
 .checks { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin-top: 0.3rem; }
 .checks .check { display: flex; align-items: center; gap: 0.4rem; }
 .checks input[type="checkbox"] { width: auto; margin: 0; }

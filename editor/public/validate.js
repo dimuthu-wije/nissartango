@@ -66,6 +66,35 @@ export function validate(v) {
       v.recurrence_end < v.starts_at_date) {
     p.push(['recurrence_end', `Antérieure à la première occurrence (${v.starts_at_date}).`]);
   }
+  // extra_dates. Four rules, and three of them exist because the database
+  // CANNOT hold them: a CHECK may not contain the subquery distinctness needs
+  // (0A000), and comparing a date against `starts_at at time zone timezone` is
+  // STABLE, which a CHECK will not take either. occurrences.js sorts and
+  // de-duplicates so a stored mess still renders correctly; these messages are
+  // what stop the mess being stored.
+  const extra = Array.isArray(v.extra_dates) ? v.extra_dates : [];
+  if (extra.length) {
+    // The one rule the database DOES hold: events_extra_dates_need_single_date.
+    if (v.recurrence !== 'none') {
+      p.push(['extra_dates',
+        'Un événement récurrent a déjà ses dates. Choisissez « Une seule date », '
+        + 'ou retirez les autres dates.']);
+    } else if (extra.some((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d))) {
+      p.push(['extra_dates', 'Chaque date doit être complète (jour, mois, année).']);
+    } else if (new Set(extra).size !== extra.length) {
+      p.push(['extra_dates', 'La même date est indiquée deux fois.']);
+    } else if (v.starts_at_date && extra.some((d) => d <= v.starts_at_date)) {
+      // Compared as plain ISO strings, which sort chronologically, and against
+      // the start date computed in the EVENT's zone -- the same value the
+      // recurrence_end rule above uses, for the same reason.
+      p.push(['extra_dates',
+        `Chaque autre date doit suivre la première (${v.starts_at_date}). `
+        + 'La première date est celle du champ « Début ».']);
+    } else if (extra.length > 30) {
+      p.push(['extra_dates', 'Trente dates supplémentaires au maximum.']);
+    }
+  }
+
   if (v.cancellation_note && !v.cancelled_at_local) {
     p.push(['cancellation_note', 'Cochez « Cet événement est annulé » ci-dessus, ou videz ce champ.']);
   }

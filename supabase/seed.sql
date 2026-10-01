@@ -19,22 +19,28 @@ on conflict (id) do nothing;
 insert into public.events
   (id, title, formats, starts_at, duration_minutes, location_name, location_address,
    location_postal_code, city, organizer_id, teachers, price_full, price_member,
-   price_note, body, status)
+   price_note, body, status, extra_dates)
 values
   ('e0000000-0000-0000-0000-00000000000a', 'Milonga de la Casita', array['milonga'],
    timestamptz '2026-09-10 21:00+02', 240, 'La Casita', '12 rue Barla', '06300', 'Nice',
    '0a000000-0000-0000-0000-0000000000aa', array['Dim'], 12.00, 10.00,
-   '12€ / 10€ adhérent', 'Milonga mensuelle, DJ invité.', 'approved'),
+   '12€ / 10€ adhérent', 'Milonga mensuelle, DJ invité.', 'approved',
+   array[]::date[]),
 
   ('e0000000-0000-0000-0000-00000000000b', 'Practica du mardi', array['cours', 'practica'],
    timestamptz '2026-09-01 20:00+02', 120, 'Salle Garibaldi', 'Place Garibaldi',
    '06300', 'Nice', '0a000000-0000-0000-0000-0000000000aa', array[]::text[],
-   null, null, 'Participation libre', 'Practica hebdomadaire, tous niveaux.', 'approved'),
+   null, null, 'Participation libre', 'Practica hebdomadaire, tous niveaux.', 'approved',
+   array[]::date[]),
 
+  -- Three days, ONE row: the case extra_dates exists for. The price is the
+  -- whole workshop's, which is why price_note says so -- a reader opening the
+  -- Sunday must not read 45 € as that afternoon's.
   ('e0000000-0000-0000-0000-00000000000c', 'Stage Rosa Gervasi', array['stage'],
    timestamptz '2026-09-12 14:00+02', 180, 'Studio Tango Nice', '5 avenue Malausséna',
    '06000', 'Nice', '0b000000-0000-0000-0000-0000000000bb', array['Rosa Gervasi'],
-   45.00, null, null, 'Stage de milonga, niveau intermédiaire.', 'pending')
+   45.00, null, 'les trois jours', 'Stage de milonga, niveau intermédiaire.', 'pending',
+   array['2026-09-13', '2026-09-14']::date[])
 on conflict (id) do nothing;
 
 -- A weekly series that crosses midnight, so the DST/occurrence-date behaviour

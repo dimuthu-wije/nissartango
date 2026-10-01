@@ -197,6 +197,70 @@ function checkboxSet(name, labelText, options, chosen, { hint, required } = {}) 
 }
 
 /**
+ * The extra days of a multi-day event: a list of date inputs you can grow.
+ *
+ * A REPEATABLE LIST, not a comma-separated text box, because these are dates:
+ * "13, 14, 15/11", "13/11, 14/11, 15/11" and "2026-11-13…" are all things
+ * someone would reasonably type, and a date input removes the question. It also
+ * gets the platform's own picker and locale on a phone.
+ *
+ * NOTHING IS PRE-ADDED. An empty list is the ordinary case, and three blank
+ * date inputs on every form would look like three things needing filled in.
+ */
+function datesField(existing) {
+  const wrap = el('div', null, 'field');
+  wrap.appendChild(el('label', 'Autres dates'));
+  const rows = el('div', null, 'dates');
+
+  const addRow = (value = '') => {
+    const row = el('div', null, 'date-row');
+    const d = input('date', { value });
+    const rm = el('button', 'Retirer', 'btn btn-quiet btn-small');
+    rm.type = 'button';
+    rm.addEventListener('click', () => { row.remove(); sync(); });
+    row.append(d, rm);
+    rows.appendChild(row);
+    return d;
+  };
+
+  const add = el('button', 'Ajouter une date', 'btn btn-quiet');
+  add.type = 'button';
+  add.addEventListener('click', () => { addRow().focus(); });
+
+  const hint = el('p', null, 'hint');
+  const err = el('p', null, 'field-error');
+  err.hidden = true;
+  wrap.append(rows, add, hint, err);
+
+  for (const value of existing?.extra_dates ?? []) addRow(value);
+
+  // Disabled rather than hidden when the event repeats -- the same choice
+  // recurrence_end makes just above, so the rule is visible instead of the
+  // control mysteriously not existing. The database agrees:
+  // events_extra_dates_need_single_date refuses the combination, because two
+  // date generators on one row is a thing no reader could reason about.
+  function sync() {
+    const single = fields.get('recurrence')?.control.value === 'none';
+    add.disabled = !single;
+    for (const d of rows.querySelectorAll('input[type=date]')) d.disabled = !single;
+    hint.textContent = single
+      ? 'Pour un stage sur plusieurs jours : un seul événement, une entrée par '
+        + 'journée supplémentaire, chacune à la même heure que le début.'
+      : 'Réservé aux événements à date unique — un événement récurrent a déjà '
+        + 'ses dates. Choisissez « Une seule date » ci-dessus pour les activer.';
+  }
+
+  fields.set('extra_dates', { control: rows, err, wrap, sync });
+  return wrap;
+}
+
+/** The dates entered: non-empty, de-duplicated, in order. */
+const datesIn = (name) => [...new Set(
+  [...(fields.get(name)?.control.querySelectorAll('input[type=date]') ?? [])]
+    .map((d) => d.value.trim()).filter(Boolean),
+)].sort();
+
+/**
  * The ticked values, in the order the OPTIONS declared them rather than the
  * order they were clicked -- so two events with the same answer store the same
  * array and the content checksum does not move for a reordering.
@@ -258,6 +322,11 @@ function readForm() {
     duration_minutes: num('duration_minutes'),
     recurrence: val('recurrence'),
     recurrence_end: val('recurrence_end') || null,
+    // Sorted and de-duplicated on the way out, so two events with the same days
+    // store the same array and the content checksum does not move for a
+    // reordering. occurrences.js does it again on the way in, because the
+    // database can enforce neither.
+    extra_dates: datesIn('extra_dates'),
     location_name: val('location_name') || null,
     location_address: val('location_address') || null,
     location_postal_code: val('location_postal_code') || null,
@@ -388,6 +457,7 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
     selectOf(RECURRENCES, existing?.recurrence ?? 'none')));
   form.appendChild(field('recurrence_end', 'Jusqu\'au',
     input('date', { value: existing?.recurrence_end ?? '' })));
+  form.appendChild(datesField(existing));
 
   section('Où');
   form.appendChild(field('location_name', 'Lieu',
@@ -479,8 +549,10 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
     recEnd.disabled = rec.value === 'none';
     if (recEnd.disabled) recEnd.value = '';
   };
-  rec.addEventListener('change', syncRecurrence);
+  const syncDates = fields.get('extra_dates').sync;
+  rec.addEventListener('change', () => { syncRecurrence(); syncDates(); });
   syncRecurrence();
+  syncDates();
 
   return form;
 }

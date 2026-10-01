@@ -316,3 +316,49 @@ test('mayDelete refuses an absent status rather than guessing', () => {
   assert.equal(mayDelete(null), false);
   assert.equal(mayDelete(''), false);
 });
+
+// ---------------------------------------------------------------------------
+// extra_dates: a multi-day workshop is one event (20261001150000).
+// ---------------------------------------------------------------------------
+test('extra dates are accepted on a single-date event', () => {
+  assert.deepEqual(validate(ok({
+    recurrence: 'none', extra_dates: ['2027-01-16', '2027-01-17'],
+  })), []);
+  // And absent or empty is the ordinary case, not an error.
+  assert.deepEqual(validate(ok({ extra_dates: [] })), []);
+  assert.deepEqual(validate(ok({ extra_dates: undefined })), []);
+});
+
+test('extra dates and a recurrence are refused together', () => {
+  // events_extra_dates_need_single_date. Two date generators on one row is a
+  // thing no reader of the schema could reason about.
+  const p = validate(ok({
+    recurrence: 'weekly', recurrence_end: '2027-03-01',
+    extra_dates: ['2027-01-16'],
+  }));
+  assert.deepEqual(p.map(([f]) => f), ['extra_dates']);
+  assert.match(p[0][1], /récurrent/i);
+});
+
+test('an extra date must follow the first date', () => {
+  // The slug is derived from starts_at and permalinks are forever, so an
+  // earlier "extra" date would leave the URL naming a day that is not the
+  // first. occurrences.js renders it in true order regardless; this is what
+  // stops it being entered.
+  const names = (v) => validate(v).map(([f]) => f);
+  assert.deepEqual(names(ok({ extra_dates: ['2027-01-14'] })), ['extra_dates']);
+  assert.deepEqual(names(ok({ extra_dates: ['2027-01-15'] })), ['extra_dates'],
+    'the same day as the start is not an extra day');
+  assert.deepEqual(validate(ok({ extra_dates: ['2027-01-16'] })), []);
+});
+
+test('a repeated extra date is refused', () => {
+  const p = validate(ok({ extra_dates: ['2027-01-16', '2027-01-16'] }));
+  assert.deepEqual(p.map(([f]) => f), ['extra_dates']);
+  assert.match(p[0][1], /deux fois/i);
+});
+
+test('an incomplete extra date is refused', () => {
+  assert.deepEqual(validate(ok({ extra_dates: ['2027-01'] })).map(([f]) => f),
+    ['extra_dates']);
+});
