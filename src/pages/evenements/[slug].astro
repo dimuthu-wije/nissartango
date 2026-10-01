@@ -43,7 +43,16 @@ const futureOccurrences = allOccurrences.filter((o) => o.start >= now);
 // dates exist. A cap here was an arbitrary 8, which meant the agenda listed
 // dates through late November that the series page stopped short of -- and,
 // because the markup follows this list, dates the markup never mentioned.
-const dates = e.recurrence === 'none' ? [] : futureOccurrences;
+//
+// THE TEST IS "MORE THAN ONE DATE", NOT "IS A SERIES". It read
+// `e.recurrence === 'none' ? [] : futureOccurrences` until extra_dates existed
+// (20261001150000), and then a three-day workshop -- recurrence `none`, three
+// occurrences -- rendered as a single date while the agenda listed three.
+// verify-build.mjs caught it: "the agenda lists ... on 2026-10-03, but that
+// page's JSON-LD does not mention it". `recurrenceLabel` is kept in the test so
+// a series with one remaining date behaves exactly as it did before.
+const manyDates = Boolean(recurrenceLabel) || allOccurrences.length > 1;
+const dates = manyDates ? futureOccurrences : [];
 
 // Has this already happened? Nothing still to come, which is the same test
 // loadAgenda() uses to decide the archive -- so a page that says "passé"
@@ -206,7 +215,7 @@ const jsonLd = nodes.length === 1
   )}
 
   <dl class="details">
-    <dt>{recurrenceLabel ? 'Prochaine date' : 'Date'}</dt>
+    <dt>{manyDates ? 'Prochaine date' : 'Date'}</dt>
     <dd>
       {fmtFull(when, tz)} à {fmtTime(when, tz)}
       {recurrenceLabel && <span class="recur">{recurrenceLabel}</span>}
