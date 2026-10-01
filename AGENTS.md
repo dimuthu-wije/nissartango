@@ -566,6 +566,21 @@ nothing looks wrong:
   asymmetry is the defence: a stale cache can only ever return an OLDER
   `built_at`, never a newer one. Demand that it has MOVED, and never read a
   non-move as proof of anything.
+- **Cloudflare's edge served a stale editor asset to a `cmp` that was checking
+  the deploy.** 2026-10-01: `npm run deploy:editor` uploaded four files;
+  fetching them back, two matched local and two were the PREVIOUS version,
+  missing every new marker. The deploy was fine. `?t=<epoch>` did not defeat it
+  — the asset is keyed by path, so the query string changed nothing — and the
+  response said `cf-cache-status: HIT` with `cache-control: max-age=0,
+  must-revalidate`, which is a cache claiming freshness it had not checked.
+  Re-fetching with `-H 'Cache-Control: no-cache' -H 'Pragma: no-cache'` forced
+  revalidation and all four then matched byte for byte.
+
+  So **verify a deploy with revalidation headers, not a cache-busting query**,
+  and treat "the served file differs" as a claim about the cache until it
+  survives a no-cache fetch. The failure direction is the same as the proxy
+  above: a cache can only hand you something OLDER, so a mismatch is ambiguous
+  while a match is conclusive.
 - **A FUSE mount reported every file as mode 600**, whatever its real
   permissions — `README.md` read 600 too. `.env` was reported safe and was
   actually 644. A permission read through a bridge is fabricated by the bridge.
