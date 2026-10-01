@@ -27,24 +27,21 @@ import {
 } from '/api.js';
 import { ALLOWED, checkImage, storagePathFor } from '/image.js';
 import { zonedToInstant, partsInZone } from '/zone.js';
+import { FORMATS, formatsOf } from '/format.js';
 import { validate } from '/validate.js';
 import '/banner.js';
 import '/signout-button.js';   // side effect: names the project when it is not production
 
-// {value, label}: the VALUE is the database enum and is never translated --
-// events_type_check and events_recurrence_check compare against these exact
-// strings. Only the word on screen is French. The recurrence wording matches
-// RECURRENCE_LABELS in src/lib/occurrences.js, so the editor and the site say
-// the same thing about the same event; 'none' has no label there because the
-// site never prints one for a single date.
-const TYPES = [
-  { value: 'cours', label: 'Cours' },
-  { value: 'practica', label: 'Practica' },
-  { value: 'milonga', label: 'Milonga' },
-  { value: 'stage', label: 'Stage' },
-  { value: 'demo', label: 'Démonstration' },
-  { value: 'festival', label: 'Festival' },
-];
+// {value, label}: the VALUE is the slug the database stores and constrains and
+// is never translated; only the word on screen is French. The recurrence
+// wording matches RECURRENCE_LABELS in src/lib/occurrences.js, so the editor
+// and the site say the same thing about the same event; 'none' has no label
+// there because the site never prints one for a single date.
+//
+// The formats list is NOT here: it is FORMATS, imported from /format.js, which
+// is a verbatim copy of src/lib/format.js. It was a fourth copy of the same
+// seven labels -- here, in queue.js, in src/lib/content.ts and in the
+// migration -- and tests/format.test.js now binds two of those together.
 // Mirrors events_payment_methods_known. The VALUE is the slug the database
 // stores and constrains; the label is French and lives only here and in
 // src/lib/content.ts's PAYMENT_LABELS. Adding one means the migration first --
@@ -161,6 +158,52 @@ function selectOf(options, value) {
   return s;
 }
 
+/**
+ * A checkbox set as ONE field, registered in `fields` like any other control.
+ *
+ * Extracted when `formats` needed the same control `payment_methods` already
+ * had. Two copies of twenty lines of DOM is how the second one ends up subtly
+ * different from the first.
+ *
+ * The group's error <p> is appended to the wrapper, which the hand-rolled
+ * payment block did NOT do -- it built `el('p')` and left it detached, so a
+ * validation message aimed at payment_methods was written into a node that was
+ * never in the document. Nothing aimed one there yet; `formats` does.
+ */
+function checkboxSet(name, labelText, options, chosen, { hint, required } = {}) {
+  const wrap = el('div', null, 'field');
+  wrap.appendChild(el('label', labelText + (required ? ' *' : '')));
+  const boxes = el('div', null, 'checks');
+  const already = new Set(chosen ?? []);
+  for (const { value, label } of options) {
+    const id = `${name}_${value}`;
+    const cb = input('checkbox', { value });
+    cb.id = id;
+    cb.checked = already.has(value);
+    const lab = el('label', label);
+    lab.setAttribute('for', id);
+    const one = el('div', null, 'check');
+    one.append(cb, lab);
+    boxes.appendChild(one);
+  }
+  wrap.appendChild(boxes);
+  if (hint) wrap.appendChild(el('p', hint, 'hint'));
+  const err = el('p', null, 'field-error');
+  err.hidden = true;
+  wrap.appendChild(err);
+  fields.set(name, { control: boxes, err, wrap });
+  return wrap;
+}
+
+/**
+ * The ticked values, in the order the OPTIONS declared them rather than the
+ * order they were clicked -- so two events with the same answer store the same
+ * array and the content checksum does not move for a reordering.
+ */
+const ticked = (name) => [...(fields.get(name)?.control
+  .querySelectorAll('input[type=checkbox]') ?? [])]
+  .filter((c) => c.checked).map((c) => c.value);
+
 // Empty for a field that is not on this form, rather than a TypeError. The
 // cancellation controls are edit-mode only, so `val('cancellation_note')` has
 // no entry to read when creating -- and a form that dies on save with
@@ -198,10 +241,21 @@ function readForm() {
   const wasCancelled = cancelField?.wasCancelledAt ?? null;
   const cancelledNow = Boolean(cancelField?.control.checked);
   const cancelledIso = cancelledNow ? (wasCancelled ?? new Date().toISOString()) : null;
+  // Read once and used twice: `formats` is the column that can describe a class
+  // followed by dancing, and `type` is the single-valued one it supersedes.
+  const formats = ticked('formats');
   return {
     organizer_id: val('organizer_id'),
     title: val('title'),
-    type: val('type'),
+    formats,
+    // `type` is still NOT NULL and still in events_public: 20261001120000 left
+    // it there because dropping a column from that view means DROP and CREATE,
+    // and a recreated events_public that forgot its `revoke all` would hand
+    // anon INSERT through a definer view. The primary format keeps the two
+    // columns in step until the contract migration. 'milonga' is unreachable --
+    // validate() refuses an empty set first -- and is here so the field is
+    // never null if that ever stops being true.
+    type: formats[0] ?? 'milonga',
     timezone: tz,
     starts_at_local: startsLocal,
     starts_at_date: startsIso ? instantToDate(startsIso, tz) : '',
@@ -228,12 +282,7 @@ function readForm() {
     price_full: num('price_full'),
     price_member: num('price_member'),
     price_note: val('price_note') || null,
-    // The checkbox set, in the order PAYMENT_METHODS declares rather than the
-    // order they were ticked, so two events with the same methods store the
-    // same array and the content checksum does not move for a reordering.
-    payment_methods: [...(fields.get('payment_methods')?.control
-      .querySelectorAll('input[type=checkbox]') ?? [])]
-      .filter((c) => c.checked).map((c) => c.value),
+    payment_methods: ticked('payment_methods'),
     signup_url: val('signup_url') || null,
     image_path: val('image_path') || null,
     body: fields.get('body').control.value.trim() || null,
@@ -295,8 +344,20 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
     { required: true }));
   form.appendChild(field('title', 'Titre',
     input('text', { value: existing?.title ?? '', maxLength: 200 }), { required: true }));
-  form.appendChild(field('type', 'Type', selectOf(TYPES, existing?.type ?? 'milonga'),
-    { required: true }));
+  // CHECKBOXES, not a select, because an evening is often a class AND then
+  // dancing -- and the select could only say one. `formatsOf` falls back to the
+  // superseded `type` column, which is what the eleven events created before
+  // this migration still carry.
+  //
+  // NOTHING IS TICKED BY DEFAULT. The select defaulted to Milonga, so a form
+  // saved without touching this field published an event as a milonga because
+  // nobody chose. An unanswered question should be refused, not guessed.
+  form.appendChild(checkboxSet('formats', 'Type', FORMATS,
+    formatsOf(existing ?? {}), {
+      required: true,
+      hint: 'Plusieurs si la soirée en combine — un cours suivi d\'une soirée, '
+          + 'une practica puis une milonga.',
+    }));
   // Teachers are part of "who", and moving prices out of "Détails" had left
   // that section holding this one field under a heading that said nothing.
   form.appendChild(field('teachers', 'Professeurs',
@@ -374,25 +435,9 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
   // Nothing ticked means "not said" and renders nothing on the site. It does
   // NOT mean cash only -- defaulting to that would publish a claim no
   // organizer made.
-  const payWrap = el('div', null, 'field');
-  payWrap.appendChild(el('label', 'Moyens de paiement acceptés'));
-  const payBoxes = el('div', null, 'checks');
-  const chosen = new Set(existing?.payment_methods ?? []);
-  for (const { value, label } of PAYMENT_METHODS) {
-    const id = `pay_${value}`;
-    const cb = input('checkbox', { value });
-    cb.id = id;
-    cb.checked = chosen.has(value);
-    const lab = el('label', label);
-    lab.setAttribute('for', id);
-    const one = el('div', null, 'check');
-    one.append(cb, lab);
-    payBoxes.appendChild(one);
-  }
-  payWrap.appendChild(payBoxes);
-  payWrap.appendChild(el('p', 'Laissez tout décoché si vous ne voulez pas le préciser.', 'hint'));
-  fields.set('payment_methods', { control: payBoxes, err: el('p'), wrap: payWrap });
-  form.appendChild(payWrap);
+  form.appendChild(checkboxSet('payment_methods', 'Moyens de paiement acceptés',
+    PAYMENT_METHODS, existing?.payment_methods,
+    { hint: 'Laissez tout décoché si vous ne voulez pas le préciser.' }));
 
   section('Détails pratiques');
   form.appendChild(field('signup_url', 'Lien d\'inscription',

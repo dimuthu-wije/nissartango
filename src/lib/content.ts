@@ -82,10 +82,11 @@ export function contactLinks(o: any) {
 
 export { PAYMENT_LABELS, paymentSummary } from './payment.js';
 
-export const TYPE_LABELS: Record<string, string> = {
-  cours: 'Cours', practica: 'Practica', milonga: 'Milonga',
-  stage: 'Stage', demo: 'Démonstration', festival: 'Festival',
-};
+// Was TYPE_LABELS here, a fourth copy of the same table. `formats` replaced
+// the single `type` (20261001120000) and the labels moved to a pure module the
+// editor can load as a verbatim copy, held honest by tests/format.test.js.
+export { FORMAT_LABELS, FORMATS, formatsOf, formatSummary, formatProse }
+  from './format.js';
 
 /** "12 € / 10 € adhérent", or the free-text note when there is no number. */
 export { priceSummary } from './price.js';

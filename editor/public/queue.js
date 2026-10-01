@@ -16,6 +16,7 @@ import {
   isAdmin, reviewQueue, recentlyDecided, allEvents,
   approve, reject, markReviewed, AuthExpired,
 } from '/api.js';
+import { formatSummary } from '/format.js';
 import '/banner.js';
 import '/signout-button.js';   // side effect: names the project when it is not production
 
@@ -46,14 +47,6 @@ const STATUS_LABELS = {
   pending: 'en attente', approved: 'approuvé', rejected: 'rejeté',
 };
 
-// Same list as src/lib/content.ts TYPE_LABELS. Duplicated rather than imported
-// because the editor is a separate static deployment with no build step -- the
-// same reason zone.js is a copy, and with far less at stake: a stale label
-// reads oddly, it does not compute a wrong time.
-const TYPE_LABELS = {
-  cours: 'Cours', practica: 'Practica', milonga: 'Milonga',
-  stage: 'Stage', demo: 'Démonstration', festival: 'Festival',
-};
 
 const dtf = new Intl.DateTimeFormat('fr-FR', {
   dateStyle: 'full', timeStyle: 'short', timeZone: 'Europe/Paris',
@@ -77,7 +70,7 @@ function card(ev, refresh) {
   const tags = el('div', null, 'tags');
   tags.appendChild(el('span', STATUS_LABELS[ev.status] ?? ev.status, `tag tag-${ev.status}`));
   if (ev.needs_review) tags.appendChild(el('span', 'à revoir', 'tag tag-flag'));
-  tags.appendChild(el('span', TYPE_LABELS[ev.type] ?? ev.type, 'tag'));
+  tags.appendChild(el('span', formatSummary(ev), 'tag'));
   head.appendChild(tags);
   c.appendChild(head);
 

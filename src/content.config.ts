@@ -106,6 +106,12 @@ const events = defineCollection({
     // nothing: a default of "espèces" would put a claim on the page that
     // nobody made.
     payment_methods: z.array(z.string()).default([]),
+    // What happens, as a SET: a class followed by dancing is two of these.
+    // Supersedes the single-valued `type` below, which 20261001120000 keeps
+    // until a contract migration can drop it without recreating the view.
+    // NOT a z.enum: the database constrains this with a CHECK it can extend in
+    // one line, and a build must not fail on a value the database accepted.
+    formats: z.array(z.string()).default([]),
     title: z.string(),
     type: z.enum(['cours', 'practica', 'milonga', 'stage', 'demo', 'festival']),
     starts_at: z.string(),

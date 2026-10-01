@@ -30,6 +30,13 @@ export function validate(v) {
   const p = [];
   if (!v.organizer_id) p.push(['organizer_id', 'Choisissez un organisateur.']);
   if (!v.title) p.push(['title', 'Un titre est obligatoire : la base refuse un titre vide.']);
+  // The old control was a select that defaulted to Milonga, so this could not
+  // be empty and nothing checked it. Checkboxes can be, and must be refused
+  // rather than guessed -- an event published as a milonga because nobody
+  // ticked anything is worse than a form that will not submit.
+  if (!v.formats?.length) {
+    p.push(['formats', 'Choisissez au moins un type — un cours, une soirée, ou les deux.']);
+  }
   if (!v.city) p.push(['city', 'La ville est obligatoire.']);
   if (!v.starts_at_local) p.push(['starts_at', 'La date et l\'heure de début sont obligatoires.']);
 

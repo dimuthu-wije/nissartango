@@ -170,7 +170,7 @@ export const WRITABLE = [
   'location_name', 'location_address', 'location_postal_code', 'city',
   'teachers', 'price_full', 'price_member', 'price_note',
   'signup_url', 'image_path', 'body',
-  'cancelled_at', 'cancellation_note', 'payment_methods',
+  'cancelled_at', 'cancellation_note', 'payment_methods', 'formats',
 ];
 
 async function write(method, path, body) {

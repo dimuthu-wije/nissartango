@@ -24,7 +24,7 @@
  * the seam to split on.
  */
 import Layout from '../../layouts/Layout.astro';
-import { loadAgenda, TYPE_LABELS, fmtFull } from '../../lib/content';
+import { loadAgenda, formatSummary, fmtFull } from '../../lib/content';
 
 const { archived, organizers } = await loadAgenda();
 
@@ -79,7 +79,7 @@ const title = 'Archives — événements passés | Nissartango';
                 )}
               </div>
               <div class="what">
-                <span class="type">{TYPE_LABELS[e.type] ?? e.type}</span>
+                <span class="type">{formatSummary(e)}</span>
                 <h3><a href={`/evenements/${e.slug}/`}>{e.title}</a></h3>
                 <p class="meta">
                   {e.location_name}{e.location_name && ', '}{e.city}

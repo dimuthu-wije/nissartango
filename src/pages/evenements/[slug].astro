@@ -3,7 +3,7 @@ import { getCollection, render } from 'astro:content';
 import { Image } from 'astro:assets';
 import Layout from '../../layouts/Layout.astro';
 import {
-  loadAgenda, socialLinks, contactLinks, TYPE_LABELS, priceSummary, paymentSummary,
+  loadAgenda, socialLinks, contactLinks, formatSummary, formatProse, priceSummary, paymentSummary,
   fmtFull, fmtTime, isoWithOffset, toRow,
 } from '../../lib/content';
 import { expand, nextDate, RECURRENCE_LABELS } from '../../lib/occurrences.js';
@@ -71,7 +71,7 @@ const image = e.image_file
 // the redirecting form declares one URL and serves another.
 const canonical = new URL(`/evenements/${e.slug}/`, Astro.site).href;
 const description =
-  `${TYPE_LABELS[e.type] ?? e.type} le ${fmtFull(when, tz)} à ` +
+  `${formatProse(e) || 'Événement'} le ${fmtFull(when, tz)} à ` +
   `${e.location_name ? e.location_name + ', ' : ''}${e.city}.`;
 
 // --- schema.org ------------------------------------------------------------
@@ -184,7 +184,7 @@ const jsonLd = nodes.length === 1
     {past || cancelled ? '← Archives' : '← Agenda'}
   </a>
 
-  <span class="type">{TYPE_LABELS[e.type] ?? e.type}</span>
+  <span class="type">{formatSummary(e)}</span>
   <h1>{e.title}</h1>
 
   {cancelled && (

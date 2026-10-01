@@ -20,6 +20,7 @@ import { validate } from '../editor/public/validate.js';
 const ok = (over = {}) => ({
   organizer_id: '9ce3802d-98bc-493c-8bd7-a42b61e71943',
   title: 'Milonga du jeudi',
+  formats: ['milonga'],
   city: 'Nice',
   starts_at_local: '2027-01-15T20:00',
   starts_at_date: '2027-01-15',
@@ -49,11 +50,23 @@ test('everything optional may be blank', () => {
   })), []);
 });
 
-test('the four required fields are required', () => {
+test('the five required fields are required', () => {
   assert.deepEqual(names(ok({ title: '' })), ['title']);
   assert.deepEqual(names(ok({ city: '' })), ['city']);
   assert.deepEqual(names(ok({ organizer_id: '' })), ['organizer_id']);
   assert.deepEqual(names(ok({ starts_at_local: '' })), ['starts_at']);
+  assert.deepEqual(names(ok({ formats: [] })), ['formats']);
+});
+
+test('a format must be chosen, not defaulted', () => {
+  // The control was a select defaulting to Milonga, which could not be empty,
+  // so nothing validated it. Checkboxes can be, and a form saved without
+  // touching them must be refused rather than publishing a guess.
+  assert.deepEqual(names(ok({ formats: [] })), ['formats']);
+  assert.deepEqual(names(ok({ formats: undefined })), ['formats']);
+  assert.deepEqual(names(ok({ formats: null })), ['formats']);
+  // Two is the whole point of the column.
+  assert.deepEqual(validate(ok({ formats: ['cours', 'soiree'] })), []);
 });
 
 test('duration is 1..10080, and the bounds are inclusive', () => {
