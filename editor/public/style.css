@@ -228,6 +228,15 @@ a { color: inherit; }
   border-color: var(--line);
 }
 
+/* The second click of a two-step destructive action. Its own colour because
+   "Oui, supprimer définitivement" sitting in the same black as "Enregistrer"
+   reads as just another button, and this one has no undo. */
+.btn-danger {
+  color: #fff;
+  background: var(--bad);
+  border-color: var(--bad);
+}
+
 a.btn { text-decoration: none; display: inline-block; }
 
 .decided { list-style: none; padding: 0; margin: 0.9rem 0 0; }

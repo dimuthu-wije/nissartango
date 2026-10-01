@@ -292,3 +292,27 @@ test('organizer: every problem carries a message a person can act on', () => {
     assert.match(message, /[.!]$/, `not a sentence: ${message}`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// mayDelete: the editor's mirror of events_member_delete's status condition.
+// ---------------------------------------------------------------------------
+import { mayDelete } from '../editor/public/validate.js';
+
+test('mayDelete mirrors `status <> \'approved\'`', () => {
+  // events_member_delete (20260828190100):
+  //   using (is_member(organizer_id) and status <> 'approved')
+  assert.equal(mayDelete('pending'), true);
+  assert.equal(mayDelete('rejected'), true);
+  assert.equal(mayDelete('approved'), false,
+    'a published event has a shared permalink; removing it breaks a link. '
+    + 'Taking it off the agenda is cancellation, which is a column.');
+});
+
+test('mayDelete refuses an absent status rather than guessing', () => {
+  // The form reaches this with whatever the row carried. An unsaved event has
+  // no status at all, and offering to delete something that does not exist is
+  // worse than not offering.
+  assert.equal(mayDelete(undefined), false);
+  assert.equal(mayDelete(null), false);
+  assert.equal(mayDelete(''), false);
+});

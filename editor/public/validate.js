@@ -143,6 +143,27 @@ function handleInLink(value) {
  * @param {object} v values read from the organizer form
  * @returns {[string, string][]} [field, message] pairs; empty means sendable
  */
+/**
+ * Whether the editor may offer to DELETE this event, mirroring the status half
+ * of `events_member_delete`:
+ *
+ *     using (is_member(organizer_id) and status <> 'approved')
+ *
+ * The membership half is not mirrored -- the editor only ever shows events the
+ * caller can already see, and a mirror of an is_member() call would be a second
+ * authority on something the database answers properly.
+ *
+ * A published event is NOT deletable, and that is the design rather than a
+ * limitation: its permalink has been shared, so removing it breaks a link
+ * somebody posted. Taking it off the agenda is cancellation, which is a column.
+ */
+export function mayDelete(status) {
+  // A real status, not merely "not approved": '' and undefined both reach here
+  // from a row that has not been saved, and `'' !== 'approved'` is true, which
+  // would have offered to delete an event that does not exist yet.
+  return typeof status === 'string' && status !== '' && status !== 'approved';
+}
+
 export function validateOrganizer(v) {
   const p = [];
   if (!v.name) p.push(['name', 'Le nom est obligatoire : la base refuse un nom vide.']);

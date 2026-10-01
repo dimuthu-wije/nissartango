@@ -248,6 +248,33 @@ export const addException = (row) => write('POST', 'event_exceptions', row);
  * Keyed by (event_id, occurrence_date) -- the pair content.config.ts also uses
  * as the collection id, so it is the identity of an exception everywhere.
  */
+// ---------------------------------------------------------------------------
+// Deleting an event.
+//
+// `events_member_delete` (20260828190100) is
+//
+//     using (is_member(organizer_id) and status <> 'approved')
+//
+// so the database refuses to delete a PUBLISHED event however this is called.
+// That is not an oversight to work around: an approved event has a permalink
+// people have shared, and taking it off the agenda is cancellation, which is a
+// column. mayDelete() in validate.js mirrors the status half so the button can
+// explain itself before the round trip.
+//
+// An admin could delete anything (`events_admin_delete`), and this deliberately
+// does not offer that. The editor should not make it easier to break a link
+// than to cancel an event.
+//
+// THE FLYER IS A SEPARATE DELETE. Nothing cascades from Postgres into Storage,
+// so a row removed on its own leaves its object in the bucket: invisible,
+// unreferenced, still stored. deleteEventImage is called after the row, in that
+// order -- the row is what was asked for, and an orphaned object is a mess
+// rather than a loss, whereas an object removed before a row that then survives
+// leaves a row pointing at nothing.
+// ---------------------------------------------------------------------------
+export const deleteEvent = (id) =>
+  del(`events?id=eq.${encodeURIComponent(id)}`);
+
 export const removeException = (eventId, occurrenceDate) =>
   del(`event_exceptions?event_id=eq.${encodeURIComponent(eventId)}` +
       `&occurrence_date=eq.${encodeURIComponent(occurrenceDate)}`);
@@ -323,6 +350,23 @@ export const isOwner = (id) => rpc('is_owner', { org: id });
 // ---------------------------------------------------------------------------
 
 const STORAGE = `${SUPABASE_URL}/storage/v1/object/event-images`;
+
+/**
+ * Remove one object from the private bucket.
+ *
+ * The policy is the same `is_member((storage.foldername(name))[1])` that guards
+ * the upload, so this can only reach a folder belonging to an organizer the
+ * caller is a member of.
+ */
+export async function deleteEventImage(storagePath) {
+  return send((s) => fetch(`${STORAGE}/${storagePath}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${s.access_token}`,
+    },
+  }));
+}
 
 export async function uploadEventImage(storagePath, file) {
   return send((s) => fetch(`${STORAGE}/${storagePath}`, {

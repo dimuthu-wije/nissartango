@@ -23,12 +23,13 @@
 import { getSession, hasSession, claimsOf } from '/auth.js';
 import {
   myOrganizers, getEvent, createEvent, updateEvent,
-  listExceptions, addException, removeException, uploadEventImage, AuthExpired,
+  listExceptions, addException, removeException, uploadEventImage,
+  deleteEvent, deleteEventImage, AuthExpired,
 } from '/api.js';
 import { ALLOWED, checkImage, storagePathFor } from '/image.js';
 import { zonedToInstant, partsInZone } from '/zone.js';
 import { FORMATS, formatsOf } from '/format.js';
-import { validate } from '/validate.js';
+import { validate, mayDelete } from '/validate.js';
 import '/banner.js';
 import '/signout-button.js';   // side effect: names the project when it is not production
 
@@ -543,6 +544,109 @@ async function save(existing, statusEl, submitEl) {
   }
 }
 
+/**
+ * Deleting the event. Shown for every saved event, including the ones that
+ * cannot be deleted.
+ *
+ * SHOWN RATHER THAN HIDDEN when the event is published, for the same reason
+ * recurrence_end is disabled rather than removed: a control that silently does
+ * not exist teaches nobody the rule. `events_member_delete` refuses a
+ * published event because its permalink has been shared, and saying so is more
+ * use than an empty space where a button might have been.
+ *
+ * TWO STEPS, NOT confirm(). A native dialog is one keypress from dismissed and
+ * cannot say which event it means; this names the title and requires a second,
+ * differently-labelled click. There is no undo -- the row is gone and the slug
+ * is free again -- so the second button is the only thing standing in front of
+ * that.
+ */
+function deleteSection(existing) {
+  const b = box('idle', 'Supprimer définitivement');
+
+  if (!mayDelete(existing.status)) {
+    b.appendChild(el('p',
+      'Un événement publié ne peut pas être supprimé : son lien a pu être '
+      + 'partagé, et une page qui disparaît casse ce lien. Pour le retirer de '
+      + 'l\'agenda, cochez « Cet événement est annulé » ci-dessus — il reste en '
+      + 'ligne, marqué annulé, avec son motif.', 'note'));
+    return b;
+  }
+
+  const status = el('p', null, 'note');
+  const actions = el('div', null, 'actions');
+  const start = el('button', 'Supprimer cet événement', 'btn btn-quiet');
+  start.type = 'button';
+
+  const confirmBtn = el('button', 'Oui, supprimer définitivement', 'btn btn-danger');
+  confirmBtn.type = 'button';
+  const back = el('button', 'Annuler', 'btn btn-quiet');
+  back.type = 'button';
+  const confirmWrap = el('div', null, 'actions');
+  confirmWrap.append(confirmBtn, back);
+  confirmWrap.hidden = true;
+
+  start.addEventListener('click', () => {
+    start.hidden = true;
+    confirmWrap.hidden = false;
+    status.textContent = `« ${existing.title} » et son affiche seront supprimés. `
+      + 'Cette action est définitive.';
+    confirmBtn.focus();
+  });
+
+  back.addEventListener('click', () => {
+    confirmWrap.hidden = true;
+    start.hidden = false;
+    status.textContent = '';
+  });
+
+  confirmBtn.addEventListener('click', async () => {
+    confirmBtn.disabled = back.disabled = true;
+    status.textContent = 'Suppression…';
+    try {
+      // The row first: it is what was asked for. See the comment on
+      // deleteEvent in api.js for why this order and not the other.
+      await deleteEvent(existing.id);
+
+      let orphan = null;
+      if (existing.image_path) {
+        try {
+          await deleteEventImage(existing.image_path);
+        } catch (err) {
+          // The event IS deleted. Say so, and say what was left behind, rather
+          // than reporting a failure that would read as "nothing happened".
+          orphan = `${existing.image_path} (${err.message})`;
+        }
+      }
+
+      const done = box('ok', 'Événement supprimé',
+        `« ${existing.title} » n'existe plus.`);
+      if (orphan) {
+        done.appendChild(el('p',
+          `L'affiche est restée dans le stockage : ${orphan}. `
+          + 'Rien ne la référence ; elle peut être retirée depuis le tableau de '
+          + 'bord Supabase.', 'note bad-text'));
+      }
+      const links = el('div', null, 'actions');
+      const queue = el('a', 'File d\'attente', 'btn');
+      queue.href = '/queue/';
+      const fresh = el('a', 'Nouvel événement', 'btn btn-quiet');
+      fresh.href = '/event/';
+      links.append(queue, fresh);
+      done.appendChild(links);
+      out().replaceChildren(done);
+    } catch (err) {
+      if (err instanceof AuthExpired) { renderExpired(); return; }
+      confirmBtn.disabled = back.disabled = false;
+      status.textContent = `Refusé : ${err.message}`;
+      status.className = 'note bad-text';
+    }
+  });
+
+  actions.appendChild(start);
+  b.append(actions, confirmWrap, status);
+  return b;
+}
+
 function renderSaved(row, created, warning) {
   const b = box(warning ? 'bad' : 'good', created ? 'Créé.' : 'Enregistré.');
   if (warning) b.appendChild(el('p', warning));
@@ -902,6 +1006,9 @@ async function boot() {
     frag.appendChild(wrap);
     // Only when the event exists: an exception is keyed by its id.
     if (existing) frag.appendChild(exceptionsSection(existing.id, existing.timezone ?? 'Europe/Paris'));
+    // Last on the page, deliberately: the one irreversible thing here should be
+    // the thing you have to scroll past everything else to reach.
+    if (existing) frag.appendChild(deleteSection(existing));
     out().replaceChildren(frag);
   } catch (err) {
     if (err instanceof AuthExpired) return renderExpired();
