@@ -10,9 +10,9 @@ import { loadAgenda, TYPE_LABELS, priceSummary, fmtFull, fmtTime } from '../lib/
 const { occurrences: rows, organizers, archived } = await loadAgenda();
 ---
 
-<Layout title="Nissartango — Agenda du tango à Nice">
+<Layout title="Nissartango — Agenda du tango et des danses à Nice">
   <h1>Agenda</h1>
-  <p class="intro">Cours, practicas, milongas et stages à Nice et sur la Côte d'Azur.</p>
+  <p class="intro">Cours, practicas, milongas, stages et soirées à Nice et sur la Côte d'Azur — tango, et les autres danses sociales.</p>
 
   {rows.length === 0 && (
     <p class="empty">
