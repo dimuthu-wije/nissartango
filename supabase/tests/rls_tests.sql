@@ -86,17 +86,17 @@ insert into public.organizer_members (organizer_id, user_id, role) values
 insert into public.user_roles (user_id, role) values
   ('da5e0000-0000-0000-0000-000000000004', 'admin');
 
-insert into public.events (id, title, type, starts_at, organizer_id, status, created_by) values
-  ('e0000000-0000-0000-0000-00000000000a', 'Milonga de la Casita', 'milonga',
+insert into public.events (id, title, formats, starts_at, organizer_id, status, created_by) values
+  ('e0000000-0000-0000-0000-00000000000a', 'Milonga de la Casita', array['milonga'],
    timestamptz '2026-09-10 21:00+02', '0a000000-0000-0000-0000-0000000000aa', 'approved',
    'a11ce000-0000-0000-0000-000000000001'),
-  ('e0000000-0000-0000-0000-00000000000b', 'Practica secrète', 'practica',
+  ('e0000000-0000-0000-0000-00000000000b', 'Practica secrète', array['practica'],
    timestamptz '2026-09-11 20:00+02', '0a000000-0000-0000-0000-0000000000aa', 'pending',
    'b0b00000-0000-0000-0000-000000000002'),
-  ('e0000000-0000-0000-0000-00000000000c', 'Stage Rosa', 'stage',
+  ('e0000000-0000-0000-0000-00000000000c', 'Stage Rosa', array['stage'],
    timestamptz '2026-09-12 14:00+02', '0b000000-0000-0000-0000-0000000000bb', 'approved',
    'ca401000-0000-0000-0000-000000000003'),
-  ('e0000000-0000-0000-0000-00000000000d', 'Stage Rosa (brouillon)', 'stage',
+  ('e0000000-0000-0000-0000-00000000000d', 'Stage Rosa (brouillon)', array['stage'],
    timestamptz '2026-09-19 14:00+02', '0b000000-0000-0000-0000-0000000000bb', 'pending',
    'ca401000-0000-0000-0000-000000000003');
 
@@ -141,8 +141,8 @@ select check_eq('anon sees exceptions of published events only',
 
 -- the auto-updatable-view trap
 select must_fail('anon cannot write through events_public',
-  $$insert into public.events_public (slug, title, type, starts_at, organizer_id)
-    values ('x','X','cours', now(), '0a000000-0000-0000-0000-0000000000aa')$$);
+  $$insert into public.events_public (slug, title, formats, starts_at, organizer_id)
+    values ('x','X',array['cours'], now(), '0a000000-0000-0000-0000-0000000000aa')$$);
 select must_fail('anon cannot write through organizers_public',
   $$update public.organizers_public set name = 'pwned'$$);
 
@@ -192,16 +192,16 @@ select check_eq('another organizer''s event cannot be edited',
              where id = 'e0000000-0000-0000-0000-00000000000c'$$), '0');
 
 select must_fail('an editor cannot self-publish on insert',
-  $$insert into public.events (title, type, starts_at, organizer_id, status)
-    values ('Auto-publiée','cours', timestamptz '2026-10-01 20:00+02',
+  $$insert into public.events (title, formats, starts_at, organizer_id, status)
+    values ('Auto-publiée',array['cours'], timestamptz '2026-10-01 20:00+02',
             '0a000000-0000-0000-0000-0000000000aa', 'approved')$$);
 select must_fail('nor insert for an organizer they do not belong to',
-  $$insert into public.events (title, type, starts_at, organizer_id)
-    values ('Chez Rosa','cours', timestamptz '2026-10-01 20:00+02',
+  $$insert into public.events (title, formats, starts_at, organizer_id)
+    values ('Chez Rosa',array['cours'], timestamptz '2026-10-01 20:00+02',
             '0b000000-0000-0000-0000-0000000000bb')$$);
 
-insert into public.events (title, type, starts_at, organizer_id)
-values ('Nouveau cours', 'cours', timestamptz '2026-10-01 19:00+02',
+insert into public.events (title, formats, starts_at, organizer_id)
+values ('Nouveau cours', array['cours'], timestamptz '2026-10-01 19:00+02',
         '0a000000-0000-0000-0000-0000000000aa');
 select check_eq('a legitimate insert lands as pending, owned by them',
   (select status::text || '/' || (created_by = 'b0b00000-0000-0000-0000-000000000002')::text

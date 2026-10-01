@@ -103,7 +103,7 @@ export const isAdmin = () => rpc('is_admin');
  */
 export const reviewQueue = () =>
   select(
-    'events?select=id,slug,title,type,starts_at,city,location_name,status,' +
+    'events?select=id,slug,title,formats,starts_at,city,location_name,status,' +
     'needs_review,review_note,created_at,organizers(name,slug)' +
     '&or=(status.eq.pending,needs_review.is.true)' +
     '&order=created_at.asc',
@@ -132,7 +132,7 @@ export const recentlyDecided = () =>
  */
 export const allEvents = (limit = 100) =>
   select(
-    'events?select=id,slug,title,type,starts_at,city,status,needs_review' +
+    'events?select=id,slug,title,formats,starts_at,city,status,needs_review' +
     `&order=starts_at.desc&limit=${Number(limit)}`,
   );
 
@@ -165,7 +165,7 @@ export const markReviewed = (id) => rpc('mark_reviewed', { p_event: id });
 // ---------------------------------------------------------------------------
 
 export const WRITABLE = [
-  'organizer_id', 'title', 'type', 'starts_at', 'duration_minutes', 'timezone',
+  'organizer_id', 'title', 'starts_at', 'duration_minutes', 'timezone',
   'recurrence', 'recurrence_end',
   'location_name', 'location_address', 'location_postal_code', 'city',
   'teachers', 'price_full', 'price_member', 'price_note',

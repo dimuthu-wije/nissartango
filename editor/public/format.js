@@ -4,7 +4,8 @@
 // value, so the only way to say both was the title -- production has an event
 // called "Milonga précédée d'une practica", which is prose where a field
 // should be: nothing can filter on it, and the page showed one badge for a
-// two-part evening.
+// two-part evening. That column was dropped on 2026-10-01 (20261001140000);
+// this is the only thing that answers the question now.
 //
 // `soiree` exists because this agenda is tango-FIRST, not tango-only
 // (confirmed 2026-10-01: bachata, kizomba and danse corse are on it on
@@ -47,17 +48,16 @@ const ORDER = Object.keys(FORMAT_LABELS);
  * The table above is ordered so the common pairs come out chronologically —
  * `Cours · Soirée`, `Practica · Milonga`.
  *
- * FALLS BACK TO `type`. 20261001120000 leaves `formats` nullable for one
- * deploy, because the editor live at the time it was applied does not send the
- * new column, and a row created in that window has only `type`. An unknown
- * slug is KEPT rather than dropped: a value the database accepted and this file
- * has not heard of should render as itself, not vanish.
+ * NO LONGER FALLS BACK TO `type`. It did for one day: 20261001120000 left
+ * `formats` nullable while the previously-deployed editor still wrote only
+ * `type`, and 20261001140000 dropped that column once the editor had caught up.
+ * `formats` is NOT NULL now, so a row without one cannot exist.
+ *
+ * An unknown slug is KEPT rather than dropped: a value the database accepted
+ * and this file has not heard of should render as itself, not vanish.
  */
 export function formatsOf(event) {
-  const raw = Array.isArray(event?.formats) && event.formats.length
-    ? event.formats
-    : (event?.type ? [event.type] : []);
-
+  const raw = Array.isArray(event?.formats) ? event.formats : [];
   const seen = new Set(raw.filter(Boolean));
   return [
     ...ORDER.filter((slug) => seen.has(slug)),

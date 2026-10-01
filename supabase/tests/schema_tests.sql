@@ -63,8 +63,8 @@ select must_fail('organizer slug must be kebab-case',
   $$insert into public.organizers (name, slug) values ('X','X Org')$$);
 
 -- === slug generation =======================================================
-insert into public.events (title, type, starts_at, organizer_id, created_by)
-values ('Milonga précédée d''une pràctica', 'milonga',
+insert into public.events (title, formats, starts_at, organizer_id, created_by)
+values ('Milonga précédée d''une pràctica', array['milonga'],
         timestamptz '2026-08-24 21:00+02', '22222222-2222-2222-2222-222222222222',
         '11111111-1111-1111-1111-111111111111');
 select check_eq('accents folded, date prefixed',
@@ -72,28 +72,28 @@ select check_eq('accents folded, date prefixed',
   '2026-08-24-milonga-precedee-d-une-practica');
 
 -- 00:30 Paris on 1 September is 31 August 22:30 UTC. The slug must say the 1st.
-insert into public.events (title, type, starts_at, organizer_id)
-values ('Milonga de minuit', 'milonga', timestamptz '2026-09-01 00:30+02',
+insert into public.events (title, formats, starts_at, organizer_id)
+values ('Milonga de minuit', array['milonga'], timestamptz '2026-09-01 00:30+02',
         '22222222-2222-2222-2222-222222222222');
 select check_eq('date prefix uses Paris, not UTC',
   (select slug from public.events where title = 'Milonga de minuit'),
   '2026-09-01-milonga-de-minuit');
 
 -- collision suffix
-insert into public.events (title, type, starts_at, organizer_id)
-values ('Practica du mardi', 'practica', timestamptz '2026-09-01 20:00+02',
+insert into public.events (title, formats, starts_at, organizer_id)
+values ('Practica du mardi', array['practica'], timestamptz '2026-09-01 20:00+02',
         '22222222-2222-2222-2222-222222222222');
-insert into public.events (title, type, starts_at, organizer_id)
-values ('Practica du mardi', 'practica', timestamptz '2026-09-01 20:00+02',
+insert into public.events (title, formats, starts_at, organizer_id)
+values ('Practica du mardi', array['practica'], timestamptz '2026-09-01 20:00+02',
         '22222222-2222-2222-2222-222222222222');
 select check_eq('second identical title gets -2',
   (select string_agg(slug, ' | ' order by slug) from public.events where title = 'Practica du mardi'),
   '2026-09-01-practica-du-mardi | 2026-09-01-practica-du-mardi-2');
 
 -- importer path: an explicit slug is kept verbatim, accents and all
-insert into public.events (slug, title, type, starts_at, organizer_id)
+insert into public.events (slug, title, formats, starts_at, organizer_id)
 values ('2026-08-24-milonga-précédée-d-une-pràctica-jeudi-c-est-permis-à-la-casita',
-        'Legacy', 'milonga', timestamptz '2026-08-24 21:00+02',
+        'Legacy', array['milonga'], timestamptz '2026-08-24 21:00+02',
         '22222222-2222-2222-2222-222222222222');
 select check_eq('explicit slug preserved for the importer',
   (select slug from public.events where title = 'Legacy'),
@@ -131,25 +131,25 @@ select must_fail_code('escape hatch does not leak past commit',
 
 -- === recurrence + timezone validation ======================================
 select must_fail('recurrence_end without a series',
-  $$insert into public.events (title, type, starts_at, organizer_id, recurrence_end)
-    values ('X','cours', now(), '22222222-2222-2222-2222-222222222222', current_date)$$);
+  $$insert into public.events (title, formats, starts_at, organizer_id, recurrence_end)
+    values ('X',array['cours'], now(), '22222222-2222-2222-2222-222222222222', current_date)$$);
 
 select must_fail_code('recurrence_end before the first occurrence',
-  $$insert into public.events (title, type, starts_at, organizer_id, recurrence, recurrence_end)
-    values ('X','cours', timestamptz '2026-09-01 20:00+02',
+  $$insert into public.events (title, formats, starts_at, organizer_id, recurrence, recurrence_end)
+    values ('X',array['cours'], timestamptz '2026-09-01 20:00+02',
             '22222222-2222-2222-2222-222222222222', 'weekly', date '2026-08-01')$$, 'NT004');
 
 select must_fail_code('unknown timezone',
-  $$insert into public.events (title, type, starts_at, organizer_id, timezone)
-    values ('X','cours', now(), '22222222-2222-2222-2222-222222222222', 'Europe/Nice')$$, 'NT003');
+  $$insert into public.events (title, formats, starts_at, organizer_id, timezone)
+    values ('X',array['cours'], now(), '22222222-2222-2222-2222-222222222222', 'Europe/Nice')$$, 'NT003');
 
 select must_fail('negative price',
-  $$insert into public.events (title, type, starts_at, organizer_id, price_full)
-    values ('X','cours', now(), '22222222-2222-2222-2222-222222222222', -5)$$);
+  $$insert into public.events (title, formats, starts_at, organizer_id, price_full)
+    values ('X',array['cours'], now(), '22222222-2222-2222-2222-222222222222', -5)$$);
 
 select must_fail('postal code must be 5 digits',
-  $$insert into public.events (title, type, starts_at, organizer_id, location_postal_code)
-    values ('X','cours', now(), '22222222-2222-2222-2222-222222222222', '06 000')$$);
+  $$insert into public.events (title, formats, starts_at, organizer_id, location_postal_code)
+    values ('X',array['cours'], now(), '22222222-2222-2222-2222-222222222222', '06 000')$$);
 
 -- === status / needs_review =================================================
 select check_eq('status defaults to pending',
@@ -232,8 +232,8 @@ select check_eq('...and it is outside the published predicate',
     where status = 'approved' and slug = '2026-09-01-practica-du-mardi-2'), '0');
 
 -- === event_exceptions ======================================================
-insert into public.events (id, title, type, starts_at, organizer_id, recurrence, status)
-values ('33333333-3333-3333-3333-333333333333', 'Practica hebdo', 'practica',
+insert into public.events (id, title, formats, starts_at, organizer_id, recurrence, status)
+values ('33333333-3333-3333-3333-333333333333', 'Practica hebdo', array['practica'],
         timestamptz '2026-08-04 21:00+02', '22222222-2222-2222-2222-222222222222',
         'weekly', 'approved');
 
@@ -305,8 +305,8 @@ select check_eq('a 21:00 practica is 21:00 either side of the October change',
 
 -- The exception key round-trips: write the row using the same function stage 3
 -- must use, and it matches.
-insert into public.events (id, title, type, starts_at, timezone, organizer_id, recurrence, status)
-values ('44444444-4444-4444-4444-444444444444', 'Milonga de minuit hebdo', 'milonga',
+insert into public.events (id, title, formats, starts_at, timezone, organizer_id, recurrence, status)
+values ('44444444-4444-4444-4444-444444444444', 'Milonga de minuit hebdo', array['milonga'],
         timestamptz '2026-08-05 00:30+02', 'Europe/Paris',
         '22222222-2222-2222-2222-222222222222', 'weekly', 'approved');
 insert into public.event_exceptions (event_id, occurrence_date, note)

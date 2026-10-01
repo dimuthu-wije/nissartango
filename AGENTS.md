@@ -57,13 +57,34 @@ snapshot. The field names are the database's, in snake_case. Checked against the
 schema 2026-09-19; the camelCase list that used to be here was the markdown era
 and matched nothing in the code.
 
-**`events`** — `db_id`, `slug`, `legacy_slugs` (array), `title`, `type` (enum:
-cours/practica/milonga/stage/demo/festival), `starts_at`, `duration_minutes`,
-`timezone`, `recurrence` (none/weekly/biweekly/monthly), `recurrence_end`,
-`location_name`, `location_address`, `location_postal_code`, `city`,
-`organizer_id`, `teachers` (array), `price_full`, `price_member`, `price_note`,
+**`events`** — `db_id`, `slug`, `legacy_slugs` (array), `title`, `formats`
+(array), `starts_at`, `duration_minutes`, `timezone`, `recurrence`
+(none/weekly/biweekly/monthly), `recurrence_end`, `location_name`,
+`location_address`, `location_postal_code`, `city`, `organizer_id`, `teachers`
+(array), `price_full`, `price_member`, `price_note`, `payment_methods` (array),
 `signup_url`, `image_path`, `image_file`, `body`, `cancelled_at`,
 `cancellation_note`, `created_at`, `updated_at`
+
+**`formats`, not `type`.** There was a single `type` enum column
+(cours/practica/milonga/stage/demo/festival) until 2026-10-01, when it was
+replaced by a text[] of the same slugs plus `soiree`, and then dropped
+(`20261001120000`, `20261001140000`). Two reasons, and the first is the one
+that forced it: an evening is often a class AND then dancing, and one value
+cannot say both — production encodes it in a title, "Milonga précédée d'une
+practica", which nothing can filter on. The second is that every enum label was
+tango vocabulary while the agenda is tango-FIRST, not tango-only, so a Corsican
+dance evening was stored as a `milonga` and its page said so.
+
+The dance STYLE is deliberately not a column: it is in the title of every such
+event, and a `dance` field earns its keep only once something filters on it.
+
+`formats` is `not null`, constrained by `events_formats_known` (containment, not
+an enum — see the comment in `20260930120000`) and bounded at three. The labels
+live in `src/lib/format.js`, copied verbatim to `editor/public/format.js`, with
+`tests/format.test.js` reading the migrations to keep the list and the CHECK in
+step. That test exists because they diverged: `soiree` was legal in the CHECK
+and not in the enum, and since the editor wrote `formats[0]` into `type`, the
+first use of the feature failed.
 
 **`organizers`** — `db_id`, `name`, `slug`, `website`, `instagram`, `facebook`,
 `tiktok`, `created_at`, `updated_at`, `contact_email`, `contact_phone`.
@@ -365,19 +386,28 @@ leave it out of git: nothing in one should need a secret to be useful.
    on any of the 11, 10 of 11 in Nice, and **no organizer with a social handle**
    — which is why "confirm organizer social links render" below is not merely
    unverified, it is unverifiable until one exists.
-2. **One column holds two axes: format and dance style.** Confirmed 2026-10-01
-   that the agenda covers bachata, kizomba and danse corse deliberately, and
-   `event_type` is ('cours','practica','milonga','stage','demo','festival') —
-   all of it tango vocabulary. So Danse corse is stored as `milonga` and its
-   page shows **Milonga**; Bachata and Kizomba are stored as `practica`.
+2. ~~One column holds two axes: format and dance style.~~ — **DONE
+   2026-10-01.** `formats text[]` replaced `type`, `soiree` was added, and the
+   old column and its enum are dropped. See the Content model above for what it
+   is now and why.
 
-   A reader notices that, and the type filter in item 5 is worthless while one
-   column means two things. The shape of the fix is a second axis rather than
-   more values in the first: `milonga` is what a tango social evening is called,
-   not what any social evening is called.
+   Three things that migration taught, kept because each cost something:
 
-   Free text is the wrong form for it — same drift as item 3, which is already
-   on this list for the same reason.
+   - `create or replace view` cannot drop a column, and a RECREATED view in
+     `public` is subject to Supabase's default ALL grant to anon. events_public
+     is auto-updatable and runs `security_invoker = false` by design, so a
+     recreate that omits the `revoke all` hands anon INSERT through a view that
+     bypasses RLS. `20261001140000` does the revoke; `rls_tests.sql` proves the
+     result (`anon cannot write through events_public -> refused`).
+   - `events_flag_review()` compares the content columns BY NAME in plpgsql, so
+     dropping one leaves a trigger that raises `record "new" has no field
+     "type"` on the next edit. Found by the local suite's seed insert failing,
+     not by reading. Fixing it also revealed that `payment_methods` had never
+     been added to that comparison since 2026-09-30 — so changing how an event
+     may be paid for did not flag it for review.
+   - `supabase/seed.sql` and the four files in `supabase/tests/` insert events
+     by column name too. 18 literals and 17 column references, in four files.
+     A column is not dropped until everything that writes it is found.
 3. Convert `organizer` city/name free-text drift to selects once real values exist
 4. ~~Past-event archive~~ — **DONE 2026-09-26.** `/archives/`, grouped by year,
    newest first.
@@ -392,7 +422,9 @@ leave it out of git: nothing in one should need a secret to be useful.
    `partition()` in `src/lib/occurrences.js` defines archived as "produced no
    listed occurrence", so no event can fall between them. `verify-build.mjs`
    check 8b fails the build if any event page is unreachable from either.
-5. Month grouping and type filtering (needed around 30-40 events)
+5. Month grouping and FORMAT filtering (needed around 30-40 events). `formats`
+   is an array, so a filter matches on ANY of an event's formats — a class
+   followed by dancing belongs under both Cours and Soirée.
 6. English pages (`/en/`) — UI and practical pages only
 7. Event submission form for other organizers, so I'm the editor rather than the
    data-entry clerk. This line used to say that is why we're on Workers rather

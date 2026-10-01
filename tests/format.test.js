@@ -38,16 +38,18 @@ test('duplicates collapse', () => {
   assert.equal(formatSummary({ formats: ['cours', 'cours'] }), 'Cours');
 });
 
-test('it falls back to the superseded `type` column', () => {
-  // 20261001120000 leaves formats nullable for one deploy, so a row created by
-  // the previously-deployed editor has only `type`.
-  assert.equal(formatSummary({ type: 'practica' }), 'Practica');
-  assert.equal(formatSummary({ type: 'practica', formats: null }), 'Practica');
-  assert.equal(formatSummary({ type: 'practica', formats: [] }), 'Practica');
-  // And `formats` WINS when it has anything, because it is the column that can
-  // be right about a two-part evening.
+test('`type` is gone and is no longer consulted', () => {
+  // It was a one-day fallback: 20261001120000 left `formats` nullable while the
+  // deployed editor still wrote only `type`, and 20261001140000 dropped the
+  // column once the editor had caught up. A row carrying only `type` can no
+  // longer exist -- `formats` is NOT NULL -- and if one somehow arrives, the
+  // honest answer is nothing rather than a guess from a column this schema does
+  // not have.
+  assert.equal(formatSummary({ type: 'practica' }), '');
   assert.equal(formatSummary({ type: 'milonga', formats: ['cours', 'soiree'] }),
     'Cours · Soirée');
+  assert.equal(formatSummary({ formats: null }), '');
+  assert.equal(formatSummary({ formats: [] }), '');
 });
 
 test('an unknown slug renders as itself rather than vanishing', () => {
@@ -139,19 +141,26 @@ const migrations = (() => {
 
 const quoted = (s) => [...s.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 
-test('the event_type enum holds exactly the formats this file knows', () => {
-  const created = migrations.match(
-    /create type public\.event_type as enum\s*\(([^)]*)\)/);
-  assert.ok(created, 'could not find the event_type enum in the migrations');
+test('event_type is dropped, and stays dropped', () => {
+  // This test used to assert that the enum's labels matched FORMAT_LABELS,
+  // because the editor wrote formats[0] into an enum column and a format that
+  // was not a label was a save that failed -- which is exactly how `soiree`
+  // broke. 20261001140000 removed the column and the type, so that divergence
+  // is no longer possible rather than merely watched.
+  //
+  // What is worth asserting now is that it did not come back: a new enum column
+  // for the same question would reintroduce two authorities for one fact, and
+  // the CHECK below would stop being the only one.
+  const drop = migrations.lastIndexOf('drop type public.event_type');
+  assert.ok(drop > 0, 'event_type is not dropped anywhere in the migrations');
 
-  const added = [...migrations.matchAll(
-    /alter type public\.event_type add value(?: if not exists)? '([a-z_]+)'/g)]
-    .map((m) => m[1]);
-
-  const labels = [...quoted(created[1]), ...added];
-  assert.deepEqual([...labels].sort(), Object.keys(FORMAT_LABELS).sort(),
-    'the enum and FORMAT_LABELS disagree. The editor writes formats[0] into '
-    + '`type`, so a format that is not an enum label is a save that fails.');
+  const lastUse = Math.max(
+    migrations.lastIndexOf('alter type public.event_type add value'),
+    migrations.lastIndexOf('public.event_type not null'),
+  );
+  assert.ok(drop > lastUse,
+    'something uses public.event_type AFTER it is dropped -- either the drop '
+    + 'moved or a column was added back');
 });
 
 test('events_formats_known holds exactly the same list', () => {

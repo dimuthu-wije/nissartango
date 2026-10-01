@@ -247,15 +247,9 @@ function readForm() {
   return {
     organizer_id: val('organizer_id'),
     title: val('title'),
+    // No `type` beside it since 20261001140000 dropped that column. Writing
+    // formats[0] into an enum is what made `soiree` fail on its first use.
     formats,
-    // `type` is still NOT NULL and still in events_public: 20261001120000 left
-    // it there because dropping a column from that view means DROP and CREATE,
-    // and a recreated events_public that forgot its `revoke all` would hand
-    // anon INSERT through a definer view. The primary format keeps the two
-    // columns in step until the contract migration. 'milonga' is unreachable --
-    // validate() refuses an empty set first -- and is here so the field is
-    // never null if that ever stops being true.
-    type: formats[0] ?? 'milonga',
     timezone: tz,
     starts_at_local: startsLocal,
     starts_at_date: startsIso ? instantToDate(startsIso, tz) : '',

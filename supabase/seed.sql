@@ -17,21 +17,21 @@ insert into public.organizers (id, name, slug, instagram, email, phone) values
 on conflict (id) do nothing;
 
 insert into public.events
-  (id, title, type, starts_at, duration_minutes, location_name, location_address,
+  (id, title, formats, starts_at, duration_minutes, location_name, location_address,
    location_postal_code, city, organizer_id, teachers, price_full, price_member,
    price_note, body, status)
 values
-  ('e0000000-0000-0000-0000-00000000000a', 'Milonga de la Casita', 'milonga',
+  ('e0000000-0000-0000-0000-00000000000a', 'Milonga de la Casita', array['milonga'],
    timestamptz '2026-09-10 21:00+02', 240, 'La Casita', '12 rue Barla', '06300', 'Nice',
    '0a000000-0000-0000-0000-0000000000aa', array['Dim'], 12.00, 10.00,
    '12€ / 10€ adhérent', 'Milonga mensuelle, DJ invité.', 'approved'),
 
-  ('e0000000-0000-0000-0000-00000000000b', 'Practica du mardi', 'practica',
+  ('e0000000-0000-0000-0000-00000000000b', 'Practica du mardi', array['cours', 'practica'],
    timestamptz '2026-09-01 20:00+02', 120, 'Salle Garibaldi', 'Place Garibaldi',
    '06300', 'Nice', '0a000000-0000-0000-0000-0000000000aa', array[]::text[],
    null, null, 'Participation libre', 'Practica hebdomadaire, tous niveaux.', 'approved'),
 
-  ('e0000000-0000-0000-0000-00000000000c', 'Stage Rosa Gervasi', 'stage',
+  ('e0000000-0000-0000-0000-00000000000c', 'Stage Rosa Gervasi', array['stage'],
    timestamptz '2026-09-12 14:00+02', 180, 'Studio Tango Nice', '5 avenue Malausséna',
    '06000', 'Nice', '0b000000-0000-0000-0000-0000000000bb', array['Rosa Gervasi'],
    45.00, null, null, 'Stage de milonga, niveau intermédiaire.', 'pending')
@@ -40,10 +40,10 @@ on conflict (id) do nothing;
 -- A weekly series that crosses midnight, so the DST/occurrence-date behaviour
 -- is exercised by simply running the site rather than only by the test suite.
 insert into public.events
-  (id, title, type, starts_at, duration_minutes, recurrence, recurrence_end,
+  (id, title, formats, starts_at, duration_minutes, recurrence, recurrence_end,
    location_name, city, organizer_id, price_note, status)
 values
-  ('e0000000-0000-0000-0000-00000000000e', 'Milonga de minuit', 'milonga',
+  ('e0000000-0000-0000-0000-00000000000e', 'Milonga de minuit', array['milonga'],
    timestamptz '2026-09-02 00:30+02', 180, 'weekly', date '2026-12-30',
    'Les Amarras', 'Nice', '0a000000-0000-0000-0000-0000000000aa',
    'Au chapeau', 'approved')
