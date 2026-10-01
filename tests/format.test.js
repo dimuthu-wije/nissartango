@@ -110,3 +110,54 @@ test('the prose form is a sentence fragment, not a badge', () => {
   assert.equal(formatProse({ formats: ['cours', 'demo'] }), 'Cours et démonstration');
   assert.equal(formatProse({}), '');
 });
+
+// ---------------------------------------------------------------------------
+// The lists that must agree, read from the migrations themselves.
+//
+// WHY THIS EXISTS. 20261001120000 added `formats text[]` with a CHECK listing
+// seven values and kept the single-valued `type`, so the editor writes
+// `formats[0]` into an ENUM column. Six of the seven were enum labels.
+// `soiree` -- the one the migration existed for -- was not, and the first real
+// use of the feature failed with
+//
+//     invalid input value for enum event_type: "soiree"
+//
+// The copies that were checked were the ones somebody thought of as copies.
+// The enum was not one of them, because `type` is scheduled for deletion --
+// and a column scheduled for deletion is still a column that gets written to.
+// ---------------------------------------------------------------------------
+import { readdirSync, readFileSync } from 'node:fs';
+
+/** Every migration, with SQL line comments stripped so prose cannot match. */
+const migrations = (() => {
+  const dir = new URL('../supabase/migrations/', import.meta.url);
+  return readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()
+    .map((f) => readFileSync(new URL(f, dir), 'utf8'))
+    .join('\n')
+    .replace(/--[^\n]*/g, '');
+})();
+
+const quoted = (s) => [...s.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+
+test('the event_type enum holds exactly the formats this file knows', () => {
+  const created = migrations.match(
+    /create type public\.event_type as enum\s*\(([^)]*)\)/);
+  assert.ok(created, 'could not find the event_type enum in the migrations');
+
+  const added = [...migrations.matchAll(
+    /alter type public\.event_type add value(?: if not exists)? '([a-z_]+)'/g)]
+    .map((m) => m[1]);
+
+  const labels = [...quoted(created[1]), ...added];
+  assert.deepEqual([...labels].sort(), Object.keys(FORMAT_LABELS).sort(),
+    'the enum and FORMAT_LABELS disagree. The editor writes formats[0] into '
+    + '`type`, so a format that is not an enum label is a save that fails.');
+});
+
+test('events_formats_known holds exactly the same list', () => {
+  const check = migrations.match(/events_formats_known[\s\S]*?array\[([^\]]*)\]/);
+  assert.ok(check, 'could not find events_formats_known in the migrations');
+  assert.deepEqual(quoted(check[1]).sort(), Object.keys(FORMAT_LABELS).sort(),
+    'the CHECK and FORMAT_LABELS disagree: the editor would offer a checkbox '
+    + 'the database refuses, and the refusal reaches the person as a 400.');
+});

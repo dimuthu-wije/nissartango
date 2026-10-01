@@ -113,7 +113,13 @@ const events = defineCollection({
     // one line, and a build must not fail on a value the database accepted.
     formats: z.array(z.string()).default([]),
     title: z.string(),
-    type: z.enum(['cours', 'practica', 'milonga', 'stage', 'demo', 'festival']),
+    // NOT a z.enum, since 2026-10-01. It listed six values; the database's enum
+    // gained a seventh (`soiree`, 20261001130000) and a build reading an event
+    // saved with it would have FAILED -- taking the whole site's content down
+    // to validate a value the database had already accepted. Same reasoning as
+    // `formats` above: the constraint belongs in one place, and that place is
+    // the one that can refuse a write.
+    type: z.string(),
     starts_at: z.string(),
     duration_minutes: z.number().nullable().optional(),
     timezone: z.string().default('Europe/Paris'),
