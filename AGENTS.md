@@ -201,6 +201,42 @@ leave it out of git: nothing in one should need a secret to be useful.
 - **Email and phone never reach the build.** Not "deliberately not rendered",
   which is what this line used to say: they are excluded from the public view,
   so the build never receives them and no template mistake can leak them.
+- **One duration per event, and leaving it empty is an answer.** Decided
+  2026-10-02. `duration_minutes` is a single column, so a multi-day workshop
+  whose Saturday runs three hours and whose Sunday runs two cannot be described
+  by it — and an exception's `moved_starts_at` moves a *start*, not a length.
+  The sanctioned shape for that case is to leave the field empty and put the
+  schedule in the description: the page then says only when it starts, and no
+  `endDate` is published at all, which beats publishing an end nobody chose.
+
+  Per-occurrence durations were designed and NOT built. The honest version is
+  `event_occurrences(event_id, starts_at, duration_minutes)` replacing
+  `extra_dates` — each date with its own start and length. It was declined for
+  now on cost, which is the sixth-table cost `20260930120000` sets out plus a
+  FOURTH view inside `content_checksum`, which the poller and `build-info.json`
+  both read. Revisit when a second real multi-day event has genuinely differing
+  days; one case is not enough to know whether per-day *starts*, breaks or two
+  sessions a day are wanted too.
+
+  Rejected on the way: putting the duration on `event_exceptions`. Its
+  constraint is `(kind = 'moved') = (moved_starts_at is not null)`, so a day
+  changing only in length would have to be filed as "moved" to the time it was
+  always at — and the page then labels it **déplacée** and emits
+  `previousStartDate`, publishing a claim that something was rescheduled when
+  it wasn't. A different Sunday schedule is also not an *exception*; it is the
+  schedule, and it does not belong in a section called Exceptions.
+
+- **The page shows a time SPAN, not just a start.** `duration_minutes` had
+  exactly one use in the whole site until 2026-10-02 — schema.org's `endDate` —
+  so it was public to machines and invisible to readers. The Mauro et Sol
+  workshop's markup said three one-hour sessions for 120 € while the page said
+  only "à 18:00": wrong only where nobody looks. `src/lib/span.js` renders
+  "de 18:00 à 21:00", or "de 21:00 à 01:00 (le lendemain)" when it crosses local
+  midnight — decided by comparing local date keys, not clock faces, so 23:30 +
+  20 min and 23:50 + 20 min are told apart. The agenda listing deliberately
+  still shows a start time only; 44 rows each carrying a span is density nobody
+  asked for.
+
 - **Media lives in Supabase Storage and is pulled into `src/assets/events` at
   build time.** Proven end to end on 2026-09-26; before that these lines said
   media "would go in `public/uploads/events`, not `src/assets`", which was the

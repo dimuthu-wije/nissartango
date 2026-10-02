@@ -4,7 +4,8 @@ import { Image } from 'astro:assets';
 import Layout from '../../layouts/Layout.astro';
 import {
   loadAgenda, socialLinks, contactLinks, formatSummary, formatProse, priceSummary, paymentSummary,
-  fmtFull, fmtTime, isoWithOffset, toRow,
+  spanLabel,
+  fmtFull, isoWithOffset, toRow,
 } from '../../lib/content';
 import { expand, nextDate, RECURRENCE_LABELS } from '../../lib/occurrences.js';
 
@@ -217,7 +218,13 @@ const jsonLd = nodes.length === 1
   <dl class="details">
     <dt>{manyDates ? 'Prochaine date' : 'Date'}</dt>
     <dd>
-      {fmtFull(when, tz)} à {fmtTime(when, tz)}
+      {/* The END TIME, which until 2026-10-02 appeared nowhere on this page.
+          duration_minutes had one use in the whole site -- schema.org's
+          endDate -- so the markup told aggregators how long an event ran and
+          the page told a reader nothing. No duration still renders "à 18:00",
+          because for a multi-day workshop whose days differ in length that is
+          the honest answer rather than a missing one. */}
+      {fmtFull(when, tz)} {spanLabel(when, e.duration_minutes, tz)}
       {recurrenceLabel && <span class="recur">{recurrenceLabel}</span>}
     </dd>
 
@@ -273,7 +280,10 @@ const jsonLd = nodes.length === 1
       <ul>
         {dates.map((o) => (
           <li id={`date-${o.dateKey}`} class={o.cancelled ? 'off' : undefined}>
-            {fmtFull(o.start, tz)}
+            {/* o.start is the MOVED instant for a moved occurrence, so the
+                span is that date's real time without special-casing. The list
+                said "— déplacé" and never said what it was moved to. */}
+            {fmtFull(o.start, tz)} {spanLabel(o.start, e.duration_minutes, tz)}
             {o.cancelled && <> — annulé{o.note ? ` (${o.note})` : ''}</>}
             {o.moved && <> — déplacé{o.note ? ` (${o.note})` : ''}</>}
           </li>

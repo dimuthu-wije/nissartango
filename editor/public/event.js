@@ -245,7 +245,9 @@ function datesField(existing) {
     for (const d of rows.querySelectorAll('input[type=date]')) d.disabled = !single;
     hint.textContent = single
       ? 'Pour un stage sur plusieurs jours : un seul événement, une entrée par '
-        + 'journée supplémentaire, chacune à la même heure que le début.'
+        + 'journée supplémentaire, chacune à la même heure que le début. '
+        + 'Si la durée change d\'un jour à l\'autre, laissez « Durée » vide et '
+        + 'détaillez l\'horaire dans la description.'
       : 'Réservé aux événements à date unique — un événement récurrent a déjà '
         + 'ses dates. Choisissez « Une seule date » ci-dessus pour les activer.';
   }

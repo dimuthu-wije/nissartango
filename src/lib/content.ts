@@ -88,6 +88,9 @@ export { PAYMENT_LABELS, paymentSummary } from './payment.js';
 export { FORMAT_LABELS, FORMATS, formatsOf, formatSummary, formatProse }
   from './format.js';
 
+/** "à 18:00", "de 18:00 à 21:00", "de 22:00 à 03:00 (le lendemain)". */
+export { timeSpan, spanLabel, endOf } from './span.js';
+
 /** "12 € / 10 € adhérent", or the free-text note when there is no number. */
 export { priceSummary } from './price.js';
 
