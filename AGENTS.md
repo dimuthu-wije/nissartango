@@ -153,7 +153,10 @@ the way it is when the code alone does not say.
                               order when a migration and the editor change
                               together, and how to confirm any of it worked.
                               Companion to editor/public/aide/, which is the
-                              same thing for an organizer, in French.
+                              same thing for an organizer. BOTH ARE IN FRENCH,
+                              unlike the rest of docs/: a handover is for
+                              whoever takes the code over, an operating guide is
+                              for the person who runs this, and he reads French.
     docs/HANDOVER-stage6.md   the editor arc, e22ca1d..3522615
     docs/HANDOVER-stage5.md   auth blocking facts, production as of 2026-09-19
     docs/BRIEFING-stage5.md   WHY the schema is shaped this way -- the views as
