@@ -791,6 +791,15 @@ was "no dev/prod separation"; both were false when measured on 2026-09-17, and
 
 Check the ref before you push.
 
+`editor/public/aide/` is the organizer's guide — the only prose page in the
+editor, readable signed OUT, because somebody who cannot sign in is exactly who
+needs it. It repeats the form's field labels, its option lists and its error
+messages, so **it drifts the moment a label changes and nothing will tell you**.
+Every label in it was read out of `event.js` and `organizer.js` rather than
+recalled, on 2026-10-03; do the same when you change one. Its flow diagram is
+inline SVG using the stylesheet's own variables, so it follows the light/dark
+switch and its words stay selectable.
+
 The editor can now be run against dev instead of production:
 
 ```

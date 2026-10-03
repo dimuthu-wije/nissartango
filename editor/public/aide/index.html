@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide de l'organisateur — Nissartango</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Guide de l'organisateur</h1>
+  <p class="lede">Vous publiez vos cours, practicas, milongas et stages sur nissartango.fr depuis cet espace : vous saisissez l'événement, je le relis, il est en ligne dans les dix minutes qui suivent.</p>
+
+  <!--
+    Prose, and nothing else. This page needs no session: somebody who cannot
+    sign in is exactly the person most likely to be reading it, so it must work
+    signed out. aide.js takes only the two side effects every page takes.
+
+    The drawing is inline SVG rather than an image: it inherits the stylesheet's
+    colour variables, so it follows the light/dark switch for free, and its words
+    stay selectable and searchable.
+  -->
+  <div class="guide">
+
+    <h2>Avant de commencer</h2>
+    <p><strong>Vous ne pouvez pas créer votre compte vous-même.</strong> Écrivez-moi, je vous envoie une invitation par e-mail. C'est volontaire : un compte donne accès à l'agenda, donc il se demande.</p>
+    <p>Une fois invité, tout se passe sur <strong>editor.nissartango.fr</strong>.</p>
+    <ol>
+      <li>Saisissez votre adresse e-mail et cliquez sur <strong>Envoyez-moi un lien</strong>.</li>
+      <li>Ouvrez le message et cliquez sur le lien.</li>
+      <li>Vous arrivez directement sur le formulaire d'événement.</li>
+    </ol>
+    <p>Il n'y a pas de mot de passe : un lien remplace le mot de passe à chaque connexion.</p>
+    <p>Trois choses à savoir sur ce lien, qui expliquent presque toutes les difficultés de connexion :</p>
+    <ul>
+      <li>il ne sert <strong>qu'une seule fois</strong> ;</li>
+      <li>il est valable <strong>une heure</strong> ;</li>
+      <li>il doit être ouvert <strong>dans le même navigateur</strong> que celui où vous l'avez demandé. Si vous demandez le lien sur votre ordinateur et ouvrez l'e-mail sur votre téléphone, il ne fonctionnera pas.</li>
+    </ul>
+    <p>Si un lien ne marche pas, demandez-en simplement un nouveau.</p>
+
+    <h2>Créer un événement</h2>
+    <p>Le formulaire est découpé en cinq parties. Seuls cinq champs sont obligatoires : <strong>Organisateur</strong>, <strong>Titre</strong>, <strong>Type</strong>, <strong>Début</strong> et <strong>Ville</strong>. Tout le reste peut rester vide, et un champ vide ne s'affiche pas sur le site.</p>
+    <table>
+      <thead>
+        <tr><th>Champ</th><th>Obligatoire</th><th>À savoir</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Organisateur</td><td>oui</td><td>Ne propose que les organisateurs dont vous êtes membre.</td></tr>
+        <tr><td>Titre</td><td>oui</td><td>Tel quel sur le site. Évitez les MAJUSCULES : elles se lisent mal dans une liste.</td></tr>
+        <tr><td>Type</td><td>oui</td><td>Cases à cocher : Cours, Practica, Milonga, Stage, Démonstration, Festival, Soirée. <strong>Plusieurs à la fois</strong> si la soirée en combine — un cours suivi d'une soirée se coche deux fois.</td></tr>
+        <tr><td>Professeurs</td><td>non</td><td>Séparez par une virgule, <code>&amp;</code> ou <code>/</code> — <em>Ana &amp; Luis / Marie</em> fait trois personnes. N'utilisez pas « et » : il apparaît dans de vrais prénoms.</td></tr>
+        <tr><td>Début</td><td>oui</td><td>Date et heure locales.</td></tr>
+        <tr><td>Fuseau horaire</td><td>non</td><td>Replié, Europe/Paris par défaut. À ouvrir seulement pour un stage à l'étranger.</td></tr>
+        <tr><td>Durée (minutes)</td><td>non</td><td>Sert à afficher l'heure de fin : <em>de 20:00 à 23:00</em>. Laissez vide si la durée change d'un jour à l'autre.</td></tr>
+        <tr><td>Récurrence</td><td>non</td><td>Une seule date, Chaque semaine, Toutes les deux semaines, Chaque mois.</td></tr>
+        <tr><td>Jusqu'au</td><td>non</td><td>Fin d'un événement récurrent. Sans date de fin, il s'affiche six mois à l'avance.</td></tr>
+        <tr><td>Autres dates</td><td>non</td><td>Pour un stage sur plusieurs jours — voir plus bas. Réservé aux événements à date unique.</td></tr>
+        <tr><td>Lieu</td><td>non</td><td>Le nom de la salle : <em>La Casita del Tango</em>.</td></tr>
+        <tr><td>Adresse, Code postal</td><td>non</td><td>Le code postal fait exactement cinq chiffres.</td></tr>
+        <tr><td>Ville</td><td>oui</td><td></td></tr>
+        <tr><td>Tarif, Tarif adhérent</td><td>non</td><td>Des nombres. S'affichent <em>12 € / 10 € adhérent</em>.</td></tr>
+        <tr><td>Note sur le tarif</td><td>non</td><td>Du texte libre à côté des chiffres : <em>au chapeau</em>, <em>les trois jours</em>, <em>gratuit pour les étudiants</em>.</td></tr>
+        <tr><td>Moyens de paiement</td><td>non</td><td>Espèces, Carte bancaire, Chèque, Virement. Tout décoché = rien d'affiché, ce qui veut dire « non précisé » et non « espèces uniquement ».</td></tr>
+        <tr><td>Lien d'inscription</td><td>non</td><td>Doit commencer par <code>http://</code> ou <code>https://</code>.</td></tr>
+        <tr><td>Affiche</td><td>non</td><td>JPEG, PNG, WebP ou AVIF, 5 Mo maximum.</td></tr>
+        <tr><td>Description</td><td>non</td><td>Le texte libre de l'annonce.</td></tr>
+      </tbody>
+    </table>
+    <p>Un conseil qui évite de ressaisir : pour un événement proche d'un autre, ouvrez l'ancien et cliquez sur <strong>Dupliquer</strong>. Tout est recopié sauf la date et l'affiche.</p>
+
+    <h2>Après l'enregistrement</h2>
+    <figure>
+      <svg viewBox="0 0 760 256" role="img" aria-label="Un evenement passe par ma relecture avant la mise en ligne" font-size="13">
+        <defs>
+          <marker id="aide-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="var(--line)"/>
+          </marker>
+        </defs>
+        <text x="24" y="34" font-size="15" font-weight="600" fill="var(--fg)">Un événement passe par ma relecture avant la mise en ligne</text>
+        <g fill="none" stroke="var(--line)" stroke-width="1.25">
+          <path d="M175 110H207" marker-end="url(#aide-arrow)"/>
+          <path d="M357 110H389" marker-end="url(#aide-arrow)"/>
+          <path d="M539 110H571" marker-end="url(#aide-arrow)"/>
+          <path d="M646 134V206H464V134" marker-end="url(#aide-arrow)"/>
+        </g>
+        <rect x="25" y="86" width="150" height="48" rx="8" fill="none" stroke="var(--line)" stroke-width="1.25"/>
+        <text x="100" y="114" text-anchor="middle" fill="var(--fg)">Vous enregistrez</text>
+        <rect x="207" y="86" width="150" height="48" rx="8" fill="none" stroke="var(--line)" stroke-width="1.25"/>
+        <text x="282" y="114" text-anchor="middle" fill="var(--fg)">En attente</text>
+        <rect x="389" y="86" width="150" height="48" rx="8" fill="none" stroke="var(--line)" stroke-width="1.25"/>
+        <text x="464" y="114" text-anchor="middle" fill="var(--fg)">Je relis</text>
+        <rect x="571" y="86" width="150" height="48" rx="8" fill="var(--good-bg)" stroke="var(--good)" stroke-width="2"/>
+        <text x="646" y="114" text-anchor="middle" font-weight="600" fill="var(--fg)">En ligne</text>
+        <text x="282" y="154" text-anchor="middle" font-size="11.5" fill="var(--muted)">invisible sur le site</text>
+        <text x="646" y="154" text-anchor="middle" font-size="11.5" fill="var(--muted)">visible de tous</text>
+        <text x="555" y="76" text-anchor="middle" font-size="11.5" fill="var(--muted)">10 min au plus</text>
+        <text x="555" y="228" text-anchor="middle" font-size="11.5" fill="var(--muted)">vous modifiez — il reste en ligne pendant ce temps</text>
+      </svg>
+      <figcaption>Parcours d'un événement : quatre étapes, un retour.</figcaption>
+    </figure>
+    <p>Un événement que vous créez arrive <strong>en attente</strong> : il n'est pas sur le site, et il ne l'est pas tant que je ne l'ai pas relu. Une fois approuvé, il apparaît à la reconstruction suivante, qui a lieu au plus tard dix minutes après.</p>
+    <p>Si votre événement n'est pas encore visible, c'est donc l'un des deux : il attend ma relecture, ou il attend la reconstruction. Dans les deux cas il n'y a rien à refaire — le recréer ne ferait qu'un doublon.</p>
+
+    <h2>Modifier, annuler ou supprimer</h2>
+    <p>Trois choses différentes, souvent confondues.</p>
+    <p><strong>Modifier.</strong> Ouvrez l'événement, changez ce que vous voulez, <strong>Enregistrer</strong>. Un événement déjà publié <strong>reste en ligne</strong> pendant ce temps : vos corrections partent sur le site à la reconstruction suivante, et l'événement apparaît simplement dans ma file pour relecture. Corriger une faute de frappe la veille d'une milonga ne la retire pas de l'agenda.</p>
+    <p><strong>Annuler.</strong> Cochez <strong>Cet événement est annulé</strong> et indiquez un <strong>Motif</strong>. L'événement reste en ligne, barré, avec votre motif. C'est volontaire : <em>« annulé, salle inondée »</em> répond à la question du lecteur, alors qu'une page disparue le laisse se demander si le site est à jour.</p>
+    <p>Pour annuler <strong>une seule date</strong> d'un événement récurrent, n'utilisez pas cette case : utilisez les Exceptions, juste en dessous.</p>
+    <p><strong>Supprimer.</strong> Tout en bas de la page de modification, <strong>Supprimer définitivement</strong>, en deux clics et sans retour en arrière. Possible uniquement pour un événement <strong>pas encore publié</strong>. Un événement en ligne ne peut pas être supprimé : son lien a pu être partagé ou collé sur Facebook, et une page qui disparaît casse ce lien. Pour le retirer de l'agenda, annulez-le.</p>
+
+    <h2>Plusieurs dates</h2>
+    <p><strong>Un stage sur plusieurs jours est UN seul événement.</strong> Pour un stage les 13, 14 et 15 novembre : mettez le 13 dans <strong>Début</strong>, puis ajoutez le 14 et le 15 dans <strong>Autres dates</strong>. Ne créez pas trois événements — vous auriez trois pages, trois tarifs à corriger et trois affiches à remplacer.</p>
+    <p>Chaque journée supplémentaire prend l'heure du <strong>Début</strong>. Si les horaires changent d'un jour à l'autre, laissez <strong>Durée</strong> vide et détaillez dans la <strong>Description</strong>.</p>
+    <p>Pensez à la <strong>Note sur le tarif</strong> : écrivez <em>les trois jours</em> à côté du prix. Quelqu'un qui ouvre la page au 15 novembre doit comprendre que les 120 € couvrent le stage entier, pas cette seule journée.</p>
+    <p><strong>Un rendez-vous régulier</strong> — practica tous les mardis, milonga chaque jeudi — se saisit avec <strong>Récurrence</strong> et <strong>Jusqu'au</strong>. Il n'occupe qu'une ligne de l'agenda, sous <em>Rendez-vous réguliers</em>, avec sa prochaine date.</p>
+    <p><strong>Une date qui saute, ou qui change d'heure : les Exceptions.</strong> La section est en bas de la page de modification, parce qu'une exception se rattache à un événement qui existe déjà.</p>
+    <ol>
+      <li>Ouvrez l'événement, descendez jusqu'à <strong>Exceptions</strong>.</li>
+      <li>Choisissez la date concernée.</li>
+      <li>Choisissez <strong>annulée</strong> (ou <strong>déplacée</strong>, et indiquez la nouvelle heure).</li>
+      <li>Ajoutez un motif — <em>férié</em>, <em>salle réservée</em>.</li>
+      <li><strong>Ajouter une exception</strong>. C'est enregistré immédiatement : pas besoin de cliquer sur Enregistrer.</li>
+    </ol>
+    <p>La date reste visible sur le site, barrée, avec votre motif. Et comme le reste de la série n'occupe qu'une ligne, c'est la seule fois où cet événement apparaît dans l'agenda chronologique — l'annonce ne peut pas passer inaperçue.</p>
+
+    <h2>Votre fiche organisateur</h2>
+    <p>Menu <strong>Organisateur</strong>. Ce que vous y mettez s'affiche sur chacun de vos événements, donc une correction ici en corrige des dizaines.</p>
+    <p><strong>Identité.</strong> Le <strong>Nom</strong> s'affiche sous chaque événement. L'<strong>Identifiant d'URL</strong> est fixe : il figure dans les liens vers votre fiche, donc il ne peut pas changer.</p>
+    <p><strong>Liens.</strong> Le <strong>Site web</strong> prend une adresse complète, commençant par <code>https://</code>. Instagram, Facebook et TikTok prennent <strong>un identifiant, pas une adresse</strong> : écrivez <code>nissartango</code>, pas <code>https://instagram.com/nissartango</code>. Le site construit le lien lui-même. Si vous collez une adresse, le formulaire vous dit quelle partie garder.</p>
+    <p><strong>Coordonnées privées — jamais publiées.</strong> L'e-mail et le téléphone de cette section servent à ce que je puisse vous joindre. Ils sont absents du site : ils ne sont même pas envoyés au site au moment de sa construction, donc aucune erreur de gabarit ne peut les faire apparaître.</p>
+    <p><strong>Coordonnées publiques.</strong> Ce sont les deux autres champs, et ils s'affichent sur chacun de vos événements. Chacun est accompagné de la case <strong>Publier cette information, de façon permanente</strong> : sans elle cochée, la valeur n'est pas enregistrée du tout. C'est voulu — publier un numéro de téléphone est une décision, pas un champ qu'on remplit par habitude.</p>
+    <p>Seul un <strong>propriétaire</strong> peut modifier cette fiche. Un éditeur la voit sans pouvoir l'enregistrer.</p>
+
+    <h2>Ajouter un collègue</h2>
+    <p>Réservé aux <strong>propriétaires</strong>. Si vous n'êtes pas propriétaire, la section n'apparaît pas.</p>
+    <p>Organisateur → votre fiche → <strong>Membres</strong>. Vous y voyez qui peut agir en votre nom, et vous ajoutez quelqu'un par son adresse e-mail.</p>
+    <table>
+      <thead>
+        <tr><th>Rôle</th><th>Peut faire</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Éditeur</td><td>Créer et modifier les événements de l'organisateur.</td></tr>
+        <tr><td>Propriétaire</td><td>Tout cela, plus modifier la fiche et gérer les membres.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>La personne doit déjà avoir un compte</strong> — elle ne peut pas s'en créer un. Demandez-moi une invitation pour elle, puis ajoutez-la ici. Si vous l'ajoutez trop tôt, le formulaire vous le dit clairement plutôt que d'échouer en silence.</p>
+    <p>Ajouter quelqu'un qui est déjà membre <strong>change son rôle</strong> au lieu d'échouer : c'est aussi comme cela qu'on promeut un éditeur.</p>
+    <p>Le bouton <strong>Retirer</strong> enlève un membre. Le dernier propriétaire ne peut pas être retiré : un organisateur sans propriétaire ne serait plus administrable par personne.</p>
+
+    <h2>En cas de problème</h2>
+    <table>
+      <thead>
+        <tr><th>Ce que vous voyez</th><th>Ce que ça veut dire</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Ce lien n'a pas fonctionné</strong></td><td>Le lien a déjà été ouvert, il a plus d'une heure, ou vous l'ouvrez dans un autre navigateur que celui où vous l'avez demandé. Demandez-en un nouveau et ouvrez-le tout de suite, au même endroit.</td></tr>
+        <tr><td><strong>Signups not allowed for otp</strong></td><td>Il n'y a pas de compte pour cette adresse. Écrivez-moi, je vous invite.</td></tr>
+        <tr><td><strong>Vous n'êtes membre d'aucun organisateur</strong></td><td>Votre compte existe mais n'est rattaché à personne. Écrivez-moi.</td></tr>
+        <tr><td><strong>Vous êtes connecté, mais pas administrateur</strong></td><td>Normal. La file d'attente est ma page de relecture, pas la vôtre.</td></tr>
+        <tr><td>Un champ encadré en rouge</td><td>Le message sous le champ dit quoi corriger. Le formulaire refuse <strong>en bloc</strong> : une seule erreur empêche tout l'enregistrement, donc vérifiez s'il y en a d'autres plus haut.</td></tr>
+        <tr><td><strong>Refusé : …</strong> après avoir cliqué</td><td>La base a refusé l'enregistrement et dit pourquoi. Si le message ne vous parle pas, envoyez-le moi tel quel.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Se déconnecter</strong> ferme <strong>toutes</strong> vos sessions, pas seulement celle de ce navigateur. Utile si vous vous êtes connecté sur un ordinateur qui n'est pas le vôtre.</p>
+    <p>Pour tout le reste : écrivez-moi, et joignez une capture d'écran du message. C'est ce qui me permet de répondre sans deviner.</p>
+
+  </div>
+
+  <footer>
+    <span data-admin-only><a href="/queue/">File d'attente</a> · </span>
+    <a href="/event/">Nouvel événement</a> ·
+    <a href="/organizer/">Organisateur</a> ·
+    <a href="/">Accueil</a>
+  </footer>
+</main>
+
+<script type="module" src="/aide.js"></script>
+</body>
+</html>

@@ -325,6 +325,36 @@ a.btn { text-decoration: none; display: inline-block; }
    full-width fields. */
 /* The members of an organizer: one row each, the email carrying the weight and
    the role as a quiet tag beside it. */
+/* ---------------------------------------------------------------------------
+   /aide/ — the organizer's guide. The editor had no prose page before this, so
+   headings, lists and tables had no styles: everything here is for that page.
+   Kept in one block rather than scattered, since nothing else uses it.
+   --------------------------------------------------------------------------- */
+.guide h2 {
+  font-size: 1.05rem; margin: 2.2rem 0 0.6rem;
+  padding-top: 1.1rem; border-top: 1px solid var(--line);
+}
+.guide h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 1.6rem; }
+.guide p { margin: 0 0 0.8rem; }
+.guide ul, .guide ol { margin: 0 0 0.9rem; padding-left: 1.3rem; }
+.guide li { margin: 0.3rem 0; }
+.guide code {
+  font-size: 0.9em; padding: 0.1em 0.3em;
+  background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+}
+.guide table { width: 100%; border-collapse: collapse; margin: 0 0 1rem; font-size: 0.92rem; }
+.guide th, .guide td {
+  text-align: left; vertical-align: top;
+  padding: 0.5rem 0.6rem 0.5rem 0; border-top: 1px solid var(--line);
+}
+.guide th { font-weight: 600; }
+.guide td:first-child, .guide th:first-child { padding-right: 1rem; }
+/* The drawing scales to the column and keeps its proportions; it is wider than
+   a phone, so it scrolls sideways rather than shrinking its words to nothing. */
+.guide figure { margin: 1.2rem 0; overflow-x: auto; }
+.guide figure svg { display: block; min-width: 34rem; width: 100%; height: auto; }
+.guide figcaption { margin-top: 0.5rem; color: var(--muted); font-size: 0.85rem; }
+
 /* The sign-in failure panel: plain French in the body, the codes folded into
    a <details> so a report can still carry them. */
 .box ul { margin: 0.4rem 0 0.9rem; padding-left: 1.2rem; }
