@@ -46,9 +46,10 @@ const og = image ?? {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    {/* favicon.ico is found at the root without a tag; the SVG is not. NOTE:
-        both files are still Astro's own logo from `npm create astro`. */}
+    {/* favicon.ico is found at the root without a tag; the other two are not.
+        All three come from scripts/make-favicon.mjs. */}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta property="og:title" content={title} />
