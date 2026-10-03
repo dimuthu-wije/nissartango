@@ -31,6 +31,7 @@ import { zonedToInstant, partsInZone } from '/zone.js';
 import { FORMATS, formatsOf } from '/format.js';
 import { validate, mayDelete } from '/validate.js';
 import '/banner.js';
+import { adminOnly } from '/admin-only.js';   // also, on import: the footer link
 import '/signout-button.js';   // side effect: names the project when it is not production
 
 // {value, label}: the VALUE is the slug the database stores and constrains and
@@ -701,7 +702,7 @@ function deleteSection(existing) {
           + 'bord Supabase.', 'note bad-text'));
       }
       const links = el('div', null, 'actions');
-      const queue = el('a', 'File d\'attente', 'btn');
+      const queue = adminOnly(el('a', 'File d\'attente', 'btn'));
       queue.href = '/queue/';
       const fresh = el('a', 'Nouvel événement', 'btn btn-quiet');
       fresh.href = '/event/';
@@ -742,12 +743,16 @@ function renderSaved(row, created, warning) {
         : 'Enregistré.',
     'note'));
 
-  const queue = el('a', 'Ouvrir la file d\'attente');
+  // Admin only: a member who has just created a pending event cannot approve
+  // it, and sending them to the queue to be told so is the opposite of useful.
+  // The line above already says an event is not on the site until it is
+  // approved, which is the part that concerns them.
+  const queue = adminOnly(el('a', 'Ouvrir la file d\'attente'));
   queue.href = '/queue/';
   queue.className = 'btn';
   const again = el('a', 'En ajouter un autre');
   again.href = '/event/';
-  again.className = 'btn btn-quiet';
+  again.className = 'btn';
   const row2 = el('div', null, 'actions');
   row2.append(queue, again);
   b.appendChild(row2);

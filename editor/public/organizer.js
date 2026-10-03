@@ -39,6 +39,7 @@ import {
 import { validateOrganizer } from '/validate.js';
 import { consentFor } from '/consent.js';
 import '/banner.js';
+import '/admin-only.js';   // side effect: hides the queue link unless this account is an admin
 import '/signout-button.js';   // side effect: names the project when it is not production
 
 const out = () => document.querySelector('#out');

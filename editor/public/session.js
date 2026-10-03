@@ -20,6 +20,7 @@ import {
   requestLink, exchangeCode, getSession, hasSession, claimsOf,
 } from '/auth.js';
 import '/banner.js';
+import { adminOnly } from '/admin-only.js';   // also, on import: the footer link
 import '/signout-button.js';   // side effect: names the project when it is not production
 
 const $ = (s) => document.querySelector(s);
@@ -89,9 +90,15 @@ function showSession(session, how) {
   b.appendChild(note);
 
   const links = el('div', null, 'actions');
-  const queue = el('a', 'Ouvrir la file d\'attente', 'btn');
+  // The queue is the moderator's page. Offering it to somebody who has just
+  // signed in as an organizer sends them to a panel explaining that is_admin()
+  // answered false, which is true, useless to them, and the first thing they
+  // would meet.
+  const queue = adminOnly(el('a', 'Ouvrir la file d\'attente', 'btn'));
   queue.href = '/queue/';
-  const add = el('a', 'Ajouter un événement', 'btn btn-quiet');
+  // Primary now rather than quiet: for everyone who is not an admin this is the
+  // only button in the row, and a lone secondary button reads as disabled.
+  const add = el('a', 'Ajouter un événement', 'btn');
   add.href = '/event/';
   links.append(queue, add);
   b.appendChild(links);

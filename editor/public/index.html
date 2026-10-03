@@ -28,9 +28,11 @@
 
   <footer>
     Connexion par lien. Une fois connecté :
-    <a href="/queue/">file d'attente</a>,
-    <a href="/event/">événements</a>,
-    <a href="/organizer/">organisateur</a>.
+    <!-- The separator lives inside the wrapper so hiding one does not leave
+         a stray "·" behind. See editor/public/admin-only.js. -->
+    <span data-admin-only><a href="/queue/">file d'attente</a> · </span>
+    <a href="/event/">événements</a> ·
+    <a href="/organizer/">organisateur</a>
   </footer>
 </main>
 
