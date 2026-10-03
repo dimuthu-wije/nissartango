@@ -335,9 +335,10 @@ function membersSection(org) {
   add.type = 'button';
   row.append(mail, role, add);
   addWrap.append(row, el('p',
-    'La personne doit s\'être connectée à l\'éditeur au moins une fois : '
-    + 'c\'est ce qui crée son compte. Ajouter quelqu\'un de déjà membre '
-    + 'change son rôle.', 'hint'));
+    'La personne doit déjà avoir un compte : l\'éditeur ne permet pas d\'en '
+    + 'créer un soi-même. Invitez-la depuis le tableau de bord Supabase '
+    + '(Authentication → Users → Invite user), puis ajoutez-la ici. '
+    + 'Ajouter quelqu\'un de déjà membre change son rôle.', 'hint'));
 
   add.addEventListener('click', async () => {
     const email = mail.value.trim();
@@ -352,9 +353,14 @@ function membersSection(org) {
       await refresh();
     } catch (err) {
       if (err instanceof AuthExpired) return renderExpired();
+      // NT006 is the one failure the owner can act on, so it says what to DO.
+      // It used to say "ask them to sign in once", which cannot work:
+      // requestLink() sends create_user: false, so an unknown address is
+      // refused with "Signups not allowed for otp". Found by rehearsing the
+      // flow, 2026-10-03.
       status.textContent = err.code === 'NT006'
-        ? `Aucun compte pour ${email}. Demandez-lui d'ouvrir `
-          + 'editor.nissartango.fr et de s\'y connecter une fois, puis réessayez.'
+        ? `Aucun compte pour ${email}. Invitez cette adresse depuis le tableau `
+          + 'de bord Supabase (Authentication → Users → Invite user), puis réessayez.'
         : `Refusé : ${err.message}`;
       status.className = 'note bad-text';
     } finally {

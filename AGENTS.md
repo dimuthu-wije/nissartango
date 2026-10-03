@@ -505,11 +505,27 @@ leave it out of git: nothing in one should need a secret to be useful.
    `organizer_members` since the start under `members_owner_write`, and the
    listing supplies the uid.
 
-   **The person must have signed in once** — decided, not overlooked. An invite
-   for an address with no account means a table of pending invites, a trigger on
-   `auth.users` to apply them, and a second path into membership that has to
-   agree with the first. `NT006` is raised for exactly that case so the editor
-   can say what to do.
+   **The person must already have an ACCOUNT**, and they cannot make one
+   themselves. This was written on 2026-10-03 as "they must have signed in
+   once", which was wrong and was found the same day by rehearsing the flow:
+   `requestLink()` in `editor/public/auth.js` sends `create_user: false`, so
+   asking for a magic link with an unknown address returns
+
+       Signups not allowed for otp
+
+   That is OUR code and a deliberate one — its comment says a sign-up "is a
+   decision with a moderation consequence… and it does not belong behind an
+   email field on a page anyone can open". The project-level setting is not the
+   cause: production reads `disable_signup: false`.
+
+   So the flow is: **dashboard → Authentication → Users → Invite user**, then
+   Membres → add by email. `NT006` is raised when the address has no account,
+   so the editor can say so — but the fix for it is an invitation, not "sign in
+   and try again".
+
+   The pending-invite design was declined that morning in favour of "tell them
+   to sign in first". That comparison was void: the alternative did not exist.
+   Reopen it on its merits if onboarding ever happens more than a few times.
 
    STILL NOT BUILT, deliberately: self-serve organizer registration, and a
    public form needing no account. Both optimise a funnel with no traffic — no
