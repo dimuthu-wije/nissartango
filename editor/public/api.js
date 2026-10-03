@@ -43,7 +43,12 @@ async function handle(res) {
     // and that separation is the point: the session expiring and RLS refusing
     // are different problems with different fixes, and sending someone to the
     // sign-in page for a permission error teaches them nothing.
-    throw new Error(body?.message || body?.hint || body?.details || `HTTP ${res.status}`);
+    // The SQLSTATE is carried on the Error. Without it a caller that needs to
+    // tell one refusal from another has to match on the message text, which is
+    // prose written in a migration and changes when somebody improves it.
+    const err = new Error(body?.message || body?.hint || body?.details || `HTTP ${res.status}`);
+    if (body?.code) err.code = body.code;
+    throw err;
   }
   return body;
 }
@@ -320,6 +325,28 @@ export const updateOrganizer = (id, fields) =>
 
 /** Is this caller an OWNER of that organizer? Asked, never inferred. */
 export const isOwner = (id) => rpc('is_owner', { org: id });
+
+// ---------------------------------------------------------------------------
+// Members of an organizer.
+//
+// THE EMAIL IS THE WHOLE POINT. organizer_members.user_id references
+// auth.users, which PostgREST cannot see, so adding somebody meant looking up
+// their uid in the dashboard. These two RPCs (20261003120000) are SECURITY
+// DEFINER and check is_owner/is_admin themselves.
+//
+// REMOVAL IS NOT AN RPC: `authenticated` has had DELETE on organizer_members
+// all along under members_owner_write, and the listing supplies the uid.
+// t50_members_keep_an_owner still refuses to leave an organizer ownerless.
+// ---------------------------------------------------------------------------
+export const listMembers = (org) =>
+  rpc('organizer_member_emails', { p_organizer: org });
+
+export const addMember = (org, email, role) =>
+  rpc('add_organizer_member', { p_organizer: org, p_email: email, p_role: role });
+
+export const removeMember = (org, userId) =>
+  del(`organizer_members?organizer_id=eq.${encodeURIComponent(org)}`
+      + `&user_id=eq.${encodeURIComponent(userId)}`);
 
 // ---------------------------------------------------------------------------
 // Event images: upload one object into the event-images bucket.

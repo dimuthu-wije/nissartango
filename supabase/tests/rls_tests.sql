@@ -236,6 +236,81 @@ select must_fail('nor into a malformed path',
   $$insert into storage.objects (bucket_id, name)
     values ('event-images','pas-un-uuid/x/flyer.jpg')$$);
 
+-- === membership administration (20261003120000) ============================
+-- Bob is an EDITOR of Nissartango, not an owner. Both functions check
+-- is_owner/is_admin themselves, because SECURITY DEFINER runs as the function's
+-- owner and RLS does not apply inside it -- the policies that protect the table
+-- protect nothing here.
+select must_fail_code('an editor cannot list members with their emails',
+  $$select * from public.organizer_member_emails('0a000000-0000-0000-0000-0000000000aa')$$,
+  '42501');
+select must_fail_code('an editor cannot add a member',
+  $$select public.add_organizer_member('0a000000-0000-0000-0000-0000000000aa','carol@example.org')$$,
+  '42501');
+
+reset role;
+reset request.jwt.claim.sub;
+
+\echo ''
+\echo '--- as alice, OWNER of Nissartango ---'
+set role authenticated;
+set request.jwt.claim.sub = 'a11ce000-0000-0000-0000-000000000001';
+
+select check_eq('an owner sees her members, with emails',
+  (select string_agg(email, ', ' order by email)
+     from public.organizer_member_emails('0a000000-0000-0000-0000-0000000000aa')),
+  'alice@example.org, bob@example.org');
+
+-- The whole point: a uuid is not something a person has, an email is.
+select check_eq('an owner adds a member by email',
+  (select role::text from public.add_organizer_member(
+     '0a000000-0000-0000-0000-0000000000aa', 'carol@example.org')),
+  'editor');
+select check_eq('and carol is now a member',
+  (select count(*)::text from public.organizer_members
+    where organizer_id = '0a000000-0000-0000-0000-0000000000aa'
+      and user_id = 'ca401000-0000-0000-0000-000000000003'), '1');
+
+-- Idempotent, and that is also how a role is changed. "Add them again to
+-- promote them" is a reasonable thing to try.
+select check_eq('adding again changes the role instead of failing',
+  (select role::text from public.add_organizer_member(
+     '0a000000-0000-0000-0000-0000000000aa', 'carol@example.org', 'owner')),
+  'owner');
+select check_eq('still one row, not two',
+  (select count(*)::text from public.organizer_members
+    where organizer_id = '0a000000-0000-0000-0000-0000000000aa'
+      and user_id = 'ca401000-0000-0000-0000-000000000003'), '1');
+
+-- Case and whitespace: an email typed by a person has neither guarantee.
+select check_eq('the address is matched case-insensitively and trimmed',
+  (select user_id::text from public.add_organizer_member(
+     '0a000000-0000-0000-0000-0000000000aa', '  CAROL@Example.ORG  ')),
+  'ca401000-0000-0000-0000-000000000003');
+
+-- The one failure the person on the other end can fix, so it gets its own code
+-- for the editor to recognise and explain.
+select must_fail_code('an address with no account raises NT006',
+  $$select public.add_organizer_member('0a000000-0000-0000-0000-0000000000aa','nobody@example.org')$$,
+  'NT006');
+
+-- Being an owner of one organizer is not being an owner of another.
+select must_fail_code('an owner cannot add to somebody else''s organizer',
+  $$select public.add_organizer_member('0b000000-0000-0000-0000-0000000000bb','bob@example.org')$$,
+  '42501');
+select must_fail_code('nor list its members',
+  $$select * from public.organizer_member_emails('0b000000-0000-0000-0000-0000000000bb')$$,
+  '42501');
+
+-- Removal deliberately has no function: the existing DELETE policy covers it
+-- once the listing has given you the uid.
+delete from public.organizer_members
+ where organizer_id = '0a000000-0000-0000-0000-0000000000aa'
+   and user_id = 'ca401000-0000-0000-0000-000000000003';
+select check_eq('an owner removes a member through the existing policy',
+  (select count(*)::text from public.organizer_members
+    where organizer_id = '0a000000-0000-0000-0000-0000000000aa'), '2');
+
 reset role;
 reset request.jwt.claim.sub;
 

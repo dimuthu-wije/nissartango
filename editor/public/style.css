@@ -323,6 +323,20 @@ a.btn { text-decoration: none; display: inline-block; }
    The date input is sized to its content rather than stretched to the form
    width, so a column of them reads as a list of days and not as a stack of
    full-width fields. */
+/* The members of an organizer: one row each, the email carrying the weight and
+   the role as a quiet tag beside it. */
+.members { display: flex; flex-direction: column; margin: 0.4rem 0 1.2rem; }
+.member {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--line);
+}
+.member-who { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.member-email { font-size: 0.95rem; }
+.member-add { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.member-add input[type="email"] { width: auto; flex: 1 1 15rem; margin: 0; }
+.member-add select { width: auto; margin: 0; }
+.member-add .btn { margin-top: 0; }
+
 .dates { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.3rem; }
 .date-row { display: flex; align-items: center; gap: 0.5rem; }
 .date-row input[type="date"] { width: auto; margin: 0; }

@@ -489,13 +489,41 @@ leave it out of git: nothing in one should need a secret to be useful.
    is an array, so a filter matches on ANY of an event's formats — a class
    followed by dancing belongs under both Cours and Soirée.
 6. English pages (`/en/`) — UI and practical pages only
-7. Event submission form for other organizers, so I'm the editor rather than the
-   data-entry clerk. This line used to say that is why we're on Workers rather
-   than Pages, with the route getting `export const prerender = false`.
-   Superseded: `wrangler.jsonc` now deliberately has no `main`, so the public
-   site is static assets with no runtime code path to Supabase at all, and the
-   editor is a **separate deployment**. Read the comment in `wrangler.jsonc`
-   before reopening this.
+7. Event submission for other organizers, so I'm the editor rather than the
+   data-entry clerk. **PARTLY DONE 2026-10-03**, and the part that was done is
+   the part that was actually costing time.
+
+   Measured first: the event form had worked all along — a member creates a
+   `pending` event and the queue publishes it. The bottleneck was *becoming a
+   member*, which cost three SQL statements and a dashboard lookup per person,
+   because `organizer_members.user_id` references `auth.users` and PostgREST
+   cannot see that schema. `20261003120000` adds two SECURITY DEFINER
+   functions, and the organizer page grew a **Membres** section: an owner adds
+   somebody by email, sees who is on the organizer, and removes them.
+
+   Removal got no function: `authenticated` has had DELETE on
+   `organizer_members` since the start under `members_owner_write`, and the
+   listing supplies the uid.
+
+   **The person must have signed in once** — decided, not overlooked. An invite
+   for an address with no account means a table of pending invites, a trigger on
+   `auth.users` to apply them, and a second path into membership that has to
+   agree with the first. `NT006` is raised for exactly that case so the editor
+   can say what to do.
+
+   STILL NOT BUILT, deliberately: self-serve organizer registration, and a
+   public form needing no account. Both optimise a funnel with no traffic — no
+   organizer other than me has used the editor. The cheap test is to onboard El
+   Gato Tanguero and Rosa Gervasi with what exists; if they use it, build more,
+   and if they would rather send a flyer by WhatsApp then the honest answer is
+   that curation IS the product and the clerk work stays.
+
+   Two things to re-read before reopening it. `wrangler.jsonc` deliberately has
+   no `main`, so the public site has no runtime code path to Supabase and the
+   editor is a **separate deployment** — a public form needs a service key and
+   therefore a Worker. And `20261003120000`'s header explains why
+   `add_organizer_member` is an email oracle and why that is bounded rather
+   than removed; a public signup flow changes that calculus.
 8. ~~Pin Node version~~ — **DONE 2026-09-26.** `.node-version` and `.nvmrc`
    both say `22.23.2`, `engines` is `>=22.12.0 <23`, and
    `tests/node-version.test.js` binds the three so they cannot drift.

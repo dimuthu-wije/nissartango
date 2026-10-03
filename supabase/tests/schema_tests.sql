@@ -395,7 +395,11 @@ select check_eq('authenticated can call exactly the intended functions',
      from information_schema.role_routine_grants
     where grantee = 'authenticated' and specific_schema = 'public'
       and routine_name not in ('must_fail','check_eq','touched')),
-  'approve_event is_admin is_event_member is_member is_owner mark_reviewed reject_event slugify uuid_or_null');
+  -- add_organizer_member and organizer_member_emails joined the list on
+  -- 2026-10-03 (20261003120000). Both are SECURITY DEFINER and both check
+  -- is_owner/is_admin themselves: the grant is the outer boundary, not the
+  -- authorisation.
+  'add_organizer_member approve_event is_admin is_event_member is_member is_owner mark_reviewed organizer_member_emails reject_event slugify uuid_or_null');
 
 -- WIDENED 2026-09-19, deliberately, because this is the assertion that says
 -- what anon can reach and widening one of those should never be quiet.

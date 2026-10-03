@@ -33,7 +33,8 @@
 
 import { getSession, hasSession, claimsOf } from '/auth.js';
 import {
-  myOrganizers, getOrganizer, updateOrganizer, isAdmin, isOwner, AuthExpired,
+  myOrganizers, getOrganizer, updateOrganizer, isAdmin, isOwner,
+  listMembers, addMember, removeMember, AuthExpired,
 } from '/api.js';
 import { validateOrganizer } from '/validate.js';
 import { consentFor } from '/consent.js';
@@ -260,6 +261,112 @@ async function save(org, status, submit) {
 
 // --- states -----------------------------------------------------------------
 
+/**
+ * Who may use this organizer, and adding somebody by email.
+ *
+ * OWNER OR ADMIN ONLY, which the database enforces in the functions themselves
+ * -- this section is simply not rendered otherwise, because a form that 403s on
+ * submit teaches nothing.
+ *
+ * BY EMAIL, because that is the only identifier a person has. Until
+ * 20261003120000 adding a member meant finding their uuid in the Supabase
+ * dashboard, so onboarding one organizer was three SQL statements and a lookup.
+ *
+ * THEY MUST HAVE SIGNED IN ONCE. organizer_members.user_id references
+ * auth.users, so there is nothing to point at until an account exists. That is
+ * the NT006 case below, and it gets a specific message because it is the one
+ * failure the person on the other end can actually fix.
+ */
+function membersSection(org) {
+  const b = box('idle', 'Membres',
+    'Qui peut créer et modifier les événements de cet organisateur.');
+  const list = el('div', null, 'members');
+  const status = el('p', null, 'note');
+
+  async function refresh() {
+    try {
+      const rows = await listMembers(org.id);
+      list.replaceChildren();
+      for (const m of rows) {
+        const row = el('div', null, 'member');
+        const who = el('div', null, 'member-who');
+        who.append(el('span', m.email, 'member-email'),
+                   el('span', m.role === 'owner' ? 'propriétaire' : 'éditeur', 'tag'));
+        const rm = el('button', 'Retirer', 'btn btn-quiet btn-small');
+        rm.type = 'button';
+        rm.addEventListener('click', async () => {
+          rm.disabled = true;
+          status.textContent = `Retrait de ${m.email}…`;
+          status.className = 'note';
+          try {
+            await removeMember(org.id, m.user_id);
+            status.textContent = '';
+            await refresh();
+          } catch (err) {
+            if (err instanceof AuthExpired) return renderExpired();
+            rm.disabled = false;
+            // t50_members_keep_an_owner refuses to leave an organizer with no
+            // owner, and says so in its own words.
+            status.textContent = `Refusé : ${err.message}`;
+            status.className = 'note bad-text';
+          }
+        });
+        row.append(who, rm);
+        list.appendChild(row);
+      }
+      if (!rows.length) list.appendChild(el('p', 'Aucun membre.', 'note'));
+    } catch (err) {
+      if (err instanceof AuthExpired) return renderExpired();
+      list.replaceChildren(el('p', `Liste indisponible : ${err.message}`, 'note bad-text'));
+    }
+  }
+
+  const addWrap = el('div', null, 'field');
+  addWrap.appendChild(el('label', 'Ajouter par e-mail'));
+  const row = el('div', null, 'member-add');
+  const mail = input('email', { placeholder: 'personne@exemple.fr' });
+  const role = el('select');
+  for (const [value, label] of [['editor', 'Éditeur'], ['owner', 'Propriétaire']]) {
+    const o = el('option', label);
+    o.value = value;
+    role.appendChild(o);
+  }
+  const add = el('button', 'Ajouter', 'btn');
+  add.type = 'button';
+  row.append(mail, role, add);
+  addWrap.append(row, el('p',
+    'La personne doit s\'être connectée à l\'éditeur au moins une fois : '
+    + 'c\'est ce qui crée son compte. Ajouter quelqu\'un de déjà membre '
+    + 'change son rôle.', 'hint'));
+
+  add.addEventListener('click', async () => {
+    const email = mail.value.trim();
+    if (!email) { status.textContent = 'Saisissez une adresse.'; mail.focus(); return; }
+    add.disabled = true;
+    status.textContent = 'Ajout…';
+    status.className = 'note';
+    try {
+      await addMember(org.id, email, role.value);
+      mail.value = '';
+      status.textContent = '';
+      await refresh();
+    } catch (err) {
+      if (err instanceof AuthExpired) return renderExpired();
+      status.textContent = err.code === 'NT006'
+        ? `Aucun compte pour ${email}. Demandez-lui d'ouvrir `
+          + 'editor.nissartango.fr et de s\'y connecter une fois, puis réessayez.'
+        : `Refusé : ${err.message}`;
+      status.className = 'note bad-text';
+    } finally {
+      add.disabled = false;
+    }
+  });
+
+  b.append(list, addWrap, status);
+  refresh();
+  return b;
+}
+
 function renderSignedOut() {
   const b = box('idle', 'Non connecté.', 'Cette page nécessite une session.');
   const a = el('a', 'Se connecter');
@@ -372,6 +479,7 @@ async function boot() {
 
     const frag = document.createDocumentFragment();
     frag.appendChild(wrap);
+    if (mayWrite) frag.appendChild(membersSection(org));
     const back = el('p', null, 'note');
     const a = el('a', '← Tous vos organisateurs');
     a.href = '/organizer/';
