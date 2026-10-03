@@ -2,6 +2,7 @@
 import { getCollection, render } from 'astro:content';
 import { Image } from 'astro:assets';
 import Layout from '../../layouts/Layout.astro';
+import { getImage } from 'astro:assets';
 import {
   loadAgenda, socialLinks, contactLinks, formatSummary, formatProse, priceSummary, paymentSummary,
   spanLabel,
@@ -176,6 +177,24 @@ function eventNode(o: any) {
   };
 }
 
+// The flyer as a social card, when there is one.
+//
+// RESIZED TO 1200 WIDE AND RE-ENCODED AS JPEG rather than reusing the <Image>
+// output: that is a hashed WebP with a srcset, which is right for the page and
+// wrong for a crawler -- several still do not take WebP, and none take a
+// srcset. The height is computed from the source's own aspect ratio, because a
+// flyer is usually portrait and forcing 1200x630 would crop the poster to a
+// band across its middle. Platforms letterbox what they are given; they cannot
+// un-crop it.
+const ogImage = image
+  ? {
+      src: (await getImage({ src: image, width: 1200, format: 'jpeg' })).src,
+      width: 1200,
+      height: Math.round(image.height * (1200 / image.width)),
+      alt: `Affiche — ${e.title}`,
+    }
+  : undefined;
+
 const nodes = ldOccurrences.map(eventNode);
 // @graph rather than a bare array: one script, one @context, and every node
 // keeps its own @id. A bare array is legal too; this is easier to extend.
@@ -189,6 +208,7 @@ const jsonLd = nodes.length === 1
   description={description}
   canonical={canonical}
   jsonLd={jsonLd}
+  image={ogImage}
 >
   <a href={past || cancelled ? '/archives/' : '/'} class="back">
     {past || cancelled ? '← Archives' : '← Agenda'}

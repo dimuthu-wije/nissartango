@@ -8,6 +8,7 @@
  * and fails if anything reintroduces a runtime dependency.
  */
 import { readdir, readFile, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { currentSnapshotPath, projectRef } from '../src/lib/snapshot-path.mjs';
 
@@ -228,6 +229,32 @@ for (const f of html) {
   }
 }
 ok('every page has a canonical URL');
+
+// 4b. A social preview card on every page, absolute, and the file really there.
+//
+//     Until 2026-10-03 NOT ONE page had an og:image. Layout.astro accepted the
+//     prop and nothing ever passed it, so every link shared to WhatsApp or
+//     Facebook rendered as a bare line of text -- for an agenda whose events
+//     circulate by message, most of how anyone would arrive.
+//
+//     The existence check is the half that catches the likelier mistake. A tag
+//     pointing at a path that does not exist looks correct in the HTML and
+//     produces exactly the blank card it was added to prevent, and no crawler
+//     will tell you.
+for (const f of html) {
+  const text = await readFile(f, 'utf8');
+  const m = text.match(/<meta property="og:image" content="([^"]+)"/);
+  if (!m) { fail(`${rel(f)} has no og:image`); continue; }
+
+  const url = m[1];
+  if (!url.startsWith('https://')) {
+    fail(`${rel(f)} has a relative og:image (${url}); crawlers ignore those`);
+    continue;
+  }
+  const asset = path.join(DIST, new URL(url).pathname);
+  if (!existsSync(asset)) fail(`${rel(f)} points og:image at ${url}, which is not in dist/`);
+}
+ok(`every page has an og:image, and the file exists`);
 
 // 5. Event pages carry valid schema.org Event JSON-LD with a real offset.
 //
