@@ -188,19 +188,62 @@ async function boot() {
   const errCode = query.get('error_code') || frag.get('error_code');
   if (errCode || query.get('error') || frag.get('error')) {
     const pick = (k) => query.get(k) || frag.get(k);
-    const b = showError('Le lien ne vous a pas connecté.', null, [
+
+    // PLAIN FRENCH FIRST, THE CODES UNDERNEATH.
+    //
+    // This panel used to lead with `error_code: otp_expired` and an English
+    // `error_description`, then explain in developer terms what GoTrue means by
+    // it. That is the right content for whoever maintains this and the wrong
+    // thing to put in front of an organizer who just wants to sign in: it reads
+    // as a crash, and it does not say what to do. The diagnostics are kept --
+    // they are what makes a report useful -- but folded away.
+    const b = showError('Ce lien n\'a pas fonctionné.');
+
+    if (errCode === 'otp_expired') {
+      // Deliberately ordered by how often each one is actually the cause.
+      // "Already opened" comes first because a mailbox that visits links before
+      // you do consumes a single-use link without anyone noticing, and the
+      // message GoTrue returns says "expired" either way.
+      b.appendChild(el('p',
+        'Les liens de connexion ne servent qu\'une fois et ne durent qu\'une '
+        + 'heure. Celui-ci ne peut plus servir — le plus souvent pour une de '
+        + 'ces raisons :', 'note'));
+      const why = el('ul');
+      for (const line of [
+        'il a déjà été ouvert — parfois par le filtre de sécurité de votre '
+          + 'messagerie, qui visite les liens avant vous ;',
+        'il a plus d\'une heure ;',
+        'il a été modifié ou coupé en route par votre messagerie.',
+      ]) why.appendChild(el('li', line));
+      b.appendChild(why);
+      b.appendChild(el('p',
+        'Demandez-en un nouveau et ouvrez-le dès réception, dans le même '
+        + 'navigateur que celui où vous l\'avez demandé.', 'note'));
+    } else {
+      b.appendChild(el('p',
+        'Demandez un nouveau lien. Si cela se reproduit, les détails '
+        + 'ci-dessous aident à comprendre pourquoi.', 'note'));
+    }
+
+    // Kept, not deleted: when somebody reports that signing in fails, this is
+    // the difference between a guess and an answer.
+    const details = el('details', null, 'diag');
+    details.appendChild(el('summary', 'Détails techniques'));
+    rows(details, [
       ['error', pick('error')],
       ['error_code', errCode],
       ['error_description', pick('error_description')],
     ]);
     if (errCode === 'otp_expired') {
-      b.appendChild(el('p',
-        'otp_expired recouvre trois cas différents sans les distinguer : un lien ' +
-        'expiré, un lien DÉJÀ UTILISÉ, et un jeton malformé. Avant de conclure à ' +
-        'une expiration, vérifiez si une session a été créée — un lien en flux ' +
-        'implicite consommé par un navigateur qui préchargeait signale exactement ceci.',
+      details.appendChild(el('p',
+        'otp_expired ne distingue pas trois cas : lien expiré, lien DÉJÀ '
+        + 'UTILISÉ, jeton malformé. Le flux PKCE ne crée de session qu\'à '
+        + 'l\'échange du code, donc l\'absence de session dans auth.sessions '
+        + 'ne permet PAS de conclure qu\'un lien n\'a pas été consommé : un '
+        + 'préchargement le consomme sans en créer. Vérifié 2026-10-03.',
         'note'));
     }
+    b.appendChild(details);
     const again = el('button', 'Demander un nouveau lien');
     again.className = 'btn';
     again.addEventListener('click', () => { cleanUrl(); showForm(); });
