@@ -146,6 +146,14 @@ work established and the corrections it owed: which instruments lied, which
 confident claim turned out not to describe this project, and why something is
 the way it is when the code alone does not say.
 
+    docs/GUIDE-admin.md       what only the admin can do, and where each thing
+                              lives: the queue's three buttons and which one
+                              removes a live event, inviting somebody, creating
+                              an organizer (SQL only, by design), the deploy
+                              order when a migration and the editor change
+                              together, and how to confirm any of it worked.
+                              Companion to editor/public/aide/, which is the
+                              same thing for an organizer, in French.
     docs/HANDOVER-stage6.md   the editor arc, e22ca1d..3522615
     docs/HANDOVER-stage5.md   auth blocking facts, production as of 2026-09-19
     docs/BRIEFING-stage5.md   WHY the schema is shaped this way -- the views as
