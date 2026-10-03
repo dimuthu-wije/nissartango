@@ -7,12 +7,18 @@
 // Self-initialising on import, because `_headers` sets script-src 'self' with
 // no 'unsafe-inline', so no page here may carry an inline <script>.
 //
-// IT DOES NOT REDIRECT. The old handler sent you to "/" the instant it had
-// emptied localStorage, which was fine when that was all it did. Now there is
-// something to read -- whether the session was actually revoked, and the fact
-// that the access token already issued stays valid until it expires -- and a
-// page that navigates away cannot be read. So it says what happened and offers
-// a link.
+// IT REDIRECTS ON SUCCESS AND STAYS PUT ON FAILURE, since 2026-10-03.
+//
+// It used to never redirect, because there is something to read: whether the
+// session was really revoked, and that the access token already issued stays
+// valid until it expires. That reasoning holds only where the reader can act on
+// what it says. On SUCCESS they cannot -- it worked, and being left on a page
+// they are no longer signed into, with a link to click, is a step nobody wants.
+// The fact is not dropped: /?deconnecte=1 carries it to the sign-in page.
+//
+// On FAILURE it still stays exactly where it is. A revocation that did not
+// happen is the one case where there is something to do, and navigating away
+// would hide it.
 
 import { signOut, signOutMessage } from '/auth.js';
 
@@ -44,6 +50,13 @@ export async function handleSignOut(button) {
   // thing to do -- though it will need a fresh sign-in first, the local
   // session having been cleared regardless.
   button.disabled = outcome.revoked && outcome.cleared;
+
+  if (outcome.revoked && outcome.cleared) {
+    // assign, not replace: Back then returns to the page they signed out of,
+    // which shows the signed-out state rather than a stale signed-in one.
+    location.assign('/?deconnecte=1');
+    return outcome;
+  }
 
   const link = document.createElement('a');
   link.href = '/';

@@ -20,7 +20,7 @@
 // table-level grants and returns nothing for column ones.)
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '/config.js';
-import { getSession, refreshSession, AuthExpired } from '/auth.js';
+import { getSession, refreshSession, claimsOf, AuthExpired } from '/auth.js';
 
 // Re-exported so callers have one import for "the session is gone".
 export { AuthExpired };
@@ -199,10 +199,27 @@ async function write(method, path, body) {
  * Read from organizer_members, not from organizers. An admin can SELECT every
  * organizer but may only INSERT for ones they are a member of -- so listing
  * `organizers` would offer choices that fail on save with a 403 the person
- * cannot act on. This list is correct by construction.
+ * cannot act on.
+ *
+ * FILTERED BY user_id, AND THAT IS NOT REDUNDANT WITH RLS. members_select is
+ *
+ *     using (user_id = auth.uid() or is_member(organizer_id) or is_admin())
+ *
+ * -- the middle clause lets a member read EVERY membership row of an organizer
+ * they belong to. So this returned one row per MEMBER, not per organizer. It
+ * said "correct by construction", and it was, for as long as every organizer
+ * had exactly one member. Adding a second one on 2026-10-03 made the select
+ * offer "Nissartango" twice, each row carrying somebody else's `role`.
+ *
+ * The lesson is narrower than "RLS is not enough": RLS scoped exactly what it
+ * promised -- rows this caller may READ -- and that was never the same question
+ * as "rows about this caller".
  */
-export const myOrganizers = () =>
-  select('organizer_members?select=role,organizers(id,name,slug)');
+export const myOrganizers = async () => {
+  const { sub } = claimsOf((await getSession()).access_token);
+  return select('organizer_members?select=role,organizers(id,name,slug)'
+    + `&user_id=eq.${encodeURIComponent(sub)}`);
+};
 
 export const getEvent = (id) =>
   select(`events?select=id,slug,status,needs_review,review_note,${WRITABLE.join(',')}` +

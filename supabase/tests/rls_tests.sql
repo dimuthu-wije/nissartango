@@ -236,6 +236,24 @@ select must_fail('nor into a malformed path',
   $$insert into storage.objects (bucket_id, name)
     values ('event-images','pas-un-uuid/x/flyer.jpg')$$);
 
+-- Why editor/public/api.js filters myOrganizers() by user_id rather than
+-- leaving it to RLS. members_select is
+--
+--     using (user_id = auth.uid() or is_member(organizer_id) or is_admin())
+--
+-- so a member reads EVERY membership row of an organizer they belong to, not
+-- only their own. An unfiltered select therefore returns one row per MEMBER,
+-- and the editor offered the same organizer once per member -- each carrying
+-- somebody else's role. Harmless while every organizer had one member; wrong
+-- the day a second was added, which was 2026-10-03.
+select check_eq('a member reads every membership row of their organizer',
+  (select count(*)::text from public.organizer_members
+    where organizer_id = '0a000000-0000-0000-0000-0000000000aa'), '2');
+select check_eq('including rows that are not their own',
+  (select count(*)::text from public.organizer_members
+    where organizer_id = '0a000000-0000-0000-0000-0000000000aa'
+      and user_id <> 'b0b00000-0000-0000-0000-000000000002'), '1');
+
 -- === membership administration (20261003120000) ============================
 -- Bob is an EDITOR of Nissartango, not an owner. Both functions check
 -- is_owner/is_admin themselves, because SECURITY DEFINER runs as the function's

@@ -292,6 +292,22 @@ async function boot() {
     }
   }
 
+  // Arriving from the sign-out button, which now lands here rather than leaving
+  // somebody on a page they are no longer signed into. The confirmation travels
+  // in the URL because the message it replaces was worth keeping: sign-out
+  // revokes EVERY session of the account, not just this browser's.
+  if (query.get('deconnecte') !== null) {
+    cleanUrl();
+    showForm();
+    const done = el('div', null, 'box good');
+    done.appendChild(el('h2', 'Vous êtes déconnecté.'));
+    done.appendChild(el('p',
+      'Toutes les sessions de ce compte ont été fermées, pas seulement celle de '
+      + 'ce navigateur.', 'note'));
+    out().prepend(done);
+    return;
+  }
+
   showForm();
 }
 
