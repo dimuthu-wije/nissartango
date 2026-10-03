@@ -277,6 +277,94 @@ export function partition(events, exceptionsByEvent = new Map(), opts = {}) {
   return { listed, archived };
 }
 
+/**
+ * The agenda, split into what is NEWS and what is FURNITURE.
+ *
+ * THE PROBLEM THIS SOLVES, measured on the live site 2026-10-02: one weekly
+ * milonga occupied EIGHT consecutive rows, identical but for the date. At ~200
+ * events a year with half a dozen weekly regulars that is several hundred
+ * near-identical rows a reader scrolls past to reach the thing that is actually
+ * unusual. A weekly practica is not news; it is furniture. A festival on
+ * 14 November is news. One chronological stream serves neither.
+ *
+ * So a recurring event appears ONCE, under its rhythm, and the chronological
+ * list holds one-off events plus the dates on which a regular does NOT behave
+ * normally -- cancelled or moved.
+ *
+ * THAT LAST PART IS THE POINT, not a consolation. "Pas de milonga à la Casita
+ * ce jeudi" is the single most useful line the agenda can carry about a regular
+ * event, and today it is buried among seven identical rows that say the
+ * opposite. Collapsing the regulars makes the exception the only time that
+ * event appears in the stream, so it cannot be missed.
+ *
+ * TAKES THE OCCURRENCES partition() ALREADY PRODUCED rather than expanding
+ * again. Two expansions of the same events could disagree about which dates
+ * exist, and not disagreeing is the whole reason partition() exists.
+ *
+ * @param {Occurrence[]} occurrences  `listed`, from partition()
+ * @returns {{stream: Occurrence[], regulars: {event: EventRow, next: Occurrence|null,
+ *            occurrences: Occurrence[]}[]}}
+ */
+export function sections(occurrences = []) {
+  const stream = [];
+  const byEvent = new Map();
+
+  for (const o of occurrences) {
+    // STEP is the same table expand() generates from, so "is a series" means
+    // exactly what it means there. A multi-day workshop is NOT one: its dates
+    // are a finite list, few, and each is worth a row.
+    if (!STEP[o.event.recurrence]) {
+      stream.push(o);
+      continue;
+    }
+    if (o.cancelled || o.moved) stream.push(o);
+
+    const key = o.event.id ?? o.event.slug;
+    const list = byEvent.get(key) ?? [];
+    list.push(o);
+    byEvent.set(key, list);
+  }
+
+  const regulars = [...byEvent.values()]
+    .map((list) => ({
+      event: list[0].event,
+      // The next date it actually happens. A cancelled one is not a next date;
+      // null means every upcoming occurrence is cancelled, which is rare and
+      // must still render rather than throw.
+      next: list.find((o) => !o.cancelled) ?? null,
+      occurrences: list,
+    }))
+    // Ordered by when each next happens, so the section reads like a week
+    // rather than like the order events were entered.
+    .sort((a, b) => (a.next ?? a.occurrences[0]).start - (b.next ?? b.occurrences[0]).start);
+
+  return { stream, regulars };
+}
+
+const weekdayFmt = new Map();
+/**
+ * How a regular event reads in the agenda's own voice: "chaque jeudi", not
+ * "Chaque semaine".
+ *
+ * RECURRENCE_LABELS says what the DATABASE value means and is right on an event
+ * page, beside a specific next date. In a list of regulars the weekday is the
+ * useful half -- a reader is deciding which night to go out, not learning what
+ * `weekly` means. The weekday comes from the occurrence, so a series that
+ * starts on a Thursday says Thursday without anyone storing that twice.
+ */
+export function rhythmLabel(recurrence, start, tz = 'Europe/Paris') {
+  if (recurrence === 'monthly') return 'chaque mois';
+  if (recurrence !== 'weekly' && recurrence !== 'biweekly') return null;
+
+  let f = weekdayFmt.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: tz });
+    weekdayFmt.set(tz, f);
+  }
+  const day = f.format(start);
+  return recurrence === 'weekly' ? `chaque ${day}` : `un ${day} sur deux`;
+}
+
 export const RECURRENCE_LABELS = {
   weekly: 'Chaque semaine',
   biweekly: 'Toutes les deux semaines',

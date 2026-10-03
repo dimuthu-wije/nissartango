@@ -1,55 +1,118 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { loadAgenda, formatSummary, priceSummary, fmtFull, fmtTime } from '../lib/content';
+import {
+  loadAgenda, formatSummary, priceSummary, fmtFull, fmtTime, rhythmLabel,
+} from '../lib/content';
 
-// `occurrences` already excludes wholly-cancelled series: loadAgenda does that
-// filter so the agenda and the archive are complementary by construction. A
-// cancelled OCCURRENCE still appears here, struck through, with its reason --
-// "pas de practica le 15 août" tells a reader something; a silently missing
-// Tuesday does not.
-const { occurrences: rows, organizers, archived } = await loadAgenda();
+/**
+ * TWO SECTIONS, NOT ONE STREAM.
+ *
+ * A recurring event used to occupy one row per occurrence: on 2026-10-02 the
+ * live agenda showed a single weekly milonga EIGHT times, identical but for the
+ * date. At ~200 events a year with half a dozen weekly regulars that is several
+ * hundred near-identical rows between a reader and the thing that is actually
+ * unusual. A weekly practica is furniture; a festival on 14 November is news.
+ *
+ * So `stream` holds one-off events plus the dates on which a regular does NOT
+ * behave normally -- cancelled or moved -- and `regulars` holds one entry per
+ * series. The reasoning and the invariant live with the logic, in sections() in
+ * src/lib/occurrences.js, where tests/occurrences.test.js can reach them.
+ *
+ * The cancellation landing in the stream is the point rather than a side
+ * effect: "pas de milonga à la Casita ce jeudi" is the most useful line the
+ * agenda can carry about a regular, and it used to sit among seven identical
+ * rows saying the opposite.
+ */
+const { stream, regulars, organizers, archived } = await loadAgenda();
+const nothingAtAll = stream.length === 0 && regulars.length === 0;
 ---
 
 <Layout title="Nissartango — Agenda du tango et des danses à Nice">
   <h1>Agenda</h1>
   <p class="intro">Cours, practicas, milongas, stages et soirées à Nice et sur la Côte d'Azur — tango, et les autres danses sociales.</p>
 
-  {rows.length === 0 && (
+  {nothingAtAll && (
     <p class="empty">
       Aucun événement à venir pour le moment.
       {archived.length > 0 && <> Les précédents sont <a href="/archives/">aux archives</a>.</>}
     </p>
   )}
 
-  <ul class="events">
-    {rows.map((o) => {
-      const e = o.event;
-      const organizer = organizers.get(e.organizer_id);
-      const price = priceSummary(e);
-      return (
-        <li class={o.cancelled ? 'cancelled' : undefined}
-            data-event={e.slug} data-date={o.dateKey}>
-          <div class="when">
-            <span class="date">{fmtFull(o.start, e.timezone)}</span>
-            <span class="time">{fmtTime(o.start, e.timezone)}</span>
-          </div>
-          <div class="what">
-            <span class="type">{formatSummary(e)}</span>
-            <h2><a href={`/evenements/${e.slug}/`}>{e.title}</a></h2>
-            <p class="meta">
-              {e.location_name}{e.location_name && ', '}{e.city}
-              {price && <> · {price}</>}
-              {organizer && <> · {organizer.name}</>}
-            </p>
-            {o.cancelled && (
-              <p class="off">Annulé{o.note ? ` — ${o.note}` : ''}</p>
-            )}
-            {o.moved && <p class="off moved">Séance déplacée{o.note ? ` — ${o.note}` : ''}</p>}
-          </div>
-        </li>
-      );
-    })}
-  </ul>
+  {!nothingAtAll && (
+    <section class="block">
+      <h2>À venir</h2>
+      {stream.length === 0 ? (
+        <p class="empty">Rien d'exceptionnel à venir — voir les rendez-vous réguliers ci-dessous.</p>
+      ) : (
+        <ul class="events">
+          {stream.map((o) => {
+            const e = o.event;
+            const organizer = organizers.get(e.organizer_id);
+            const price = priceSummary(e);
+            return (
+              <li class={o.cancelled ? 'cancelled' : undefined}
+                  data-event={e.slug} data-date={o.dateKey}>
+                <div class="when">
+                  <span class="date">{fmtFull(o.start, e.timezone)}</span>
+                  <span class="time">{fmtTime(o.start, e.timezone)}</span>
+                </div>
+                <div class="what">
+                  <span class="type">{formatSummary(e)}</span>
+                  <h3><a href={`/evenements/${e.slug}/`}>{e.title}</a></h3>
+                  <p class="meta">
+                    {e.location_name}{e.location_name && ', '}{e.city}
+                    {price && <> · {price}</>}
+                    {organizer && <> · {organizer.name}</>}
+                  </p>
+                  {o.cancelled && (
+                    <p class="off">Annulé{o.note ? ` — ${o.note}` : ''}</p>
+                  )}
+                  {o.moved && <p class="off moved">Séance déplacée{o.note ? ` — ${o.note}` : ''}</p>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  )}
+
+  {regulars.length > 0 && (
+    <section class="block">
+      <h2>Rendez-vous réguliers</h2>
+      <ul class="events">
+        {regulars.map(({ event: e, next, occurrences }) => {
+          const organizer = organizers.get(e.organizer_id);
+          const price = priceSummary(e);
+          // `next` is the next date it actually HAPPENS; it is null only when
+          // every upcoming date is cancelled, which must still render. The
+          // first occurrence then stands in, so the row keeps a date for
+          // verify-build check 10 to verify against the event's own page.
+          const shown = next ?? occurrences[0];
+          return (
+            <li data-event={e.slug} data-date={shown.dateKey}>
+              <div class="when">
+                <span class="date">{rhythmLabel(e.recurrence, shown.start, e.timezone)}</span>
+                <span class="time">{fmtTime(shown.start, e.timezone)}</span>
+              </div>
+              <div class="what">
+                <span class="type">{formatSummary(e)}</span>
+                <h3><a href={`/evenements/${e.slug}/`}>{e.title}</a></h3>
+                <p class="meta">
+                  {e.location_name}{e.location_name && ', '}{e.city}
+                  {price && <> · {price}</>}
+                  {organizer && <> · {organizer.name}</>}
+                </p>
+                {next
+                  ? <p class="next">Prochaine séance le {fmtFull(next.start, e.timezone)}</p>
+                  : <p class="off">Aucune séance à venir — toutes les dates sont annulées.</p>}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  )}
 
   {archived.length > 0 && (
     <p class="more">
@@ -63,6 +126,16 @@ const { occurrences: rows, organizers, archived } = await loadAgenda();
   .intro { color: var(--muted); margin: 0 0 2rem; }
   .empty { color: var(--muted); }
   .more { margin: 2rem 0 0; padding-top: 1.1rem; border-top: 1px solid var(--line); }
+
+  /* The section heading is a LABEL, not a title: it says which kind of thing
+     the rows below are. Same size and weight as "Prochaines dates" on an event
+     page and the year headings in the archive, so the three read as a family. */
+  .block { margin: 0 0 2.5rem; }
+  .block h2 {
+    font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); font-weight: 600; margin: 0 0 0.25rem;
+  }
+
   .events { list-style: none; padding: 0; margin: 0; }
   .events li {
     display: grid; grid-template-columns: 8.5rem 1fr; gap: 1rem;
@@ -77,13 +150,14 @@ const { occurrences: rows, organizers, archived } = await loadAgenda();
     font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--accent); font-weight: 600;
   }
-  h2 { font-size: 1.05rem; margin: 0.15rem 0 0.3rem; }
-  h2 a { color: inherit; text-decoration: none; }
-  h2 a:hover { text-decoration: underline; }
+  h3 { font-size: 1.05rem; margin: 0.15rem 0 0.3rem; font-weight: 700; }
+  h3 a { color: inherit; text-decoration: none; }
+  h3 a:hover { text-decoration: underline; }
   .meta { margin: 0; color: var(--muted); font-size: 0.88rem; }
+  .next { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem; }
   .off { margin: 0.35rem 0 0; font-size: 0.85rem; font-weight: 600; color: #b3261e; }
   .off.moved { color: var(--muted); }
-  li.cancelled .date, li.cancelled h2 { text-decoration: line-through; }
+  li.cancelled .date, li.cancelled h3 { text-decoration: line-through; }
   li.cancelled { opacity: 0.75; }
   @media (max-width: 30rem) {
     .events li { grid-template-columns: 1fr; gap: 0.25rem; }

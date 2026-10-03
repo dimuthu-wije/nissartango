@@ -201,6 +201,33 @@ leave it out of git: nothing in one should need a secret to be useful.
 - **Email and phone never reach the build.** Not "deliberately not rendered",
   which is what this line used to say: they are excluded from the public view,
   so the build never receives them and no template mistake can leak them.
+- **The agenda is two sections: news and furniture.** Decided 2026-10-03.
+  `sections()` in `src/lib/occurrences.js` splits the upcoming occurrences into
+  `stream` -- one-off events, plus the dates a regular does NOT behave normally
+  -- and `regulars`, one entry per series.
+
+  Measured before: a single weekly milonga occupied EIGHT consecutive rows,
+  identical but for the date, with two events in the database. At ~200 events a
+  year and half a dozen weekly regulars that is several hundred near-identical
+  rows between a reader and the thing that is actually unusual. A weekly
+  practica is furniture; a festival on 14 November is news; one chronological
+  list buries the news under the furniture.
+
+  THE CANCELLATION LANDING IN THE STREAM IS THE POINT, not a side effect.
+  "Pas de milonga à la Casita ce jeudi" is the most useful line the agenda can
+  carry about a regular, and it used to sit among seven identical rows saying
+  the opposite. Collapsing the series makes an exception the ONLY time that
+  event appears chronologically, so it cannot be missed.
+
+  `sections()` takes the occurrences `partition()` already produced rather than
+  expanding again: two expansions of the same events could disagree about which
+  dates exist, and not disagreeing is why `partition()` exists at all.
+
+  Honest limitation, visible today: with two events in the database, "À venir"
+  contains ONLY a cancellation, so the first thing a visitor reads is something
+  that is not happening. That inverts as soon as there are real one-off events.
+  Judge the balance again at twenty, not at two.
+
 - **One duration per event, and leaving it empty is an answer.** Decided
   2026-10-02. `duration_minutes` is a single column, so a multi-day workshop
   whose Saturday runs three hours and whose Sunday runs two cannot be described

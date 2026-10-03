@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { expand, upcoming, nextDate } from '../src/lib/occurrences.js';
+import { expand, upcoming, nextDate, sections, rhythmLabel } from '../src/lib/occurrences.js';
 import { localDateKey, zonedToInstant, partsInZone } from '../src/lib/zone.js';
 
 const PARIS = 'Europe/Paris';
@@ -424,4 +424,119 @@ test('a recurrence ignores extra_dates entirely', () => {
   const rows = expand(workshop({ recurrence: 'weekly', recurrence_end: '2026-11-27' }),
     [], { now: new Date('2026-10-01T12:00:00Z') });
   assert.deepEqual(keys(rows), ['2026-11-13', '2026-11-20', '2026-11-27']);
+});
+
+// ---------------------------------------------------------------------------
+// sections(): news and furniture. See the comment on the function for why.
+// ---------------------------------------------------------------------------
+const series = (over = {}) => ({
+  id: 'r1', slug: '2026-10-08-milonga-casita', title: 'Milonga à la Casita',
+  starts_at: '2026-10-08T20:00:00+02:00', duration_minutes: 180,
+  timezone: 'Europe/Paris', recurrence: 'weekly', recurrence_end: '2026-11-26',
+  extra_dates: [], cancelled_at: null, cancellation_note: null, ...over,
+});
+const oneOff = (over = {}) => ({
+  id: 's1', slug: '2026-11-14-festival', title: 'Festival',
+  starts_at: '2026-11-14T20:00:00+01:00', duration_minutes: null,
+  timezone: 'Europe/Paris', recurrence: 'none', recurrence_end: null,
+  extra_dates: [], cancelled_at: null, cancellation_note: null, ...over,
+});
+const AT = { now: new Date('2026-10-01T12:00:00Z') };
+
+test('a weekly series is ONE entry, not one row per week', () => {
+  const rows = expand(series(), [], AT);
+  assert.ok(rows.length >= 6, `expected a run of weeks, got ${rows.length}`);
+
+  const { stream, regulars } = sections(rows);
+  assert.equal(regulars.length, 1);
+  assert.equal(regulars[0].event.slug, '2026-10-08-milonga-casita');
+  assert.equal(regulars[0].occurrences.length, rows.length);
+  assert.equal(stream.length, 0, 'a well-behaved series contributes no rows to the stream');
+});
+
+test('a one-off event goes in the stream, every date of it', () => {
+  const rows = expand(oneOff({ extra_dates: ['2026-11-15'] }), [], AT);
+  const { stream, regulars } = sections(rows);
+  assert.equal(regulars.length, 0);
+  assert.deepEqual(stream.map((o) => o.dateKey), ['2026-11-14', '2026-11-15'],
+    'a multi-day workshop is not a series: its dates are few and each is news');
+});
+
+test('a cancelled week surfaces in the stream, and only that week', () => {
+  // The point of the split. Today that line is buried among seven identical
+  // rows that say the opposite.
+  const rows = expand(series(), [
+    { event_id: 'r1', occurrence_date: '2026-10-22', kind: 'cancelled',
+      note: 'salle réservée', moved_starts_at: null },
+  ], AT);
+  const { stream, regulars } = sections(rows);
+
+  assert.equal(regulars.length, 1);
+  assert.deepEqual(stream.map((o) => o.dateKey), ['2026-10-22']);
+  assert.equal(stream[0].cancelled, true);
+  assert.equal(stream[0].note, 'salle réservée');
+});
+
+test('a moved week surfaces too — it is news, not an absence', () => {
+  const rows = expand(series(), [
+    { event_id: 'r1', occurrence_date: '2026-10-15', kind: 'moved',
+      note: null, moved_starts_at: '2026-10-15T21:00:00+02:00' },
+  ], AT);
+  const { stream } = sections(rows);
+  assert.deepEqual(stream.map((o) => o.dateKey), ['2026-10-15']);
+  assert.equal(stream[0].moved, true);
+});
+
+test('`next` is the next date it actually happens', () => {
+  const rows = expand(series(), [
+    { event_id: 'r1', occurrence_date: '2026-10-08', kind: 'cancelled',
+      note: null, moved_starts_at: null },
+  ], AT);
+  const { regulars } = sections(rows);
+  assert.equal(regulars[0].next.dateKey, '2026-10-15',
+    'a cancelled date is not a next date');
+  assert.equal(regulars[0].occurrences[0].dateKey, '2026-10-08',
+    'but it is still an occurrence of the series');
+});
+
+test('a series cancelled to the end still renders rather than throwing', () => {
+  const rows = expand(series({ recurrence_end: '2026-10-15' }), [
+    { event_id: 'r1', occurrence_date: '2026-10-08', kind: 'cancelled', note: null, moved_starts_at: null },
+    { event_id: 'r1', occurrence_date: '2026-10-15', kind: 'cancelled', note: null, moved_starts_at: null },
+  ], AT);
+  const { regulars, stream } = sections(rows);
+  assert.equal(regulars.length, 1);
+  assert.equal(regulars[0].next, null);
+  assert.equal(stream.length, 2);
+});
+
+test('regulars are ordered by when they next happen', () => {
+  const a = expand(series({ id: 'a', slug: 'a', starts_at: '2026-10-09T20:00:00+02:00' }), [], AT);
+  const b = expand(series({ id: 'b', slug: 'b', starts_at: '2026-10-06T20:00:00+02:00' }), [], AT);
+  const { regulars } = sections([...a, ...b]);
+  assert.deepEqual(regulars.map((r) => r.event.slug), ['b', 'a'],
+    'the section should read like a week, not like the order events were entered');
+});
+
+test('nothing in, nothing out', () => {
+  assert.deepEqual(sections([]), { stream: [], regulars: [] });
+  assert.deepEqual(sections(), { stream: [], regulars: [] });
+});
+
+test('a regular reads in the agenda voice, not the database voice', () => {
+  const thursday = new Date('2026-10-08T20:00:00+02:00');
+  assert.equal(rhythmLabel('weekly', thursday, PARIS), 'chaque jeudi');
+  assert.equal(rhythmLabel('biweekly', thursday, PARIS), 'un jeudi sur deux');
+  assert.equal(rhythmLabel('monthly', thursday, PARIS), 'chaque mois');
+  // Not a series: the caller renders a date instead, so null rather than ''.
+  assert.equal(rhythmLabel('none', thursday, PARIS), null);
+});
+
+test('the weekday comes from the EVENT zone', () => {
+  // 00:30 Paris on a Friday is still Thursday in UTC. A series stored as a
+  // Friday-night milonga must not read "chaque jeudi" because the builder runs
+  // in UTC -- the same bug class the expansion was ported to fix.
+  const lateFriday = new Date('2026-10-09T22:30:00Z'); // 00:30 Saturday in Paris
+  assert.equal(rhythmLabel('weekly', lateFriday, PARIS), 'chaque samedi');
+  assert.equal(rhythmLabel('weekly', lateFriday, 'UTC'), 'chaque vendredi');
 });

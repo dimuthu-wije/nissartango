@@ -3,7 +3,7 @@
  * Keeps getCollection() plumbing out of the templates.
  */
 import { getCollection } from 'astro:content';
-import { expand, partition } from './occurrences.js';
+import { expand, partition, sections } from './occurrences.js';
 
 /** An Astro entry back into a plain database row: db_id becomes id again. */
 export function toRow(entry: { data: Record<string, any> }) {
@@ -35,16 +35,22 @@ export async function loadAgenda(now = new Date()) {
   // tests/occurrences.test.js can reach them.
   const { listed, archived } = partition(events, exceptionsByEvent, { now });
 
+  // News and furniture, split from the SAME list partition() produced -- see
+  // sections() for why a weekly series must not occupy a row per week.
+  const { stream, regulars } = sections(listed);
+
   return {
     events,
     organizers,
     exceptionsByEvent,
     occurrences: listed,
+    stream,
+    regulars,
     archived,
   };
 }
 
-export { expand };
+export { expand, sections, rhythmLabel, RECURRENCE_LABELS } from './occurrences.js';
 
 /** Social handles are stored as handles; links are built here, once. */
 export function socialLinks(o: any) {
