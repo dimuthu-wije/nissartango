@@ -383,18 +383,38 @@ select check_eq('no default privileges for anon or authenticated',
 -- with its own grants; the policies there are proved in rls_tests.sql.)
 -- The same question for FUNCTIONS. anon must not be able to call anything in
 -- public -- not even a helper that would only answer false.
+-- has_function_privilege, NOT information_schema.role_routine_grants.
+--
+-- This assertion read `role_routine_grants WHERE grantee = 'anon'` until
+-- 2026-10-03, and a grant to PUBLIC produces no row for anon -- so it was
+-- reading a list that could not contain the answer. Two functions added that
+-- day were callable by anon while this test said 'none'; the one-time revoke
+-- had covered everything that existed, and the ALTER DEFAULT PRIVILEGES beside
+-- it omitted PUBLIC, so everything created afterwards got it back.
+-- has_function_privilege resolves PUBLIC membership and asks what anon can
+-- actually DO, which is the question anyone reading this label assumed.
 select check_eq('anon cannot execute any function in public',
-  (select coalesce(string_agg(distinct routine_name, ' ' order by routine_name), 'none')
-     from information_schema.role_routine_grants
-    where grantee = 'anon' and specific_schema = 'public'), 'none');
+  (select coalesce(string_agg(p.proname, ' ' order by p.proname), 'none')
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and has_function_privilege('anon', p.oid, 'EXECUTE')
+      -- This file's own assertion helpers, created in `public` at the top and
+      -- dropped at the bottom. They are the harness, not the schema, and they
+      -- exist in no database this suite has not just created. Excluded by name
+      -- rather than by a pattern so adding a helper is a visible edit here.
+      and p.proname not in ('must_fail','check_eq','must_fail_code','touched')),
+  'none');
 
 -- And the exact list authenticated CAN call. A new function that forgets its
 -- revoke shows up here as a test failure rather than as an open RPC.
+-- Same instrument, for the same reason: a PUBLIC grant would make something
+-- callable by authenticated without ever appearing as an 'authenticated' row.
 select check_eq('authenticated can call exactly the intended functions',
-  (select coalesce(string_agg(distinct routine_name, ' ' order by routine_name), 'none')
-     from information_schema.role_routine_grants
-    where grantee = 'authenticated' and specific_schema = 'public'
-      and routine_name not in ('must_fail','check_eq','touched')),
+  (select coalesce(string_agg(p.proname, ' ' order by p.proname), 'none')
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      and p.proname not in ('must_fail','check_eq','must_fail_code','touched')),
   -- add_organizer_member and organizer_member_emails joined the list on
   -- 2026-10-03 (20261003120000). Both are SECURITY DEFINER and both check
   -- is_owner/is_admin themselves: the grant is the outer boundary, not the
