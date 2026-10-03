@@ -527,6 +527,18 @@ leave it out of git: nothing in one should need a secret to be useful.
    to sign in first". That comparison was void: the alternative did not exist.
    Reopen it on its merits if onboarding ever happens more than a few times.
 
+   **`myOrganizers()` answers "organizers I may create EVENTS for"**, and the
+   organizer page uses the same list for "organizers I may administer". Those
+   are different questions: an admin who is not a member of an organizer can
+   edit it (`organizers_admin_all`) but will not see it listed, and must reach
+   it by its `/organizer/?id=…` URL. Left that way on 2026-10-03, deliberately
+   — the maintainer is a member of all three organizers, so it bites nobody,
+   and splitting the two means a second query plus a role check for a case that
+   does not exist yet. It became visible that day: the list used to be
+   unfiltered and RLS's `or is_admin()` showed an admin every organizer through
+   OTHER people's membership rows, which was also what made the same organizer
+   appear once per member.
+
    STILL NOT BUILT, deliberately: self-serve organizer registration, and a
    public form needing no account. Both optimise a funnel with no traffic — no
    organizer other than me has used the editor. The cheap test is to onboard El

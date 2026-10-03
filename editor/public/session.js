@@ -56,6 +56,19 @@ function cleanUrl() {
   try { history.replaceState(null, '', location.pathname); } catch { /* sandboxed */ }
 }
 
+/**
+ * Where a successful sign-in lands.
+ *
+ * /event/ because that is what somebody clicking a sign-in link came to do.
+ * The callback used to stop on a panel of claims -- user id, issued, expires,
+ * flow -- which is a maintainer's instrument and a dead end for an organizer:
+ * correct, unreadable, and one more click from the work.
+ *
+ * The panel is not gone. Visiting / with a session still shows it, which is
+ * where it belongs: somewhere you go on purpose, not somewhere you are left.
+ */
+const LANDING = '/event/';
+
 // --- views -----------------------------------------------------------------
 
 function showSession(session, how) {
@@ -263,9 +276,13 @@ async function boot() {
   if (code) {
     box('idle', 'Finalisation de la connexion…');
     try {
-      const session = await exchangeCode(code);
-      cleanUrl();
-      return showSession(session, 'pkce');
+      await exchangeCode(code);
+      // replace, NOT assign: this entry's URL carries the code that was just
+      // spent. Leaving it in history means Back returns to it, the exchange
+      // fails on a consumed code, and the person is shown an error for having
+      // pressed Back.
+      location.replace(LANDING);
+      return;
     } catch (err) {
       cleanUrl();
       const b = showError('Le code n\'a pas pu être échangé.', String(err.message));
