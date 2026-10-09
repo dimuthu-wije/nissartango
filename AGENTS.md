@@ -437,7 +437,12 @@ leave it out of git: nothing in one should need a secret to be useful.
    minutes that the poller's entire design exists to conserve.
 
    **The filter is a DASHBOARD setting and does not travel with this repo**:
-   Worker `nissartango` → Settings → Builds → Build watch paths. wrangler's
+   Worker `nissartango` → **Settings → Build → Build watch paths** (singular
+   "Build"; this file said "Builds" until the setting was actually looked
+   for). Two fields: *Include paths*, which defaults to `*`, and *Exclude
+   paths*, which defaults to empty. To skip documentation commits, leave
+   Include at `*` and list the exclusions. Source: Cloudflare's Workers docs,
+   "Build watch paths", read 2026-10-09. wrangler's
    config schema has no field for it — checked 2026-10-09 against
    `node_modules/wrangler/config-schema.json`, which knows nothing of
    `watch_paths`, `build_watch` or `watchPaths` — so there is nothing to
@@ -479,14 +484,24 @@ leave it out of git: nothing in one should need a secret to be useful.
        2. push a commit changing src/             -> expect a build, and
                                                      built_at to move
 
-   **`git commit --allow-empty` IS NOT STEP 1.** Measured 2026-10-09, with the
-   filter already saved: an empty commit was pushed and the site rebuilt
-   anyway, `built_at` moving to 16:45:58Z. That proves nothing about the
-   exclude list, because a commit with no changed files has no paths to match
-   against it — "everything that changed is excluded" and "nothing changed"
-   are different questions, and the platform evidently answers the second one
-   by building. The empty commit was suggested in a session as a cheap stand-in
-   for step 1 and it is not one; it cost a build to learn that.
+   **`git commit --allow-empty` IS NOT STEP 1**, and this is documented
+   behaviour rather than a quirk. Cloudflare bypasses path matching entirely
+   and builds anyway when a push event contains **0 file changes** — their
+   docs say it in as many words, "in case a user pushes an empty push event to
+   trigger a build". Measured here the same day before the doc was read: an
+   empty commit rebuilt the site, `built_at` moving to 16:45:58Z. Claim and
+   measurement agree, which is the only time a platform claim is worth
+   recording as a fact about this project.
+
+   **Two other bypasses, same mechanism, worth knowing before trusting a quiet
+   build log**: a push with **3000+ file changes**, or one carrying **20+
+   commits**, also skips path matching and builds. So a long-running branch
+   merged back will build whatever the exclude list says.
+
+   **Wildcards go at the START or END of a rule only** — `docs/*` is valid,
+   `**/thing` is not. Evaluation order is: excluded paths are dropped first,
+   whatever remains is matched against the includes, and a build is triggered
+   only if something survives both.
 
    Step 2 is the one that matters. Until it passes, the filter is unproven in
    the direction that costs something — and note the asymmetry in what is
