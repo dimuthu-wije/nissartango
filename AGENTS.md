@@ -351,6 +351,7 @@ leave it out of git: nothing in one should need a secret to be useful.
    A stale cache can only return an older `built_at`, never a newer one, so a
    move is conclusive while a non-move is ambiguous. See
    `workers/build-notifier/README.md` for why that asymmetry is the whole test.
+   Gotcha 11 adds one more innocent reason a non-move can happen.
 
    **That file is PRETTY-PRINTED** — `JSON.stringify(body, null, 2)` — so every
    field reads `"commit": "..."` with a space after the colon. A grep for
@@ -428,6 +429,63 @@ leave it out of git: nothing in one should need a secret to be useful.
    edit it and do not commit it: the copy on disk is output. It was hand-written
    until 2026-09-19, when it turned out that rejecting the one event it pointed
    at would have failed `verify-build.mjs` check 7 and frozen the site.
+
+11. **Every push to `main` rebuilds the site, including the ones that cannot
+   possibly change it.** Three of the five commits on 2026-10-09 touched only
+   `AGENTS.md`, `tests/` and `editor/` — none of which the public build reads
+   — and each produced a byte-identical deploy, spending the free-tier build
+   minutes that the poller's entire design exists to conserve.
+
+   **The filter is a DASHBOARD setting and does not travel with this repo**:
+   Worker `nissartango` → Settings → Builds → Build watch paths. wrangler's
+   config schema has no field for it — checked 2026-10-09 against
+   `node_modules/wrangler/config-schema.json`, which knows nothing of
+   `watch_paths`, `build_watch` or `watchPaths` — so there is nothing to
+   commit and this note is the only record that it exists.
+
+   **Use an EXCLUDE list, never an include list.** They can express the same
+   thing and they fail in opposite directions. An exclude list that is wrong
+   builds when it need not: wasted minutes. An include list that is wrong does
+   NOT build when it should: content silently stops reaching the site, which
+   is the exact failure this repo already keeps a separate check for because
+   it is so hard to see from outside. A directory nobody has thought about yet
+   lands on an exclude list's "build it" side by default, which is the side to
+   be wrong on.
+
+   Measured 2026-10-09 — none of these is referenced by `fetch-content.mjs`,
+   `verify-build.mjs`, `astro.config.mjs` or anything under `src/`:
+
+       docs/*      editor/*    workers/*   supabase/*
+       tests/*     .githooks/* .claude/*
+       AGENTS.md   CLAUDE.md   README.md
+
+   **`design/` is NOT on that list and must never be put on it**, however much
+   it looks like a folder of source material. `src/layouts/Layout.astro:11`
+   does `import wordmark from '../../design/brand/logo-wordmark.svg?raw'` —
+   the header wordmark is inlined from that file at build time. Exclude
+   `design/` and a logo change deploys nowhere, silently.
+
+   **This changes what gotcha 3's test means.** "built_at has moved" is still
+   conclusive proof that a deploy happened. "built_at has NOT moved" was
+   already ambiguous, and now has one more innocent explanation: the push
+   touched only excluded paths and was correctly skipped. Look at what the
+   commit changed before reading a non-move as a fault.
+
+   The semantics above are a CLAIM from Cloudflare's documentation, not a
+   measurement of this project — there is no dashboard access from the command
+   line. Verify it once, cheaply, in this order:
+
+       1. push a commit touching only AGENTS.md   -> expect NO new build
+       2. push a commit touching src/             -> expect a build, and
+                                                     built_at to move
+
+   Step 2 is the one that matters. Until it passes, the filter is unproven in
+   the direction that costs something.
+
+   One consequence worth naming: excluding `tests/*` loses nothing because the
+   build never ran `npm test` — it runs `build` then `verify:build`. There is
+   no CI in this repo at all. The filter does not make that worse; it does
+   make it easier to forget.
 
 ## Outstanding
 
