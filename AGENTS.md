@@ -639,7 +639,11 @@ leave it out of git: nothing in one should need a secret to be useful.
    with no undo. It now uses `--bad-fg`, which flips to ink at 8.17:1. Light
    mode is unchanged at 8.19:1.
 
-   What is NOT done, in the order it will bite:
+   Every item below is now done; they are kept struck rather than deleted
+   because several of them record WHY, and because the list is also the
+   evidence that the stages happened in the order they claim.
+
+   The remaining open thing is small and is at the end.
 
    - ~~The favicon and the social card still carry the old maroon.~~ **DONE
      2026-10-09.** Both generators now READ `design/brand/` instead of
@@ -717,18 +721,16 @@ leave it out of git: nothing in one should need a secret to be useful.
      and one verbatim copy beats two that drift. Measured — the public site
      fetches only the 500; 400 and 600 stay `unloaded` there. 24KB of storage,
      zero bytes of transfer.
-   - **The shell is 64rem and that is NOT a measured result.** With two events
-     in the database the hairlines run ~200px past the longest title. Judge it
-     at twenty rows, not at two — the same caveat as the two-section split.
-   - **A cancellation has no tag element.** "Annulé" is plain ink body text
-     now; the strikethrough and the dimming carry it. Dropping the red was
-     deliberate (it sat one hue from the brand orange and the two muddied each
-     other) but the result is quiet, and stage 4 — which touches markup —
-     should give it its own element.
-   - **Inter is not self-hosted. There is no `@font-face` in this repo at
-     all**, so the stack falls through to Helvetica Neue, which is the face
-     the reference actually specifies. It degrades to the right thing, but
-     only on machines that have it.
+   - ~~The shell is 64rem and that is not a measured result.~~ **SETTLED in
+     stage 4 below**, by rendering a synthetic sixteen-event agenda. At two
+     rows it looked sparse; at sixteen it reads correctly. The sparseness was
+     an artifact of the sample, not of the measure.
+   - ~~A cancellation has no tag element.~~ **DONE in stage 4 below.**
+     **ANNULÉ** is a tracked uppercase stamp in ink with the note muted beside
+     it — marked by case rather than by colour, because the accent is already
+     spent on the eyebrow two lines above.
+   - ~~Inter is not self-hosted.~~ **DONE in stage 5 below**, three subsets
+     served by both deployments from `/fonts/`.
    - ~~Stage 3, the shell.~~ **DONE.** The wordmark is INLINED SVG, not an
      `<img>`, because its two ink paths are `currentColor` while the ART keeps
      its literal orange — one file that follows light and dark with no second
@@ -813,6 +815,13 @@ leave it out of git: nothing in one should need a secret to be useful.
      so it means the same in CI where the devDependency may not be installed.
      A @font-face naming a missing file falls back silently with nothing
      logged anywhere; that test is the only thing that would notice.
+
+   STILL OPEN, and it is the only one: **prose styling is defined but barely
+   exercised.** `.prose` carries headings, lists, blockquotes and rules, and
+   both event bodies in production are plain paragraphs — so `p` is all that
+   real content has ever put through it. Check it against a real article
+   before trusting it, which will be the first thing the blog does.
+
 
 ## How I'd like to work
 
