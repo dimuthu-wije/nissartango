@@ -1,4 +1,14 @@
 ---
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import '../styles/base.css';
+import { NAV, isCurrent } from '../data/nav';
+/* The wordmark is INLINED, not an <img>, for one reason: its two ink paths
+   are fill="currentColor" while the ART keeps its literal orange, so one
+   file follows light and dark with no second asset and no JavaScript. An
+   <img> cannot inherit colour. design/brand/ is the single definition --
+   scripts/make-favicon.mjs and make-og-default.mjs read it too. */
+import wordmark from '../../design/brand/logo-wordmark.svg?raw';
 interface Props {
   title: string;
   description?: string;
@@ -48,6 +58,13 @@ const og = image ?? {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     {/* favicon.ico is found at the root without a tag; the other two are not.
         All three come from scripts/make-favicon.mjs. */}
+    {/* Only the 500 — it is the system's only weight and every page sets it,
+        so it is on the critical path. The 600 exists for <strong> in an
+        organizer's prose and has its own @font-face, so a page without bold
+        never fetches it. `crossorigin` is required on a font preload even
+        same-origin; without it the browser fetches the file TWICE. */}
+    <link rel="preload" href="/fonts/inter-latin-500-normal.woff2"
+          as="font" type="font/woff2" crossorigin />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{title}</title>
@@ -72,39 +89,36 @@ const og = image ?? {
   </head>
   <body>
     <header>
-      <a href="/" class="logo">nissartango</a>
+      <a href="/" class="logo" aria-label="nissARTango — accueil" set:html={wordmark} />
+      {/* Text only, no icons and no background pills, per the reference. Two
+          entries wrap rather than collapse at narrow widths: a disclosure menu
+          needs JavaScript, and verify-build check 3 fails the build on any. */}
+      <nav aria-label="Navigation principale">
+        <ul>
+          {NAV.map((item) => (
+            <li>
+              <a href={item.href}
+                 aria-current={isCurrent(item.href, path) ? 'page' : undefined}>{item.label}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </header>
     <main><slot /></main>
     <footer>
-      <p>nissartango — Nice, Côte d'Azur</p>
+      <p class="what">
+        nissARTango — l'agenda du tango et des danses sociales à Nice et sur la
+        Côte d'Azur. Cours, practicas, milongas, stages, démonstrations et
+        festivals.
+      </p>
+      <p class="invite">
+        {/* Explicit space: Astro trims the whitespace at the end of a text
+            node that precedes an element, so the newline here does NOT
+            collapse to one and the sentence rendered as "événement ?Proposez". */}
+        Vous organisez un événement ?{' '}
+        <a href="https://editor.nissartango.fr/aide/">Proposez-le à l'agenda</a> —
+        c'est gratuit, et vous gardez la main sur votre fiche.
+      </p>
     </footer>
   </body>
 </html>
-
-<style is:global>
-  :root {
-    --ink: #1a1a1a;
-    --muted: #6b6b6b;
-    --accent: #a01b2e;
-    --line: #e5e2dd;
-    --bg: #fbfaf8;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-    line-height: 1.6;
-  }
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--line);
-  }
-  .logo { font-weight: 700; font-size: 1.1rem; text-decoration: none; color: var(--ink); letter-spacing: -0.01em; }
-  main { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
-  footer { border-top: 1px solid var(--line); padding: 2rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
-</style>

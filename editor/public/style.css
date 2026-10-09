@@ -5,33 +5,39 @@
    queue opened on 2026-09-19. It is now the editor: sign in, compose and edit
    events, moderate them, and edit an organizer. */
 
+/* The SHARED design values are in tokens.css, linked before this file and a
+   verbatim copy of src/styles/tokens.css. What stays here is what only an app
+   needs: status colours and a card surface. The public site has neither --
+   it has no cards at all, by design (docs/DESIGN.md) -- so these would be
+   dead weight there.
+
+   Until 2026-10-09 this file carried a SECOND palette, one or two hex digits
+   away from the site's: --fg #1d1b18 against the site's --ink #1a1a1a,
+   --muted #5f5b55 against #6b6b6b, --line #e2ddd6 against #e5e2dd. Two names
+   for one idea and two values for one colour, drifting independently. */
+
 :root {
-  color-scheme: light dark;
-  --bg: #fbfaf8;
-  --fg: #1d1b18;
-  --muted: #5f5b55;
-  --line: #e2ddd6;
-  --card: #ffffff;
-  --good: #1f6b3f;
+  --card:    #ffffff;
+  --good:    #1f6b3f;
   --good-bg: #edf7f0;
-  --bad: #8c2f2f;
-  --bad-bg: #fbeeee;
-  --idle: #4a5a70;
+  --bad:     #8c2f2f;
+  --bad-bg:  #fbeeee;
+  --bad-fg:  #ffffff;   /* label on a --bad fill: 8.19:1 */
+  --idle:    #4a5a70;
   --idle-bg: #eef2f7;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #171614;
-    --fg: #ece8e2;
-    --muted: #a39d94;
-    --line: #322e29;
-    --card: #1f1d1a;
-    --good: #7fd1a0;
+    --card:    #1f1d1a;
+    --good:    #7fd1a0;
     --good-bg: #16261d;
-    --bad: #e79a9a;
-    --bad-bg: #2a1a1a;
-    --idle: #a8bcd6;
+    --bad:     #e79a9a;
+    --bad-bg:  #2a1a1a;
+    /* Ink, not white. White on this pink is 2.21:1 and has been since dark
+       mode was added; ink is 8.17:1. The light mode above is unaffected. */
+    --bad-fg:  #171614;
+    --idle:    #a8bcd6;
     --idle-bg: #1a2029;
   }
 }
@@ -41,9 +47,9 @@
 body {
   margin: 0;
   padding: 2.5rem 1rem;
-  background: var(--bg);
-  color: var(--fg);
-  font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--weight) var(--text-body)/var(--leading-body) var(--font-sans);
 }
 
 main { max-width: 42rem; margin: 0 auto; }
@@ -58,7 +64,7 @@ h1 {
 
 .box {
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid var(--rule);
   border-left-width: 4px;
   border-radius: 8px;
   padding: 1.1rem 1.25rem;
@@ -100,7 +106,7 @@ dd {
 .note {
   color: var(--muted);
   font-size: 0.87rem;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
   padding-top: 0.75rem;
   margin-top: 1rem !important;
 }
@@ -108,7 +114,7 @@ dd {
 footer {
   color: var(--muted);
   font-size: 0.85rem;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
   padding-top: 1rem;
   margin-top: 2.5rem;
 }
@@ -132,9 +138,9 @@ a { color: inherit; }
 .signin input {
   font: inherit;
   padding: 0.55rem 0.7rem;
-  color: var(--fg);
-  background: var(--bg);
-  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
   border-radius: 6px;
   width: 100%;
 }
@@ -149,9 +155,9 @@ a { color: inherit; }
   font: inherit;
   margin-top: 0.9rem;
   padding: 0.55rem 1rem;
-  color: var(--bg);
-  background: var(--fg);
-  border: 1px solid var(--fg);
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
   border-radius: 6px;
   cursor: pointer;
   justify-self: start;
@@ -167,7 +173,7 @@ a { color: inherit; }
 
 .card {
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid var(--rule);
   border-radius: 8px;
   padding: 1rem 1.15rem;
   margin: 0 0 1rem;
@@ -189,7 +195,7 @@ a { color: inherit; }
   letter-spacing: 0.02em;
   text-transform: uppercase;
   padding: 0.12rem 0.45rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--rule);
   border-radius: 999px;
   color: var(--muted);
   white-space: nowrap;
@@ -205,9 +211,9 @@ a { color: inherit; }
   width: 100%;
   margin-top: 0.85rem;
   padding: 0.5rem 0.65rem;
-  color: var(--fg);
-  background: var(--bg);
-  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
   border-radius: 6px;
 }
 
@@ -223,16 +229,16 @@ a { color: inherit; }
 .actions .btn { margin-top: 0; }
 
 .btn-quiet {
-  color: var(--fg);
+  color: var(--ink);
   background: transparent;
-  border-color: var(--line);
+  border-color: var(--rule);
 }
 
 /* The second click of a two-step destructive action. Its own colour because
    "Oui, supprimer définitivement" sitting in the same black as "Enregistrer"
    reads as just another button, and this one has no undo. */
 .btn-danger {
-  color: #fff;
+  color: var(--bad-fg);
   background: var(--bad);
   border-color: var(--bad);
 }
@@ -262,7 +268,7 @@ a.btn { text-decoration: none; display: inline-block; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
   padding-bottom: 0.35rem;
   margin: 1.6rem 0 0.9rem;
 }
@@ -284,9 +290,9 @@ a.btn { text-decoration: none; display: inline-block; }
   font: inherit;
   width: 100%;
   padding: 0.5rem 0.65rem;
-  color: var(--fg);
-  background: var(--bg);
-  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
   border-radius: 6px;
 }
 
@@ -332,7 +338,7 @@ a.btn { text-decoration: none; display: inline-block; }
    --------------------------------------------------------------------------- */
 .guide h2 {
   font-size: 1.05rem; margin: 2.2rem 0 0.6rem;
-  padding-top: 1.1rem; border-top: 1px solid var(--line);
+  padding-top: 1.1rem; border-top: 1px solid var(--rule);
 }
 .guide h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 1.6rem; }
 .guide p { margin: 0 0 0.8rem; }
@@ -340,12 +346,12 @@ a.btn { text-decoration: none; display: inline-block; }
 .guide li { margin: 0.3rem 0; }
 .guide code {
   font-size: 0.9em; padding: 0.1em 0.3em;
-  background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 4px;
 }
 .guide table { width: 100%; border-collapse: collapse; margin: 0 0 1rem; font-size: 0.92rem; }
 .guide th, .guide td {
   text-align: left; vertical-align: top;
-  padding: 0.5rem 0.6rem 0.5rem 0; border-top: 1px solid var(--line);
+  padding: 0.5rem 0.6rem 0.5rem 0; border-top: 1px solid var(--rule);
 }
 .guide th { font-weight: 600; }
 .guide td:first-child, .guide th:first-child { padding-right: 1rem; }
@@ -366,7 +372,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .members { display: flex; flex-direction: column; margin: 0.4rem 0 1.2rem; }
 .member {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--line);
+  gap: 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--rule);
 }
 .member-who { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .member-email { font-size: 0.95rem; }
@@ -400,7 +406,7 @@ a.btn { text-decoration: none; display: inline-block; }
    Shown because it is what gets saved, dimmed because editing it is not a
    thing you can usefully do. */
 .field input.readonly {
-  background: var(--bg);
+  background: var(--paper);
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82rem;
@@ -416,7 +422,7 @@ a.btn { text-decoration: none; display: inline-block; }
   padding: 0.6rem 0.8rem;
   border-radius: 6px;
   font-size: 0.9rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--rule);
 }
 .signout-note.good { border-color: var(--good); background: var(--good-bg); }
 .signout-note.bad  { border-color: var(--bad);  background: var(--bad-bg); }
@@ -427,7 +433,7 @@ a.btn { text-decoration: none; display: inline-block; }
    typed. */
 .target-banner {
   background: var(--idle-bg);
-  color: var(--fg);
+  color: var(--ink);
   border-bottom: 2px solid var(--idle);
   padding: 0.55rem 1rem;
   font-size: 0.9rem;
@@ -439,7 +445,7 @@ a.btn { text-decoration: none; display: inline-block; }
    ticking it publishes something permanently. Boxed and tinted so it reads as
    a decision rather than a preference. */
 .consent {
-  border: 1px solid var(--line);
+  border: 1px solid var(--rule);
   border-left: 3px solid var(--idle);
   border-radius: 6px;
   padding: 0.7rem 0.8rem;
@@ -448,7 +454,7 @@ a.btn { text-decoration: none; display: inline-block; }
 
 /* The organizer picker at /organizer/. */
 .list { list-style: none; padding: 0; margin: 0.8rem 0 0; }
-.list li { padding: 0.5rem 0; border-top: 1px solid var(--line); }
+.list li { padding: 0.5rem 0; border-top: 1px solid var(--rule); }
 .list li:first-child { border-top: 0; }
 
 /* --- exceptions --------------------------------------------------------- */
@@ -467,7 +473,7 @@ a.btn { text-decoration: none; display: inline-block; }
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.45rem 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
   font-size: 0.9rem;
 }
 
@@ -489,9 +495,9 @@ a.btn { text-decoration: none; display: inline-block; }
 .ex-add select {
   font: inherit;
   padding: 0.45rem 0.6rem;
-  color: var(--fg);
-  background: var(--bg);
-  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
   border-radius: 6px;
 }
 

@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { expand, upcoming, nextDate, sections, rhythmLabel } from '../src/lib/occurrences.js';
+import { expand, upcoming, nextDate, sections, runs, rhythmLabel } from '../src/lib/occurrences.js';
 import { localDateKey, zonedToInstant, partsInZone } from '../src/lib/zone.js';
 
 const PARIS = 'Europe/Paris';
@@ -539,4 +539,84 @@ test('the weekday comes from the EVENT zone', () => {
   const lateFriday = new Date('2026-10-09T22:30:00Z'); // 00:30 Saturday in Paris
   assert.equal(rhythmLabel('weekly', lateFriday, PARIS), 'chaque samedi');
   assert.equal(rhythmLabel('weekly', lateFriday, 'UTC'), 'chaque vendredi');
+});
+
+// runs(): how the stream's occurrences become ROWS.
+// ---------------------------------------------------------------------------
+// sections() decides which occurrences are news. This decides how many rows
+// they are owed. The test above -- "a one-off event goes in the stream, every
+// date of it" -- stays true and is meant to: every date IS in the stream. They
+// simply arrive on one row.
+//
+// Measured 2026-10-09 against sixteen events: a three-day festival filled
+// three consecutive rows that differed only in the date.
+
+test('a multi-day event is ONE row carrying its range', () => {
+  const rows = expand(oneOff({ extra_dates: ['2026-11-15', '2026-11-16'] }), [], AT);
+  assert.equal(rows.length, 3, 'precondition: three occurrences');
+
+  const out = runs(sections(rows).stream);
+  assert.equal(out.length, 1, 'three dates of one event are one row');
+  assert.equal(out[0].multi, true);
+  assert.equal(out[0].first.dateKey, '2026-11-14');
+  assert.equal(out[0].last.dateKey, '2026-11-16');
+  assert.equal(out[0].occurrences.length, 3, 'and it still knows all three');
+});
+
+test('a single-date event is one row that is not a range', () => {
+  const out = runs(sections(expand(oneOff(), [], AT)).stream);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].multi, false);
+  assert.equal(out[0].first.dateKey, out[0].last.dateKey);
+});
+
+test('an exceptional date of a SERIES is never folded into anything', () => {
+  // The reason the split exists. Two cancelled weeks must stay two rows: each
+  // says "no milonga that Thursday", and one row saying "du 22 au 29" would
+  // claim something nobody cancelled -- the weeks between them still happen.
+  const rows = expand(series(), [
+    { event_id: 'r1', occurrence_date: '2026-10-22', kind: 'cancelled', note: null,
+      moved_starts_at: null },
+    { event_id: 'r1', occurrence_date: '2026-11-05', kind: 'cancelled', note: null,
+      moved_starts_at: null },
+  ], AT);
+  const out = runs(sections(rows).stream);
+  assert.equal(out.length, 2);
+  assert.deepEqual(out.map((r) => r.first.dateKey), ['2026-10-22', '2026-11-05']);
+  assert.ok(out.every((r) => r.multi === false));
+});
+
+test('two different events are never merged', () => {
+  const a = expand(oneOff({ id: 'a', slug: 'a' }), [], AT);
+  const b = expand(oneOff({ id: 'b', slug: 'b', starts_at: '2026-11-20T20:00:00+01:00' }), [], AT);
+  const out = runs(sections([...a, ...b].sort((x, y) => x.start - y.start)).stream);
+  assert.equal(out.length, 2);
+  assert.deepEqual(out.map((r) => r.event.id), ['a', 'b']);
+});
+
+test('a range reports which of its dates do not behave', () => {
+  const rows = expand(oneOff({ extra_dates: ['2026-11-15', '2026-11-16'] }), [
+    { event_id: 's1', occurrence_date: '2026-11-15', kind: 'cancelled',
+      note: 'jour férié', moved_starts_at: null },
+  ], AT);
+  const out = runs(sections(rows).stream);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].cancelled, false, 'one date off does not cancel the event');
+  assert.deepEqual(out[0].offDates.map((o) => o.dateKey), ['2026-11-15']);
+});
+
+test('a range every date of which is cancelled reads as cancelled', () => {
+  const rows = expand(oneOff({ extra_dates: ['2026-11-15'] }), [
+    { event_id: 's1', occurrence_date: '2026-11-14', kind: 'cancelled', note: null,
+      moved_starts_at: null },
+    { event_id: 's1', occurrence_date: '2026-11-15', kind: 'cancelled', note: null,
+      moved_starts_at: null },
+  ], AT);
+  const out = runs(sections(rows).stream);
+  assert.equal(out[0].cancelled, true);
+});
+
+test('runs() tolerates nothing at all', () => {
+  assert.deepEqual(runs([]), []);
+  assert.deepEqual(runs(), []);
 });

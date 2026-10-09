@@ -28,5 +28,8 @@
     "@astrojs/cloudflare": "^14.2.3",
     "astro": "^7.2.4",
     "wrangler": "^4.125.0"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "^5.3.0"
   }
 }

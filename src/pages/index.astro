@@ -1,8 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import {
-  loadAgenda, formatSummary, priceSummary, fmtFull, fmtTime, rhythmLabel,
+  loadAgenda, formatSummary, priceSummary, fmtFull, fmtDay, fmtTime, rhythmLabel,
 } from '../lib/content';
+import { runs } from '../lib/occurrences.js';
+import { dateRangeLabel } from '../lib/span.js';
 
 /**
  * TWO SECTIONS, NOT ONE STREAM.
@@ -45,15 +47,22 @@ const nothingAtAll = stream.length === 0 && regulars.length === 0;
         <p class="empty">Rien d'exceptionnel à venir — voir les rendez-vous réguliers ci-dessous.</p>
       ) : (
         <ul class="events">
-          {stream.map((o) => {
-            const e = o.event;
+          {runs(stream).map((row) => {
+            const e = row.event;
+            const o = row.first;
             const organizer = organizers.get(e.organizer_id);
             const price = priceSummary(e);
+            // ONE ROW PER EVENT, not per date. data-date carries the FIRST
+            // date only; verify-build check 9 requires every agenda date to
+            // exist on the event's own page and explicitly allows that page
+            // to list more, which is the direction a range collapses in.
             return (
-              <li class={o.cancelled ? 'cancelled' : undefined}
+              <li class={row.cancelled ? 'cancelled' : undefined}
                   data-event={e.slug} data-date={o.dateKey}>
                 <div class="when">
-                  <span class="date">{fmtFull(o.start, e.timezone)}</span>
+                  <span class="date">{row.multi
+                    ? dateRangeLabel(row.first.start, row.last.start, e.timezone)
+                    : fmtFull(o.start, e.timezone)}</span>
                   <span class="time">{fmtTime(o.start, e.timezone)}</span>
                 </div>
                 <div class="what">
@@ -64,10 +73,34 @@ const nothingAtAll = stream.length === 0 && regulars.length === 0;
                     {price && <> · {price}</>}
                     {organizer && <> · {organizer.name}</>}
                   </p>
-                  {o.cancelled && (
-                    <p class="off">Annulé{o.note ? ` — ${o.note}` : ''}</p>
+                  {/* A STAMP, not a coloured sentence. The accent is already
+                      spent on the eyebrow directly above, and a second warm
+                      colour here would muddy against it -- so this is marked
+                      by case and tracking instead, which is the system's own
+                      "structure, not colour". */}
+                  {row.cancelled && (
+                    <p class="status">
+                      <span class="tag">Annulé</span>
+                      {o.note && <> {o.note}</>}
+                    </p>
                   )}
-                  {o.moved && <p class="off moved">Séance déplacée{o.note ? ` — ${o.note}` : ''}</p>}
+                  {!row.cancelled && row.moved && (
+                    <p class="status">
+                      <span class="tag">Séance déplacée</span>
+                      {o.note && <> {o.note}</>}
+                    </p>
+                  )}
+                  {/* Dates inside a range that do not behave. fmtDay has no
+                      year, which is right here and only here: the range on
+                      this same row already carries it. */}
+                  {!row.cancelled && row.multi && row.offDates.length > 0 && (
+                    <p class="status">
+                      <span class="tag">{row.offDates[0].cancelled ? 'Annulé' : 'Déplacé'}</span>
+                      {' le '}{row.offDates.map((x, i) => (
+                        <>{i > 0 && ', '}{fmtDay(x.start, e.timezone)}</>
+                      ))}
+                    </p>
+                  )}
                 </div>
               </li>
             );
@@ -105,7 +138,8 @@ const nothingAtAll = stream.length === 0 && regulars.length === 0;
                 </p>
                 {next
                   ? <p class="next">Prochaine séance le {fmtFull(next.start, e.timezone)}</p>
-                  : <p class="off">Aucune séance à venir — toutes les dates sont annulées.</p>}
+                  : <p class="status"><span class="tag">Aucune séance</span>
+                      {' '}toutes les dates à venir sont annulées</p>}
               </div>
             </li>
           );
@@ -122,45 +156,81 @@ const nothingAtAll = stream.length === 0 && regulars.length === 0;
 </Layout>
 
 <style>
-  h1 { font-size: 1.9rem; margin: 2rem 0 0.25rem; letter-spacing: -0.02em; }
-  .intro { color: var(--muted); margin: 0 0 2rem; }
+  /* No top margin: main's own padding already opens the page, and the two
+     together left 84px of dead space above the title on a phone. */
+  h1 { font-size: var(--text-head); margin: 0 0 var(--space-4); }
+  .intro { color: var(--muted); margin: 0 0 var(--space-32); }
   .empty { color: var(--muted); }
-  .more { margin: 2rem 0 0; padding-top: 1.1rem; border-top: 1px solid var(--line); }
+  .more {
+    margin: var(--space-32) 0 0; padding-top: var(--space-16);
+    border-top: 1px solid var(--rule-strong);
+  }
 
   /* The section heading is a LABEL, not a title: it says which kind of thing
      the rows below are. Same size and weight as "Prochaines dates" on an event
-     page and the year headings in the archive, so the three read as a family. */
-  .block { margin: 0 0 2.5rem; }
+     page and the year headings in the archive, so the three read as a family.
+     They now genuinely do -- before 2026-10-09 this was 0.85rem and the
+     archive's was 1.1rem, so the family was asserted in a comment and nowhere
+     else. */
+  .block { margin: 0 0 var(--space-48); }
   .block h2 {
-    font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--muted); font-weight: 600; margin: 0 0 0.25rem;
+    font-size: var(--text-label); text-transform: uppercase;
+    letter-spacing: var(--track-label); color: var(--muted);
+    margin: 0 0 var(--space-4);
   }
 
   .events { list-style: none; padding: 0; margin: 0; }
+  /* 14rem because the longest date French can produce -- "dimanche 28
+     septembre 2026" -- measures 219px (13.69rem) at --text-body in this
+     stack. Measured in the browser against the real font, not estimated;
+     at 10rem the archive's dates wrapped mid-date.
+
+     Stage 4 should ask whether the LISTING needs the year at all. An agenda
+     showing the next few weeks mostly does not, and dropping it would take
+     this column to about 11rem and buy back 48px on every row. */
   .events li {
-    display: grid; grid-template-columns: 8.5rem 1fr; gap: 1rem;
-    padding: 1.1rem 0; border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 14rem 1fr; gap: var(--space-16);
+    padding: var(--space-16) 0; border-top: 1px solid var(--rule);
   }
   .when { display: flex; flex-direction: column; }
   /* No text-transform. `capitalize` title-cases every word, which gave
      "Jeudi 1 Octobre" -- French writes days and months in lower case. */
-  .date { font-size: 0.9rem; }
-  .time { color: var(--muted); font-size: 0.85rem; }
+  .date { font-size: var(--text-body); }
+  .time { color: var(--muted); font-size: var(--text-body); }
+  /* The eyebrow is the only repeated colour on the page, and --accent-text
+     rather than --accent because it is TEXT: the raw brand orange is 3.71:1
+     on paper and fails AA. */
   .type {
-    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--accent); font-weight: 600;
+    font-size: var(--text-label); text-transform: uppercase;
+    letter-spacing: var(--track-label); color: var(--accent-text);
   }
-  h3 { font-size: 1.05rem; margin: 0.15rem 0 0.3rem; font-weight: 700; }
+  h3 { font-size: var(--text-row); margin: var(--space-4) 0 var(--space-4); }
   h3 a { color: inherit; text-decoration: none; }
   h3 a:hover { text-decoration: underline; }
-  .meta { margin: 0; color: var(--muted); font-size: 0.88rem; }
-  .next { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem; }
-  .off { margin: 0.35rem 0 0; font-size: 0.85rem; font-weight: 600; color: #b3261e; }
-  .off.moved { color: var(--muted); }
+  .meta { margin: 0; color: var(--muted); font-size: var(--text-body); }
+  .next { margin: var(--space-4) 0 0; color: var(--muted); font-size: var(--text-body); }
+  /* Cancellation is structural, not chromatic: the strikethrough, the dimming
+     and the stamp carry it. The red this used to be sits one hue from the
+     brand orange and the two muddied each other, and the accent is already
+     spent on the eyebrow two lines above.
+
+     So the status is marked by CASE AND TRACKING, in ink, which is the same
+     typographic register as the eyebrow without taking a second colour. The
+     note after it stays muted: the stamp is the message, the note is detail. */
+  .status { margin: var(--space-4) 0 0; font-size: var(--text-body); color: var(--muted); }
+  .tag {
+    text-transform: uppercase;
+    letter-spacing: var(--track-label);
+    color: var(--ink);
+  }
   li.cancelled .date, li.cancelled h3 { text-decoration: line-through; }
   li.cancelled { opacity: 0.75; }
   @media (max-width: 30rem) {
-    .events li { grid-template-columns: 1fr; gap: 0.25rem; }
-    .when { flex-direction: row; gap: 0.5rem; }
+    .events li { grid-template-columns: 1fr; gap: var(--space-4); }
+    /* Not a flex row. A date range wraps to two lines on a phone, and as a
+       flex item the time was then stranded at the top right of the wrapped
+       date instead of following it. As inline text it simply flows after. */
+    .when { display: block; }
+    .time { margin-left: var(--space-8); }
   }
 </style>

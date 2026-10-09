@@ -98,35 +98,50 @@ const title = 'Archives — événements passés | Nissartango';
 </Layout>
 
 <style>
-  h1 { font-size: 1.9rem; margin: 2rem 0 0.25rem; letter-spacing: -0.02em; }
-  .intro { color: var(--muted); margin: 0 0 2rem; }
+  /* No top margin: main's own padding already opens the page, and the two
+     together left 84px of dead space above the title on a phone. */
+  h1 { font-size: var(--text-head); margin: 0 0 var(--space-4); }
+  .intro { color: var(--muted); margin: 0 0 var(--space-32); }
   .empty { color: var(--muted); }
-  .year { margin: 0 0 2.5rem; }
+  .year { margin: 0 0 var(--space-48); }
+  /* Same treatment as the agenda's section labels, deliberately. */
   .year h2 {
-    font-size: 1.1rem; color: var(--muted); font-weight: 600;
-    margin: 0 0 0.25rem; letter-spacing: 0.02em;
+    font-size: var(--text-label); text-transform: uppercase;
+    letter-spacing: var(--track-label); color: var(--muted);
+    margin: 0 0 var(--space-4);
   }
   .events { list-style: none; padding: 0; margin: 0; }
+  /* 14rem because the longest date French can produce -- "dimanche 28
+     septembre 2026" -- measures 219px (13.69rem) at --text-body in this
+     stack. Measured in the browser against the real font, not estimated;
+     at 10rem the archive's dates wrapped mid-date.
+
+     Stage 4 should ask whether the LISTING needs the year at all. An agenda
+     showing the next few weeks mostly does not, and dropping it would take
+     this column to about 11rem and buy back 48px on every row. */
   .events li {
-    display: grid; grid-template-columns: 8.5rem 1fr; gap: 1rem;
-    padding: 1.1rem 0; border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 14rem 1fr; gap: var(--space-16);
+    padding: var(--space-16) 0; border-top: 1px solid var(--rule);
   }
   .when { display: flex; flex-direction: column; }
-  .date { font-size: 0.9rem; }
-  .since { font-size: 0.8rem; color: var(--muted); }
-  .what h3 { margin: 0.15rem 0 0.25rem; font-size: 1.05rem; }
+  .date { font-size: var(--text-body); }
+  .since { font-size: var(--text-body); color: var(--muted); }
+  .what h3 { margin: var(--space-4) 0 var(--space-4); font-size: var(--text-row); }
   .what h3 a { color: inherit; text-decoration: none; }
   .what h3 a:hover { text-decoration: underline; }
+  /* Muted, not the accent the agenda uses: a past event should not shout. */
   .type {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--muted);
+    font-size: var(--text-label); text-transform: uppercase;
+    letter-spacing: var(--track-label); color: var(--muted);
   }
-  .meta { margin: 0; color: var(--muted); font-size: 0.9rem; }
-  .off { margin: 0.3rem 0 0; font-size: 0.9rem; color: var(--bad); }
+  .meta { margin: 0; color: var(--muted); font-size: var(--text-body); }
+  /* Was var(--bad), which was never defined anywhere -- so this declaration
+     was invalid and the text fell back to inherited ink. */
+  .off { margin: var(--space-4) 0 0; font-size: var(--text-body); color: var(--muted); }
   .cancelled .what h3 { text-decoration: line-through; }
 
   @media (max-width: 34rem) {
-    .events li { grid-template-columns: 1fr; gap: 0.25rem; }
-    .when { flex-direction: row; gap: 0.5rem; align-items: baseline; }
+    .events li { grid-template-columns: 1fr; gap: var(--space-4); }
+    .when { flex-direction: row; gap: var(--space-8); align-items: baseline; }
   }
 </style>

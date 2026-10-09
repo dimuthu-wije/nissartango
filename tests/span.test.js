@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { endOf, timeSpan, spanLabel } from '../src/lib/span.js';
+import { endOf, timeSpan, spanLabel, dateRangeLabel } from '../src/lib/span.js';
 
 const PARIS = 'Europe/Paris';
 const at = (iso) => new Date(iso);
@@ -82,4 +82,52 @@ test('formatting happens in the EVENT zone, never the builder time zone', () => 
   assert.equal(spanLabel(at('2026-10-02T16:00:00Z'), 60, 'UTC'), 'de 16:00 à 17:00');
   assert.equal(spanLabel(at('2026-10-02T16:00:00Z'), 60, 'America/Argentina/Buenos_Aires'),
     'de 13:00 à 14:00');
+});
+
+// dateRangeLabel(): the dates of one event that happens on several.
+// ---------------------------------------------------------------------------
+// Written because a three-day festival filled three identical agenda rows.
+// The shared parts are said once; spelling both dates out in full is correct
+// and nobody writes it that way.
+
+const d = (iso) => new Date(iso);
+
+test('within one month, the month is said once', () => {
+  assert.equal(
+    dateRangeLabel(d('2026-11-14T15:00:00Z'), d('2026-11-16T15:00:00Z')),
+    'du samedi 14 au lundi 16 novembre 2026',
+  );
+});
+
+test('across a month boundary, each month is named', () => {
+  assert.equal(
+    dateRangeLabel(d('2026-10-31T15:00:00Z'), d('2026-11-01T15:00:00Z')),
+    'du samedi 31 octobre au dimanche 1 novembre 2026',
+  );
+});
+
+test('across a year boundary, each year is named', () => {
+  assert.equal(
+    dateRangeLabel(d('2026-12-29T15:00:00Z'), d('2027-01-02T15:00:00Z')),
+    'du mardi 29 décembre 2026 au samedi 2 janvier 2027',
+  );
+});
+
+test('the zone decides the date, not UTC', () => {
+  // 23:30 UTC on the 14th is 00:30 on the 15th in Paris. A range that read
+  // the instant rather than the local day would name the wrong first date --
+  // the same class of error zone.js exists to prevent.
+  assert.equal(
+    dateRangeLabel(d('2026-11-14T23:30:00Z'), d('2026-11-16T10:00:00Z'), 'Europe/Paris'),
+    'du dimanche 15 au lundi 16 novembre 2026',
+  );
+});
+
+test('"1" and not "1er", because fmtFull writes it that way too', () => {
+  // Both render dates on the same page; disagreeing would be worse than
+  // either choice. If this ever changes, change content.ts with it.
+  assert.match(
+    dateRangeLabel(d('2026-11-01T12:00:00Z'), d('2026-11-03T12:00:00Z')),
+    /du dimanche 1 au mardi 3 novembre 2026/,
+  );
 });

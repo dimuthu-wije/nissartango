@@ -312,7 +312,13 @@ export function sections(occurrences = []) {
   for (const o of occurrences) {
     // STEP is the same table expand() generates from, so "is a series" means
     // exactly what it means there. A multi-day workshop is NOT one: its dates
-    // are a finite list, few, and each is worth a row.
+    // are a finite list, few, and every one of them is news.
+    //
+    // "Each is worth a ROW" is what this used to say, and runs() below now
+    // answers that half differently -- measured 2026-10-09, a three-day
+    // festival filled three identical rows. Which dates are news and how many
+    // rows they are owed turned out to be two questions; this function still
+    // answers the first one the same way.
     if (!STEP[o.event.recurrence]) {
       stream.push(o);
       continue;
@@ -352,6 +358,65 @@ const weekdayFmt = new Map();
  * `weekly` means. The weekday comes from the occurrence, so a series that
  * starts on a Thursday says Thursday without anyone storing that twice.
  */
+/**
+ * How the stream's occurrences become ROWS.
+ *
+ * sections() answers which occurrences are news. This answers how many rows
+ * they are owed, and those are different questions -- which is why this is a
+ * second function and not a change to that one. Its test still asserts that a
+ * multi-day workshop contributes each of its dates to the stream, because it
+ * does; they simply arrive on one row.
+ *
+ * Measured 2026-10-09 against sixteen events: a three-day festival produced
+ * three identical rows and a two-day workshop produced two. The only thing
+ * that differed between them was the date, which is exactly what a range says
+ * better.
+ *
+ * AN EXCEPTIONAL DATE OF A SERIES IS NEVER FOLDED. It is in the stream for one
+ * reason -- "pas de milonga à la Casita ce jeudi" is the most useful line the
+ * agenda carries about a regular -- and folding it into anything would undo
+ * the thing sections() exists to do.
+ */
+export function runs(stream = []) {
+  const rows = [];
+  const index = new Map();
+
+  for (const o of stream) {
+    if (STEP[o.event.recurrence]) {
+      rows.push({ event: o.event, occurrences: [o] });   // a series' odd date: alone
+      continue;
+    }
+    const key = o.event.id ?? o.event.slug;
+    const at = index.get(key);
+    if (at === undefined) {
+      index.set(key, rows.length);
+      rows.push({ event: o.event, occurrences: [o] });
+    } else {
+      rows[at].occurrences.push(o);
+    }
+  }
+
+  return rows.map(({ event, occurrences }) => {
+    const first = occurrences[0];
+    const last = occurrences[occurrences.length - 1];
+    return {
+      event,
+      occurrences,
+      first,
+      last,
+      multi: occurrences.length > 1,
+      // On a single-date row these are the occurrence's own flags. On a range
+      // they mean "every date", which is the only reading under which striking
+      // the whole row through is honest.
+      cancelled: occurrences.every((x) => x.cancelled),
+      moved: occurrences.length === 1 && Boolean(first.moved),
+      // Dates within a range that do not behave: rendered as a note rather
+      // than as rows of their own, so the range stays one line.
+      offDates: occurrences.filter((x) => x.cancelled || x.moved),
+    };
+  });
+}
+
 export function rhythmLabel(recurrence, start, tz = 'Europe/Paris') {
   if (recurrence === 'monthly') return 'chaque mois';
   if (recurrence !== 'weekly' && recurrence !== 'biweekly') return null;

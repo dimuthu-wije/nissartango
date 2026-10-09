@@ -76,3 +76,53 @@ export function spanLabel(start, durationMinutes, tz = 'Europe/Paris') {
     ? `de ${s.start} à ${s.end} (le lendemain)`
     : `de ${s.start} à ${s.end}`;
 }
+
+/**
+ * "du samedi 14 au lundi 16 novembre 2026" -- the dates of ONE event that
+ * happens on several, written the way a printed programme writes them.
+ *
+ * WHY. Measured 2026-10-09 against sixteen events: a three-day festival filled
+ * three consecutive rows of the agenda, byte-identical but for the date, and a
+ * two-day workshop filled two. sections() is right that those dates are not a
+ * SERIES -- they are a finite list and every one of them is news -- but "each
+ * is news" is an argument about which dates exist, not about how many rows
+ * they deserve. One row carrying the range says the same thing and says it
+ * once.
+ *
+ * The shared parts are said once: the month is dropped from the first date
+ * when both fall in it, and the year when both share that too. Spelling out
+ * "du samedi 14 novembre 2026 au lundi 16 novembre 2026" is correct and nobody
+ * writes it.
+ *
+ * "1" and not "1er", matching fmtFull in content.ts. Both render dates on the
+ * same page and disagreeing about that would be worse than either choice.
+ */
+const dcache = new Map();
+function dmy(tz) {
+  let f = dcache.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz,
+    });
+    dcache.set(tz, f);
+  }
+  return f;
+}
+
+function pieces(d, tz) {
+  const parts = dmy(tz).formatToParts(d);
+  const get = (type) => parts.find((p) => p.type === type)?.value ?? '';
+  return { weekday: get('weekday'), day: get('day'), month: get('month'), year: get('year') };
+}
+
+export function dateRangeLabel(first, last, tz = 'Europe/Paris') {
+  const a = pieces(first, tz);
+  const b = pieces(last, tz);
+  if (a.year !== b.year) {
+    return `du ${a.weekday} ${a.day} ${a.month} ${a.year} au ${b.weekday} ${b.day} ${b.month} ${b.year}`;
+  }
+  if (a.month !== b.month) {
+    return `du ${a.weekday} ${a.day} ${a.month} au ${b.weekday} ${b.day} ${b.month} ${b.year}`;
+  }
+  return `du ${a.weekday} ${a.day} au ${b.weekday} ${b.day} ${b.month} ${b.year}`;
+}
