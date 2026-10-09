@@ -660,11 +660,37 @@ leave it out of git: nothing in one should need a secret to be useful.
      `design/brand/`. The `rx="26"` the iOS icon depends on IS asserted, in
      `make-favicon.mjs` itself, because a silent no-op there produces a
      double-masked icon and no error.
-   - **The editor's type is not on the scale.** 23 ad-hoc sizes between 0.72
-     and 1.35rem. Its COLOUR is reconciled — the two deployments finally read
-     one palette — but putting its type on the scale moves its body from
-     13.6px to 16px and relayouts five working pages. The font-size assertion
-     deliberately covers the public site only and says so in place.
+   - ~~The editor's type is not on the scale.~~ **DONE 2026-10-09.** 26
+     declarations across twelve distinct values between 0.72 and 1.35rem are
+     now five tokens. `tests/design-tokens.test.js` covers BOTH deployments.
+
+     **This entry used to say the conversion "moves its body from 13.6px to
+     16px and relayouts five working pages", and that was simply wrong.** The
+     editor's body has been 16px since it was written — `font: 16px/1.6` on
+     line 46 of the original. 13.6px (0.85rem) was its most common OVERRIDE,
+     not its body. The error made the job look more expensive than it was,
+     which is the direction that keeps work from being done.
+
+     One token is the editor's own: **`--text-ui`, 14px**, beside
+     `--weight-ui`. The public ramp steps 11 → 16 → 19 because a reading page
+     needs nothing between; a form of field labels, hints, inline errors and
+     small buttons needs exactly that, and eleven of the editor's ad-hoc
+     values lived there.
+
+     Two exemptions, both reasoned rather than inherited:
+
+       - **`em`** — `.guide code` is `0.9em` because monospace set at the same
+         pixel size reads larger than the proportional text around it. That is
+         a RATIO to its surroundings, not a point on a scale, and no rem token
+         could express it.
+       - **SVG presentation attributes.** The guide's diagram sets
+         `font-size="11.5"` and friends as attributes, which have no colon and
+         so escaped the rule entirely until this was looked at. They stay.
+         An SVG with a viewBox scales as a whole, and text in USER UNITS
+         scales with it; a rem value would stay fixed while the boxes and
+         arrows shrank, and the labels would burst out of the shapes they
+         label. What is asserted instead is that none of them carries a unit,
+         because a unit is exactly what would pin one and break that.
 
      Its WEIGHT is settled, though, and differs from the site's on purpose.
      The editor sets its body in 400 via `--weight-ui`, declared in its own

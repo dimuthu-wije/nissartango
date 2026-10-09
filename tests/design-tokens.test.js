@@ -78,21 +78,26 @@ test('a literal colour may only appear as a token definition', () => {
   assert.deepEqual(bad, [], `literal colour outside a token definition:\n${bad.join('\n')}`);
 });
 
-test('every font-size on the public site comes from the scale', () => {
-  // SITE only, deliberately, and this is a boundary rather than an oversight.
-  // The editor carries 23 ad-hoc sizes of its own (0.72 / 0.78 / 0.8 / 0.82 /
-  // 0.85 / 0.87 / 0.9 / 0.92 / 0.95 / 1.02 / 1.05 / 1.35rem). Putting them on
-  // this scale means moving its body type from 13.6px to 16px, which changes
-  // the layout of five working pages -- real work with its own verification,
-  // not a rename. The COLOUR drift between the two deployments is fixed; the
-  // type drift is not, and is listed in AGENTS.md Outstanding.
+test('every font-size comes from the scale, in BOTH deployments', () => {
+  // The editor carried 26 ad-hoc declarations across twelve distinct values
+  // between 0.72 and 1.35rem. They are now five tokens, one of which
+  // (--text-ui, 14px) is the editor's own: the public ramp steps 11 -> 16 ->
+  // 19 because a reading page needs nothing between, and a form of labels,
+  // hints and inline errors needs exactly that.
   //
-  // When the editor is converted, add ...EDITOR back here and delete this.
+  // EXEMPT: a size in `em`. That is a RATIO to the surrounding text, not a
+  // point on the scale -- .guide code is 0.9em because monospace set at the
+  // same pixel size reads larger than the proportional text around it, and
+  // the correction has to follow whatever that text is. A rem token could not
+  // express it.
   const bad = [];
-  for (const f of SITE) {
+  for (const f of [...SITE, ...EDITOR]) {
     strip(read(f)).split('\n').forEach((line, i) => {
-      const m = /font-size:\s*([^;]+);/.exec(line);
-      if (m && !m[1].includes('var(')) bad.push(`${f}:${i + 1}  font-size: ${m[1].trim()}`);
+      const m = /font-size:\s*([^;]+)[;]/.exec(line);
+      if (!m) return;
+      const value = m[1].trim();
+      if (value.includes('var(') || /^[\d.]+em$/.test(value)) return;
+      bad.push(`${f}:${i + 1}  font-size: ${value}`);
     });
   }
   assert.deepEqual(bad, [], `font-size not taken from the scale:\n${bad.join('\n')}`);
@@ -121,4 +126,28 @@ test('the public site declares no design values of its own', () => {
   const bad = [];
   for (const f of SITE) for (const t of definedIn(f)) bad.push(`${f}  ${t}`);
   assert.deepEqual(bad, [], `token declared outside tokens.css:\n${bad.join('\n')}`);
+});
+
+test('type inside an SVG drawing stays in user units', () => {
+  // The guide's lifecycle diagram sets font-size as an SVG ATTRIBUTE, which
+  // has no colon and so is invisible to the rule above. That is deliberate,
+  // and it is NOT an oversight to be tidied away onto the rem scale.
+  //
+  // An SVG with a viewBox is a drawing that scales as a whole. Its text sizes
+  // are in USER UNITS, so they shrink and grow with the geometry they label.
+  // A rem value would not: on a narrow screen the boxes and arrows would
+  // scale down while the words stayed put, and the labels would burst out of
+  // the shapes they belong to. 11.5 is not a typographic choice competing
+  // with --text-label, it is a measurement inside a picture.
+  //
+  // What CAN go wrong is someone giving one of them a unit, which pins it and
+  // breaks exactly that. That is what this asserts.
+  const bad = [];
+  for (const f of EDITOR.filter((x) => x.endsWith('.html'))) {
+    for (const m of read(f).matchAll(/font-size="([^"]+)"/g)) {
+      if (!/^[\d.]+$/.test(m[1])) bad.push(`${f}  font-size="${m[1]}"`);
+    }
+  }
+  assert.deepEqual(bad, [],
+    `an SVG font-size with a unit stops scaling with its drawing:\n${bad.join('\n')}`);
 });

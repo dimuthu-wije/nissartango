@@ -26,6 +26,13 @@
      file was written to end. */
   --weight-ui: 400;
 
+  /* The one size the public scale does not have, and an app does. Its ramp
+     steps 11 -> 16 -> 19 because a reading page needs nothing between; a form
+     of field labels, hints, inline errors and small buttons needs exactly
+     that. 14px replaces eleven ad-hoc values between 0.8 and 0.87rem, which
+     is where most of the editor's drift lived. */
+  --text-ui: 0.875rem;
+
   --card:    #ffffff;
   --good:    #1f6b3f;
   --good-bg: #edf7f0;
@@ -75,7 +82,7 @@ main { max-width: 42rem; margin: 0 auto; }
 h1, h2, h3 { font-weight: var(--weight-strong); }
 
 h1 {
-  font-size: 1.35rem;
+  font-size: var(--text-sub);
   letter-spacing: -0.01em;
   margin: 0 0 0.25rem;
 }
@@ -91,7 +98,7 @@ h1 {
   margin: 0 0 1.25rem;
 }
 
-.box h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
+.box h2 { font-size: var(--text-row); margin: 0 0 0.5rem; }
 
 .box.good { border-left-color: var(--good); background: var(--good-bg); }
 .box.good h2 { color: var(--good); }
@@ -114,18 +121,18 @@ dl {
   dd { margin-bottom: 0.6rem; }
 }
 
-dt { color: var(--muted); font-size: 0.85rem; }
+dt { color: var(--muted); font-size: var(--text-ui); }
 
 dd {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
+  font-size: var(--text-ui);
   overflow-wrap: anywhere;
 }
 
 .note {
   color: var(--muted);
-  font-size: 0.87rem;
+  font-size: var(--text-ui);
   border-top: 1px solid var(--rule);
   padding-top: 0.75rem;
   margin-top: 1rem !important;
@@ -133,7 +140,7 @@ dd {
 
 footer {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-ui);
   border-top: 1px solid var(--rule);
   padding-top: 1rem;
   margin-top: 2.5rem;
@@ -152,7 +159,7 @@ a { color: inherit; }
 
 .signin label {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-ui);
 }
 
 .signin input {
@@ -206,12 +213,12 @@ a { color: inherit; }
   gap: 0.5rem 0.75rem;
 }
 
-.card h3 { font-size: 1.02rem; margin: 0; }
+.card h3 { font-size: var(--text-row); margin: 0; }
 
 .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 
 .tag {
-  font-size: 0.72rem;
+  font-size: var(--text-label);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   padding: 0.12rem 0.45rem;
@@ -266,7 +273,7 @@ a { color: inherit; }
 a.btn { text-decoration: none; display: inline-block; }
 
 .decided { list-style: none; padding: 0; margin: 0.9rem 0 0; }
-.decided li { padding: 0.25rem 0; font-size: 0.9rem; }
+.decided li { padding: 0.25rem 0; font-size: var(--text-body); }
 .muted { color: var(--muted); }
 
 .linkish {
@@ -284,7 +291,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .event-form { margin-top: 1.1rem; }
 
 .event-form .section {
-  font-size: 0.78rem;
+  font-size: var(--text-label);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
@@ -299,7 +306,7 @@ a.btn { text-decoration: none; display: inline-block; }
 
 .field label {
   display: block;
-  font-size: 0.85rem;
+  font-size: var(--text-ui);
   color: var(--muted);
   margin-bottom: 0.25rem;
 }
@@ -328,13 +335,13 @@ a.btn { text-decoration: none; display: inline-block; }
 .field input:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .field .hint {
-  font-size: 0.8rem;
+  font-size: var(--text-ui);
   color: var(--muted);
   margin: 0.25rem 0 0;
 }
 
 .field-error {
-  font-size: 0.82rem;
+  font-size: var(--text-ui);
   color: var(--bad);
   margin: 0.3rem 0 0;
 }
@@ -357,7 +364,7 @@ a.btn { text-decoration: none; display: inline-block; }
    Kept in one block rather than scattered, since nothing else uses it.
    --------------------------------------------------------------------------- */
 .guide h2 {
-  font-size: 1.05rem; margin: 2.2rem 0 0.6rem;
+  font-size: var(--text-row); margin: 2.2rem 0 0.6rem;
   padding-top: 1.1rem; border-top: 1px solid var(--rule);
 }
 .guide h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 1.6rem; }
@@ -368,7 +375,7 @@ a.btn { text-decoration: none; display: inline-block; }
   font-size: 0.9em; padding: 0.1em 0.3em;
   background: var(--card); border: 1px solid var(--rule); border-radius: 4px;
 }
-.guide table { width: 100%; border-collapse: collapse; margin: 0 0 1rem; font-size: 0.92rem; }
+.guide table { width: 100%; border-collapse: collapse; margin: 0 0 1rem; font-size: var(--text-body); }
 .guide th, .guide td {
   text-align: left; vertical-align: top;
   padding: 0.5rem 0.6rem 0.5rem 0; border-top: 1px solid var(--rule);
@@ -379,13 +386,13 @@ a.btn { text-decoration: none; display: inline-block; }
    a phone, so it scrolls sideways rather than shrinking its words to nothing. */
 .guide figure { margin: 1.2rem 0; overflow-x: auto; }
 .guide figure svg { display: block; min-width: 34rem; width: 100%; height: auto; }
-.guide figcaption { margin-top: 0.5rem; color: var(--muted); font-size: 0.85rem; }
+.guide figcaption { margin-top: 0.5rem; color: var(--muted); font-size: var(--text-ui); }
 
 /* The sign-in failure panel: plain French in the body, the codes folded into
    a <details> so a report can still carry them. */
 .box ul { margin: 0.4rem 0 0.9rem; padding-left: 1.2rem; }
 .box ul li { margin: 0.25rem 0; }
-.diag { margin-top: 1.1rem; font-size: 0.85rem; color: var(--muted); }
+.diag { margin-top: 1.1rem; font-size: var(--text-ui); color: var(--muted); }
 .diag summary { cursor: pointer; }
 .diag dl { margin-top: 0.5rem; }
 
@@ -395,7 +402,7 @@ a.btn { text-decoration: none; display: inline-block; }
   gap: 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--rule);
 }
 .member-who { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.member-email { font-size: 0.95rem; }
+.member-email { font-size: var(--text-body); }
 .member-add { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .member-add input[type="email"] { width: auto; flex: 1 1 15rem; margin: 0; }
 .member-add select { width: auto; margin: 0; }
@@ -404,7 +411,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .dates { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.3rem; }
 .date-row { display: flex; align-items: center; gap: 0.5rem; }
 .date-row input[type="date"] { width: auto; margin: 0; }
-.btn-small { margin-top: 0; padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+.btn-small { margin-top: 0; padding: 0.3rem 0.6rem; font-size: var(--text-ui); }
 
 .checks { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin-top: 0.3rem; }
 .checks .check { display: flex; align-items: center; gap: 0.4rem; }
@@ -415,7 +422,7 @@ a.btn { text-decoration: none; display: inline-block; }
    for -- every event so far is in France. */
 .event-form .tz { margin: 0 0 1rem; }
 .event-form .tz > summary {
-  cursor: pointer; color: var(--muted); font-size: 0.85rem;
+  cursor: pointer; color: var(--muted); font-size: var(--text-ui);
   padding: 0.2rem 0;
 }
 .event-form .tz[open] > summary { margin-bottom: 0.4rem; }
@@ -429,7 +436,7 @@ a.btn { text-decoration: none; display: inline-block; }
   background: var(--paper);
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.82rem;
+  font-size: var(--text-ui);
 }
 .note.good-text { color: var(--good); }
 .note.bad-text { color: var(--bad); }
@@ -441,7 +448,7 @@ a.btn { text-decoration: none; display: inline-block; }
   margin: 0.8rem 0 0;
   padding: 0.6rem 0.8rem;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: var(--text-body);
   border: 1px solid var(--rule);
 }
 .signout-note.good { border-color: var(--good); background: var(--good-bg); }
@@ -456,7 +463,7 @@ a.btn { text-decoration: none; display: inline-block; }
   color: var(--ink);
   border-bottom: 2px solid var(--idle);
   padding: 0.55rem 1rem;
-  font-size: 0.9rem;
+  font-size: var(--text-body);
   text-align: center;
 }
 .target-banner strong { color: var(--idle); }
@@ -494,10 +501,10 @@ a.btn { text-decoration: none; display: inline-block; }
   gap: 0.5rem;
   padding: 0.45rem 0;
   border-top: 1px solid var(--rule);
-  font-size: 0.9rem;
+  font-size: var(--text-body);
 }
 
-.ex-row .btn { margin-top: 0; margin-left: auto; padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+.ex-row .btn { margin-top: 0; margin-left: auto; padding: 0.3rem 0.6rem; font-size: var(--text-ui); }
 
 .ex-date { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
