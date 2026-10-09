@@ -665,6 +665,32 @@ leave it out of git: nothing in one should need a secret to be useful.
      one palette — but putting its type on the scale moves its body from
      13.6px to 16px and relayouts five working pages. The font-size assertion
      deliberately covers the public site only and says so in place.
+
+     Its WEIGHT is settled, though, and differs from the site's on purpose.
+     The editor sets its body in 400 via `--weight-ui`, declared in its own
+     token block beside `--card`: one weight at every size is the reference's
+     editorial signature and belongs on the public site, while in a dense form
+     of labels, inputs and status chips it reads heavy. Declared there rather
+     than by redefining `--weight`, because two values behind one name is the
+     failure the shared file exists to end.
+
+     Two things that only showed up by looking at the running editor:
+
+       - it already had a `font-weight: 400` rule, and with only 500 and 600
+         shipped the browser had been quietly rendering it in the 500 face.
+         Setting the body to 400 without adding the face would have changed
+         nothing at all.
+       - its h1/h2 set no weight, so they inherited the browser's `bold` =
+         700. Fine while it used a system font with a real 700, and silently
+         not fine from the moment Inter was self-hosted without one — the
+         browser matched 700 down to the 600 face. They now declare
+         `--weight-strong`, which is a face that exists. Same pixels, no
+         guessing.
+
+     Inter 400 therefore ships to BOTH deployments: one generated fonts.css
+     and one verbatim copy beats two that drift. Measured — the public site
+     fetches only the 500; 400 and 600 stay `unloaded` there. 24KB of storage,
+     zero bytes of transfer.
    - **The shell is 64rem and that is NOT a measured result.** With two events
      in the database the hairlines run ~200px past the longest title. Judge it
      at twenty rows, not at two — the same caveat as the two-section split.

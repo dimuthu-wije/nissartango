@@ -17,6 +17,15 @@
    for one idea and two values for one colour, drifting independently. */
 
 :root {
+  /* An app's body weight is an app's business. The shared --weight is 500,
+     which is the public site's editorial signature -- "not bold, not regular,
+     never thin" -- and in a dense form of labels, inputs and status chips it
+     simply reads heavy. This is the one place the two deployments differ on
+     purpose, and it is declared HERE rather than by redefining --weight,
+     because two values behind one name is the exact failure the shared token
+     file was written to end. */
+  --weight-ui: 400;
+
   --card:    #ffffff;
   --good:    #1f6b3f;
   --good-bg: #edf7f0;
@@ -49,10 +58,21 @@ body {
   padding: 2.5rem 1rem;
   background: var(--paper);
   color: var(--ink);
-  font: var(--weight) var(--text-body)/var(--leading-body) var(--font-sans);
+  font: var(--weight-ui) var(--text-body)/var(--leading-body) var(--font-sans);
 }
 
 main { max-width: 42rem; margin: 0 auto; }
+
+/* Headings say 600, which is a face that EXISTS.
+   They used to say nothing, so they inherited the browser's `bold` = 700 --
+   fine while the editor used a system font that has a real 700, and quietly
+   not fine from the moment Inter was self-hosted with only 400/500/600:
+   the browser silently matched 700 to the 600 face. Nothing looked broken,
+   and the declaration had simply stopped describing the result.
+
+   Declaring 600 is the same pixels with none of the guessing, and it is the
+   weight the design system already calls "strong". */
+h1, h2, h3 { font-weight: var(--weight-strong); }
 
 h1 {
   font-size: 1.35rem;

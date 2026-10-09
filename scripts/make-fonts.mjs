@@ -20,10 +20,29 @@
  * WOFF2 ONLY. Every browser has supported it since 2016; shipping the .woff
  * fallback beside it doubles the bytes for user agents that no longer exist.
  *
- * TWO WEIGHTS. 500 is the system's only weight and every page needs it, so it
- * is preloaded in Layout.astro. 600 exists for <strong> inside an organizer's
- * own prose — the single documented exception in docs/DESIGN.md — and because
- * it has its own @font-face, a page with no bold in it never downloads it.
+ * THREE WEIGHTS, and the third one is the editor's.
+ *
+ * 500 is the public site's only weight and every page needs it, so it is
+ * preloaded in Layout.astro. 600 is for <strong> inside an organizer's own
+ * prose, the single documented exception in docs/DESIGN.md.
+ *
+ * 400 exists because the EDITOR is an application, not a document. One weight
+ * at every size is the reference's editorial signature and it belongs on the
+ * public site; in a dense form UI it simply reads heavy. The editor sets its
+ * body in 400 through --weight-ui, which lives in its own token block beside
+ * --card and --good, because an app's body weight is an app's business.
+ *
+ * Shipping 400 to BOTH deployments is deliberate: one generated fonts.css and
+ * one verbatim copy, rather than two that drift. The public site never asks
+ * for weight 400, and a face with its own @font-face is not downloaded until
+ * something uses it, so this costs it 24KB of storage and zero bytes of
+ * transfer. Two diverging stylesheets is the more expensive half of that
+ * trade, and this repo has already paid it once.
+ *
+ * A face that is DECLARED but missing is worse than one that is absent. The
+ * editor already had a `font-weight: 400` rule and, with only 500 and 600
+ * defined, the browser had been quietly rendering it in the 500 face. Nothing
+ * looked wrong; nothing was right either.
  *
  * THE LATIN SUBSET AND FRENCH. Checked here rather than assumed: the range
  * fontsource declares for `latin` is U+0000-00FF plus a short list, which
@@ -39,7 +58,7 @@ import { fileURLToPath } from 'node:url';
 const at = (p) => fileURLToPath(new URL(`../${p}`, import.meta.url));
 const pkg = (p) => at(`node_modules/@fontsource/inter/${p}`);
 
-const WEIGHTS = [500, 600];
+const WEIGHTS = [400, 500, 600];
 const faces = [];
 
 for (const weight of WEIGHTS) {
