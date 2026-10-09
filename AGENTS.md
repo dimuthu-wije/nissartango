@@ -473,14 +473,27 @@ leave it out of git: nothing in one should need a secret to be useful.
 
    The semantics above are a CLAIM from Cloudflare's documentation, not a
    measurement of this project — there is no dashboard access from the command
-   line. Verify it once, cheaply, in this order:
+   line. Verify it once, in this order:
 
-       1. push a commit touching only AGENTS.md   -> expect NO new build
-       2. push a commit touching src/             -> expect a build, and
+       1. push a commit CHANGING ONLY AGENTS.md   -> expect NO new build
+       2. push a commit changing src/             -> expect a build, and
                                                      built_at to move
 
+   **`git commit --allow-empty` IS NOT STEP 1.** Measured 2026-10-09, with the
+   filter already saved: an empty commit was pushed and the site rebuilt
+   anyway, `built_at` moving to 16:45:58Z. That proves nothing about the
+   exclude list, because a commit with no changed files has no paths to match
+   against it — "everything that changed is excluded" and "nothing changed"
+   are different questions, and the platform evidently answers the second one
+   by building. The empty commit was suggested in a session as a cheap stand-in
+   for step 1 and it is not one; it cost a build to learn that.
+
    Step 2 is the one that matters. Until it passes, the filter is unproven in
-   the direction that costs something.
+   the direction that costs something — and note the asymmetry in what is
+   exposed: if the filter wrongly excludes too much, CONTENT still reaches the
+   site, because the poller compares checksums every ten minutes and fires the
+   deploy hook, which is not a git push and is not path-filtered. CODE has no
+   such backstop.
 
    One consequence worth naming: excluding `tests/*` loses nothing because the
    build never ran `npm test` — it runs `build` then `verify:build`. There is
