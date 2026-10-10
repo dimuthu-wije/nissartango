@@ -8,6 +8,12 @@ import { NAV, isCurrent } from '../data/nav';
    file follows light and dark with no second asset and no JavaScript. An
    <img> cannot inherit colour. design/brand/ is the single definition --
    scripts/make-favicon.mjs and make-og-default.mjs read it too. */
+/* THIS IMPORT IS WHY design/ MUST NEVER GO ON THE BUILD WATCH EXCLUDE LIST.
+   Cloudflare skips a build when every changed path is excluded (AGENTS.md
+   gotcha 11). design/ looks like a folder of source material that could not
+   possibly affect a build -- and the header wordmark is read out of it right
+   here, at build time. Exclude it and a logo change deploys nowhere, with no
+   error anywhere. */
 import wordmark from '../../design/brand/logo-wordmark.svg?raw';
 interface Props {
   title: string;
