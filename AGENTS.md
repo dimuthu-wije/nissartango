@@ -503,6 +503,19 @@ leave it out of git: nothing in one should need a secret to be useful.
    whatever remains is matched against the includes, and a build is triggered
    only if something survives both.
 
+   **The fields take CHIPS, not text**, and this is what actually went wrong
+   on 2026-10-09. The panel was filled in and the exclude list was still
+   empty: typing into *Exclude paths* without committing each entry — Enter,
+   or a comma — leaves text that disappears on blur, and the grey
+   `node_modules/**, .git/` sitting in the box is PLACEHOLDER, not a value.
+   Two builds and a wrong diagnosis went on the theory that the filter was set
+   and broken, when nothing had been saved. A saved entry looks like the `*`
+   in *Include paths*: a chip with an `×`. Reload the page before believing
+   it.
+
+   **Step 1 passed 2026-10-10** once the chips were really there: `b74c15a`,
+   changing only `AGENTS.md`, produced no build in eight minutes.
+
    Step 2 is the one that matters. Until it passes, the filter is unproven in
    the direction that costs something — and note the asymmetry in what is
    exposed: if the filter wrongly excludes too much, CONTENT still reaches the
