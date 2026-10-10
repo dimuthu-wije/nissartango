@@ -516,12 +516,16 @@ leave it out of git: nothing in one should need a secret to be useful.
    **Step 1 passed 2026-10-10** once the chips were really there: `b74c15a`,
    changing only `AGENTS.md`, produced no build in eight minutes.
 
-   Step 2 is the one that matters. Until it passes, the filter is unproven in
-   the direction that costs something — and note the asymmetry in what is
-   exposed: if the filter wrongly excludes too much, CONTENT still reaches the
-   site, because the poller compares checksums every ten minutes and fires the
-   deploy hook, which is not a git push and is not path-filtered. CODE has no
-   such backstop.
+   **Step 2 passed 2026-10-10**: `5927227`, changing one file under `src/`,
+   built within three minutes. Both directions are now proven — excluded paths
+   are skipped, `src/` is not — so the filter can be trusted and this gotcha is
+   a record rather than a warning.
+
+   Keep the asymmetry in mind if it is ever widened. If the exclude list grows
+   to swallow something it should not, CONTENT still reaches the site: the
+   poller compares checksums every ten minutes and fires the deploy hook, which
+   is not a git push and is not path-filtered. CODE has no such backstop, which
+   is why step 2 is the half worth re-running after any change to the list.
 
    One consequence worth naming: excluding `tests/*` loses nothing because the
    build never ran `npm test` — it runs `build` then `verify:build`. There is
