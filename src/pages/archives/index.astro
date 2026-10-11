@@ -106,7 +106,8 @@ const title = 'Archives — événements passés | Nissartango';
   .year { margin: 0 0 var(--space-48); }
   /* Same treatment as the agenda's section labels, deliberately. */
   .year h2 {
-    font-size: var(--text-label); text-transform: uppercase;
+    font-size: var(--text-caption); line-height: var(--leading-caption);
+    text-transform: uppercase;
     letter-spacing: var(--track-label); color: var(--muted);
     margin: 0 0 var(--space-4);
   }
@@ -126,12 +127,13 @@ const title = 'Archives — événements passés | Nissartango';
   .when { display: flex; flex-direction: column; }
   .date { font-size: var(--text-body); }
   .since { font-size: var(--text-body); color: var(--muted); }
-  .what h3 { margin: var(--space-4) 0 var(--space-4); font-size: var(--text-row); }
+  .what h3 { margin: var(--space-4) 0 var(--space-4); font-size: var(--text-sub); }
   .what h3 a { color: inherit; text-decoration: none; }
   .what h3 a:hover { text-decoration: underline; }
   /* Muted, not the accent the agenda uses: a past event should not shout. */
   .type {
-    font-size: var(--text-label); text-transform: uppercase;
+    font-size: var(--text-body);
+    text-transform: uppercase;
     letter-spacing: var(--track-label); color: var(--muted);
   }
   .meta { margin: 0; color: var(--muted); font-size: var(--text-body); }

@@ -323,7 +323,7 @@ const jsonLd = nodes.length === 1
   .back { font-size: var(--text-body); color: var(--muted); text-decoration: none; }
   /* --accent-text, not --accent: the raw brand orange is 3.71:1 on paper. */
   .type {
-    display: block; margin-top: var(--space-32); font-size: var(--text-label);
+    display: block; margin-top: var(--space-32); font-size: var(--text-body);
     text-transform: uppercase; letter-spacing: var(--track-label);
     color: var(--accent-text);
   }
@@ -365,7 +365,8 @@ const jsonLd = nodes.length === 1
 
   .dates { margin-bottom: var(--space-32); }
   .dates h2 {
-    font-size: var(--text-label); text-transform: uppercase;
+    font-size: var(--text-caption); line-height: var(--leading-caption);
+    text-transform: uppercase;
     letter-spacing: var(--track-label); color: var(--muted);
     margin-bottom: var(--space-8);
   }

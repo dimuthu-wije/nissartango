@@ -60,15 +60,33 @@
   --weight:        500;
   --weight-strong: 600;
 
-  --text-label:   0.6875rem;  /* 11px -- uppercase eyebrow                   */
-  --text-body:    1rem;       /* 16px -- body, dates, times, all row meta    */
-  --text-row:     1.1875rem;  /* 19px -- event title in a listing row        */
-  --text-sub:     1.375rem;   /* 22px -- subheadings, prose h2               */
-  --text-head:    2.125rem;   /* 34px -- page titles                         */
-  --text-display: 3.9375rem;  /* 63px -- reserved; the agenda does not use it */
+  /* THE REFERENCE'S SCALE, step for step, with its own line heights. The
+     first version of this file took its STEPS but assigned them to smaller
+     roles -- a 19px row title where the reference sets 22, an 11px tag where
+     it sets 16, 16px prose where it sets 22-27. The sizes were its; the
+     typography was not. */
+  --text-caption:  0.625rem;   /* 10px */
+  --text-body:     1rem;       /* 16px */
+  --text-row:      1.1875rem;  /* 19px -- not in its named scale, but its own
+                                  list row sets the gallery name at 19       */
+  --text-sub:      1.375rem;   /* 22px */
+  --text-head-sm:  1.6875rem;  /* 27px */
+  --text-head:     2.125rem;   /* 34px */
+  --text-head-lg:  2.75rem;    /* 44px */
+  --text-display:  3.9375rem;  /* 63px */
 
-  --leading-body:  1.5;
-  --leading-tight: 1.15;
+  /* Line height is part of a step, not a global. The reference tightens as it
+     grows -- 1.4 at caption down to 1.05 at display -- and collapsing that to
+     two values, as this file did, flattens the thing that makes a large size
+     read as display type rather than as big body text. */
+  --leading-caption:  1.4;
+  --leading-body:     1.5;
+  --leading-sub:      1.27;
+  --leading-head-sm:  1.2;
+  --leading-head:     1.15;
+  --leading-head-lg:  1.1;
+  --leading-display:  1.05;
+  --leading-tight:    1.15;   /* alias kept for base.css's heading default */
   --track-label:   0.08em;
   --track-head:    -0.01em;
 
@@ -87,7 +105,12 @@
 
   /* ---- Layout ----------------------------------------------------------- */
   --width-shell: 64rem;
-  --width-prose: 34rem;
+  /* 45rem, not 34. A measure is a count of CHARACTERS, not a width: 34rem
+     held ~65 characters at 16px and holds ~40 at the reference's 22px, which
+     is a column, not a paragraph. The reference itself caps prose at nothing
+     at all and runs it nearly full bleed; 45rem keeps roughly the 65 this
+     had, which is the part of the old value that was actually the decision. */
+  --width-prose: 45rem;
   --gutter:      24px;
 }
 

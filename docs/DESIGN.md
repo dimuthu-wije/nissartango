@@ -166,16 +166,41 @@ Ten ad-hoc sizes currently exist between 0.7 and 1.9rem, four of which are
 visually indistinguishable. This replaces them. Every size below is drawn from
 the reference's own measured ramp.
 
-| Token | px | rem | For |
-|---|---|---|---|
-| `--text-label` | 11 | 0.6875 | uppercase format eyebrow |
-| `--text-body` | 16 | 1 | body, row meta, dates, times |
-| `--text-row` | 19 | 1.1875 | event title in a listing row |
-| `--text-sub` | 22 | 1.375 | subheadings, prose h2 |
-| `--text-head` | 34 | 2.125 | page titles |
-| `--text-display` | 63 | 3.9375 | reserved; not used by the agenda |
+**The reference's scale, step for step, with its own line heights.**
 
-Line height: 1.5 at body sizes, 1.15 at `--text-head` and above.
+| Token | px | Line height | Reference's name |
+|---|---|---|---|
+| `--text-caption` | 10 | 1.4 | caption |
+| `--text-body` | 16 | 1.5 | body |
+| `--text-row` | 19 | — | not in its named scale; its list row uses 19 |
+| `--text-sub` | 22 | 1.27 | subheading |
+| `--text-head-sm` | 27 | 1.2 | heading-sm |
+| `--text-head` | 34 | 1.15 | heading |
+| `--text-head-lg` | 44 | 1.1 | heading-lg |
+| `--text-display` | 63 | 1.05 | display |
+
+**The first version of this spec took the reference's STEPS and then assigned
+them to smaller roles than the reference does** — a 19px row title where it
+sets 22, an 11px eyebrow where it sets its inline tags at 16, 16px prose where
+it sets body paragraphs at 22–27, and two line heights where it has seven. The
+sizes were its; the typography was not. Corrected 2026-10-11.
+
+**Line height belongs to the step, not to the page.** The reference tightens
+as it grows, 1.4 at caption down to 1.05 at display, and flattening that to
+two values is what makes a large size read as big body text rather than as
+display type.
+
+Where each one goes, following the reference's own components:
+
+| element | token | why |
+|---|---|---|
+| section label (`À VENIR`) | caption 10 | its caption role |
+| date, time, row meta | body 16 | its list row sets the date at 16 |
+| format eyebrow, `ANNULÉ` | body 16 | its inline tags are 16, not caption |
+| event title in a row | sub 22 | its list row title is 22 |
+| organizer prose | sub 22 | its body paragraph is 22–27 |
+| prose `h2` | head-sm 27 | |
+| page title | head 34 | |
 
 **One documented responsive step.** Under 40rem, `--text-head` drops from 34px
 to 28px. 34px is a desktop measurement, and at 375px a long event title — tango
@@ -183,8 +208,12 @@ titles are long — took three lines of it. 28px is also on the reference's own
 ramp, so this steps down the scale rather than inventing a size off it. It is
 the only size that changes with the viewport; everything else holds.
 
-**Measure.** Prose caps at `34rem` (~65 characters). Listing rows do not — they
-are a table, not prose.
+**Measure.** Prose caps at `45rem`, not 34. A measure is a count of
+characters, not a width: 34rem held ~65 characters at 16px and holds ~40 at
+22px, which is a column rather than a paragraph. The reference caps prose at
+nothing and runs it nearly full bleed; 45rem keeps roughly the 65 that was the
+actual decision behind the old number. Listing rows are not capped — they are
+a table, not prose.
 
 ---
 
@@ -221,7 +250,7 @@ honest translation of "structure comes from rules, not shadows."
 | | Value | Note |
 |---|---|---|
 | shell max-width | `64rem` (1024px) | reference says 1200px; see below |
-| prose max-width | `34rem` | reading measure |
+| prose max-width | `45rem` | ~65 characters at the prose size of 22px |
 | gutter | `24px`, `16px` under 40rem | |
 
 The reference's 1200px suits four columns of meta plus an 80px thumbnail. Ours
@@ -246,11 +275,12 @@ turning each row into a card. Concretely:
 - **Two type sizes per row**, per the reference's own rule: `--text-row` for the
   title, `--text-body` for everything else. The agenda row currently stacks
   five.
-  **Documented exception:** the format eyebrow stays at `--text-label` (11px),
-  making three. It is a tag, not prose — a different register — and at 16px
-  uppercase it competes with the title it sits above. The reference's own
-  example row also uses three sizes, so the rule is a guideline it does not
-  itself keep.
+  **That exception is gone as of 2026-10-11.** It existed only because the
+  eyebrow was 11px, which was never the reference's size for a tag. At 16 the
+  row holds exactly two sizes — 16 and 22 — so the reference's own rule is
+  kept rather than apologised for. The worry that 16px uppercase would compete
+  with the title was wrong: at 22px the title is clearly dominant, which is
+  what the extra 3px of title was for.
 - **The page title and section openers take the full scale.** That is where a
   style announces itself and it costs no density.
 - **The format eyebrow is where the accent earns its keep.** It is the only
