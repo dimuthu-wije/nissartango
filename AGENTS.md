@@ -919,11 +919,27 @@ leave it out of git: nothing in one should need a secret to be useful.
      A @font-face naming a missing file falls back silently with nothing
      logged anywhere; that test is the only thing that would notice.
 
-   STILL OPEN, and it is the only one: **prose styling is defined but barely
-   exercised.** `.prose` carries headings, lists, blockquotes and rules, and
-   both event bodies in production are plain paragraphs — so `p` is all that
-   real content has ever put through it. Check it against a real article
-   before trusting it, which will be the first thing the blog does.
+   ~~STILL OPEN: prose styling is defined but barely exercised.~~ **CLOSED
+   2026-10-11.** A preview event was given headings, a list, a blockquote and
+   bold, and every one of them rendered correctly at the new prose size. The
+   risk the note actually named — that everything below `p` was derived from
+   the scale and had never been seen against anything — is retired.
+
+   What remains is not a risk, just a fact: no organizer has yet written rich
+   prose, so both production bodies are still plain paragraphs. The styling
+   works; nothing is using it.
+
+   **The type scale was corrected on 2026-10-11** after the reference was
+   re-read. The first pass had taken Art In DUMBO's step SIZES and assigned
+   them to smaller roles than the reference does — 19px row titles where its
+   list row sets 22, an 11px eyebrow where its inline tags are 16, 16px prose
+   where its body paragraphs are 22-27, and two line heights where it has
+   seven. The sizes were its; the typography was not. See docs/DESIGN.md §2,
+   which now also records the one deliberate divergence: section labels are 16
+   and not its caption 10, because the reference's exhibitions page is a single
+   undivided table and its caption size was never asked to carry a section
+   boundary. Taking a number without its role is the mistake being corrected;
+   copying caption there would have repeated it one step lower.
 
 
 ## How I'd like to work
