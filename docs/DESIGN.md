@@ -194,13 +194,26 @@ Where each one goes, following the reference's own components:
 
 | element | token | why |
 |---|---|---|
-| section label (`À VENIR`) | caption 10 | its caption role |
+| section label (`À VENIR`) | body 16 | **diverges** — see below |
 | date, time, row meta | body 16 | its list row sets the date at 16 |
 | format eyebrow, `ANNULÉ` | body 16 | its inline tags are 16, not caption |
 | event title in a row | sub 22 | its list row title is 22 |
 | organizer prose | sub 22 | its body paragraph is 22–27 |
 | prose `h2` | head-sm 27 | |
 | page title | head 34 | |
+
+**One deliberate divergence: the section labels are 16, not the reference's
+caption 10.** Tried at 10 and rejected on sight — `À VENIR` and
+`RENDEZ-VOUS RÉGULIERS` were so quiet they stopped doing the one job they
+have, which is telling a reader that the rows below changed meaning. The
+reference has no equivalent element: its exhibitions page is a single
+undivided table, so its caption size was never asked to carry a section
+boundary. Taking the number without the role was the mistake this whole
+section corrects, and copying it here would have repeated it one step lower.
+
+`--text-caption` stays in the scale and is currently used by nothing, like
+`--text-head-lg` and `--text-display`. The scale is the reference's; which
+steps this site has a use for is a different question.
 
 **One documented responsive step.** Under 40rem, `--text-head` drops from 34px
 to 28px. 34px is a desktop measurement, and at 375px a long event title — tango
