@@ -112,16 +112,21 @@ const title = 'Archives — événements passés et annulés | Nissartango';
 <style>
   /* No top margin: main's own padding already opens the page, and the two
      together left 84px of dead space above the title on a phone. */
-  h1 { font-size: var(--t-h1); margin: 0 0 var(--space-4); }
-  .intro { color: var(--muted); margin: 0 0 var(--space-32); }
-  .empty { color: var(--muted); }
-  .year { margin: 0 0 var(--space-48); }
+  h1 {
+    font-size: var(--t-masthead); line-height: var(--lh-masthead);
+    letter-spacing: var(--tr-masthead); font-weight: var(--weight-heavy);
+    text-transform: uppercase;
+    margin: 0 0 var(--space-8);
+  }
+  .intro { color: var(--ink); margin: 0 0 var(--space-32); }
+  .empty { color: var(--ink); }
+  .year { margin: var(--space-96) 0; }
   /* Same treatment as the agenda's section labels, deliberately. */
   .year h2 {
-    font-size: var(--t-body); line-height: var(--lh-body);
-    text-transform: uppercase;
-    letter-spacing: var(--tr-kicker); color: var(--muted);
-    margin: 0 0 var(--space-4);
+    font-size: var(--t-section); line-height: var(--lh-section);
+    letter-spacing: var(--tr-section);
+    font-weight: var(--weight-heavy); color: var(--ink);
+    margin: 0 0 var(--space-32);
   }
   .events { list-style: none; padding: 0; margin: 0; }
   /* 14rem because the longest date French can produce -- "dimanche 28
@@ -134,11 +139,14 @@ const title = 'Archives — événements passés et annulés | Nissartango';
      this column to about 11rem and buy back 48px on every row. */
   .events li {
     display: grid; grid-template-columns: 14rem 1fr; gap: var(--space-16);
-    padding: var(--space-16) 0; border-top: 1px solid var(--rule);
+    padding: var(--space-16) 0; border-top: var(--rule-weight) solid var(--rule);
   }
+  /* No rule directly under a section heading: the first row's top border was
+     reading as an underline on the title above it. */
+  .events li:first-child { border-top: none; padding-top: 0; }
   .when { display: flex; flex-direction: column; }
   .date { font-size: var(--t-body); }
-  .since { font-size: var(--t-body); color: var(--muted); }
+  .since { font-size: var(--t-body); color: var(--ink); }
   .what h3 { margin: var(--space-4) 0 var(--space-4); font-size: var(--t-h2); }
   .what h3 a { color: inherit; text-decoration: none; }
   .what h3 a:hover { text-decoration: underline; }
@@ -146,12 +154,12 @@ const title = 'Archives — événements passés et annulés | Nissartango';
   .type {
     font-size: var(--t-body);
     text-transform: uppercase;
-    letter-spacing: var(--tr-kicker); color: var(--muted);
+    letter-spacing: var(--tr-kicker); color: var(--ink);
   }
-  .meta { margin: 0; color: var(--muted); font-size: var(--t-body); }
+  .meta { margin: 0; color: var(--ink); font-size: var(--t-body); }
   /* Was var(--bad), which was never defined anywhere -- so this declaration
      was invalid and the text fell back to inherited ink. */
-  .off { margin: var(--space-4) 0 0; font-size: var(--t-body); color: var(--muted); }
+  .off { margin: var(--space-4) 0 0; font-size: var(--t-body); color: var(--ink); }
   .cancelled .what h3 { text-decoration: line-through; }
 
   @media (max-width: 34rem) {

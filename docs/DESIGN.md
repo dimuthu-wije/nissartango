@@ -67,8 +67,8 @@ is 3:1, which also covers UI boundaries and graphics.
 | `--muted` | `#6B6660` | **5.45:1** | meta, labels, secondary text |
 | `--rule` | `#DED8CF` | 1.36:1 | hairline between rows |
 | `--rule-strong` | `#B8B0A4` | 2.06:1 | section and block dividers |
-| `--accent` | `#D85A30` | 3.71:1 | the logo orange — fills and graphics only |
-| `--accent-text` | `#BF4F2A` | **4.61:1** | the accent wherever it is TEXT |
+| `--accent` | `#E55039` | 3.64:1 | the logo orange — fills and graphics |
+| `--accent-text` | `#E55039` | 3.64:1 | the same colour — see below |
 
 ### Dark
 
@@ -83,16 +83,25 @@ for this. Values chosen to match the editor's existing dark tokens.
 | `--muted` | `#A39D94` | **6.72:1** | meta, secondary |
 | `--rule` | `#332F2A` | 1.36:1 | row hairline |
 | `--rule-strong` | `#4E4842` | 2.01:1 | section dividers |
-| `--accent` | `#D85A30` | **4.67:1** | unchanged — it already clears AA on ink |
-| `--accent-text` | `#D85A30` | **4.67:1** | same; no darkened variant needed |
+| `--accent` | `#E55039` | **4.77:1** | clears AA on ink |
+| `--accent-text` | `#E55039` | **4.77:1** | same; no darkened variant needed |
 
 ### Rules
 
-1. **`--accent` is never used for text.** At 3.71:1 on paper it fails AA. Use
-   `--accent-text` (`#BF4F2A`) for the format label, links, and any other
-   coloured lettering. It is the brand orange scaled to 88% — identical hue,
-   the lightest value that clears 4.5:1. In dark mode the two are the same
-   colour, because the orange already passes on ink.
+1. ~~`--accent` is never used for text.~~ **CHANGED 2026-10-12, knowingly.**
+   The brand colour became `#E55039` and is now used for text as well, at
+   **3.64:1** on paper where text needs 4.5:1.
+
+   This was asked for in those terms and is done as asked rather than quietly
+   substituted, but it is the one place this system knowingly misses its own
+   bar, so it is written here rather than left to be discovered. The exposure
+   is bounded: the format kicker is the ONLY coloured text on the site —
+   everything else went to ink on 2026-10-12 — and it is a repeated label
+   beside a title that says the same thing in black.
+
+   `#C74632` is the same hue at 87% and reaches 4.63:1 if it is ever wanted;
+   that is a one-line change to `--accent-text`. On ink the colour is 4.77:1
+   and passes, so dark mode is unaffected.
 
 2. **The CTA is an orange fill with an INK label, not a cream one.** Measured:
    cream `#FBFAF8` on `#D85A30` is **3.71:1 — fails**; ink `#171614` on the same

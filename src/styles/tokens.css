@@ -27,8 +27,14 @@
    * hue, the lightest value that clears 4.5:1 (it lands at 4.61:1). Use it for
    * the format eyebrow, links, and any other coloured lettering.
    */
-  --accent:       #D85A30;
-  --accent-text:  #BF4F2A;
+  --accent:       #E55039;
+  /* THE SAME COLOUR, deliberately, and it does not meet AA. #E55039 is 3.64:1
+     on paper where text needs 4.5:1 -- marginally worse than the #D85A30 it
+     replaced. It was asked for as the text colour and is used as asked rather
+     than quietly substituted; #C74632 is the same hue at 87% and reaches
+     4.63:1 if that is ever wanted. The kicker is the only coloured text left
+     on the site, so this is the whole of the exposure. */
+  --accent-text:  #E55039;
 
   /* ---- Surfaces and ink -------------------------------------------------
    * Warm, from the logo. --ink and --paper are the logo's own two colours.
@@ -37,8 +43,19 @@
   --linen:        #EFEBE4;   /* quiet bands and notices; non-text            */
   --ink:          #171614;   /* all primary text            17.34:1 on paper */
   --muted:        #6B6660;   /* meta and secondary text      5.45:1 on paper */
-  --rule:         #DED8CF;   /* hairline between rows                        */
-  --rule-strong:  #B8B0A4;   /* divider between sections                     */
+  /* The row rule went darker and thicker on 2026-10-12. #DED8CF at 1px was a
+     whisper -- 1.36:1 on paper, which is about as close to invisible as a
+     line gets while still technically being drawn. #A79F93 is 2.6:1, read as
+     structure rather than guessed at, and the reference's own instruction is
+     that structure comes from rules and nothing else. */
+  /* The row rule is INK. It was #DED8CF at 1px -- 1.36:1, about as close to
+     invisible as a drawn line gets -- then #A79F93, and it is now the same
+     colour as the text at 2px. The reference is unambiguous on this: structure
+     comes from hairline rules and from nothing else, no shadows and no
+     panels, and a rule that has to be hunted for is not structure. */
+  --rule:         #171614;   /* between rows; see --rule-weight               */
+  --rule-weight:  2px;
+  --rule-strong:  #171614;   /* between sections                              */
 
   /* ---- Type -------------------------------------------------------------
    * Two families, adopted 2026-10-12. This REPLACES the single-family,
@@ -64,21 +81,48 @@
   --font-display: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
   --font-body:    "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
 
-  --t-masthead: 40px;   --lh-masthead: 1.1;   --tr-masthead: -0.022em;
-  --t-h1:       32px;   --lh-h1:       1.14;  --tr-h1:       -0.018em;
-  --t-h2:       23px;   --lh-h2:       1.25;  --tr-h2:       -0.01em;
-  --t-card:     19px;   --lh-card:     1.3;   --tr-card:     -0.008em;
-  --t-kicker:   12px;   --lh-kicker:   1.33;  --tr-kicker:    0.14em;
-  --t-lead:     19px;   --lh-lead:     1.55;
-  --t-body:     17px;   --lh-body:     1.65;
-  --t-meta:     14px;   --lh-meta:     1.5;
-  --t-caption:  13px;   --lh-caption:  1.54;
+  /* SIZES REVERTED 2026-10-12 to the ones this project had before the two
+     families arrived; the line heights and the tracking are the new system's
+     and were kept. The supplied sizes were a step smaller at almost every
+     role, which read as a reversal of a direction chosen deliberately two
+     changes earlier -- the families provide the contrast now, and the size
+     still provides the hierarchy. */
+  /* TIGHTER, 2026-10-12. Every tracking value moved in by roughly a third,
+     and a small negative word-space went on the body: the supplied system was
+     set for a page with more air than this one has, and at these sizes the
+     words were drifting apart. The kicker keeps most of its tracking -- an
+     uppercase label with no tracking at all sets as a block.
+
+     EVERY STEP WENT UP one notch later the same day, except the two at the
+     top: the masthead and the section heading hold their sizes, because they
+     were the rank the rest had to fit under. Body 16 -> 18, row title 22 -> 25,
+     card title 27 -> 31, kicker 16 -> 18, meta 14 -> 15, caption 10 -> 12. The
+     card title also tightened again, to -0.032em, since a 31px line of French
+     needs less air between letters than a 27px one, not more. Line height on
+     the card came down with it, 1.3 -> 1.22. */
+  --t-masthead: 63px;   --lh-masthead: 1.02; --tr-masthead: -0.034em;
+  --t-h1:       34px;   --lh-h1:       1.14; --tr-h1:       -0.028em;
+  --t-h2:       25px;   --lh-h2:       1.25; --tr-h2:       -0.018em;
+  --t-card:     31px;   --lh-card:     1.22; --tr-card:     -0.032em;
+  --t-kicker:   18px;   --lh-kicker:   1.33; --tr-kicker:    0.09em;
+  --word-space: -0.02em;
+  --t-lead:     18px;   --lh-lead:     1.55;
+  --t-body:     18px;   --lh-body:     1.6;
+  --t-meta:     15px;   --lh-meta:     1.5;
+  --t-caption:  12px;   --lh-caption:  1.54;
 
   /* Weights. The display face carries 400 and 500; the body face adds 600 for
      emphasis inside an organizer's own prose and an italic for the same. */
   --weight:        400;
   --weight-medium: 500;
   --weight-strong: 600;
+  /* Section headings only. The display face carries a real 700, so "thicker"
+     is a face rather than a browser's synthetic smear of the 500. */
+  --weight-heavy:  700;
+
+  /* A section name is a MASTHEAD, not a label. It was a 16px tracked kicker in
+     muted grey until 2026-10-12 and read as filing rather than as a heading. */
+  --t-section:  44px;   --lh-section: 1.03;  --tr-section: -0.03em;
 
   /* ---- Space ------------------------------------------------------------ */
   --space-4:  4px;   --space-8:  8px;   --space-12: 12px;
@@ -133,6 +177,6 @@
 
     /* The orange already clears AA on ink at 4.67:1, so the darkened variant
      * is not needed here and would in fact be worse. */
-    --accent-text: #D85A30;
+    --accent-text: #E55039;
   }
 }

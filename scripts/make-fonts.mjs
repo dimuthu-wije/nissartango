@@ -64,7 +64,7 @@ const FAMILIES = [
   { pkg: 'ibm-plex-sans',  name: 'IBM Plex Sans',
     faces: [[400, 'normal'], [500, 'normal'], [600, 'normal'], [400, 'italic']] },
   { pkg: 'space-grotesk',  name: 'Space Grotesk',
-    faces: [[400, 'normal'], [500, 'normal']] },
+    faces: [[400, 'normal'], [500, 'normal'], [700, 'normal']] },
 ];
 const faces = [];
 

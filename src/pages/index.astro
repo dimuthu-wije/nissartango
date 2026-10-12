@@ -149,7 +149,7 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
                   ? dateRangeLabel(occurrences[0].start,
                                    occurrences[occurrences.length - 1].start, e.timezone)
                   : fmtFull(shown.start, e.timezone)}
-                {' '}{fmtTime(shown.start, e.timezone)}
+                {', '}{fmtTime(shown.start, e.timezone)}
                 {rhythm && <> · {rhythm}</>}
               </p>
               </div>
@@ -198,9 +198,16 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
 <style>
   /* No top margin: main's own padding already opens the page, and the two
      together left 84px of dead space above the title on a phone. */
-  h1 { font-size: var(--t-h1); margin: 0 0 var(--space-4); }
-  .intro { color: var(--muted); margin: 0 0 var(--space-32); }
-  .empty { color: var(--muted); }
+  /* The page title outranks its sections again. They went to 44/700 and the
+     h1 was still 34/500, so a section was louder than the page it sat in. */
+  h1 {
+    font-size: var(--t-masthead); line-height: var(--lh-masthead);
+    letter-spacing: var(--tr-masthead); font-weight: var(--weight-heavy);
+    text-transform: uppercase;
+    margin: 0 0 var(--space-8);
+  }
+  .intro { color: var(--ink); margin: 0 0 var(--space-32); }
+  .empty { color: var(--ink); }
   .more {
     margin: var(--space-32) 0 0; padding-top: var(--space-16);
     border-top: 1px solid var(--rule-strong);
@@ -212,12 +219,12 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      They now genuinely do -- before 2026-10-09 this was 0.85rem and the
      archive's was 1.1rem, so the family was asserted in a comment and nowhere
      else. */
-  .block { margin: 0 0 var(--space-48); }
+  .block { margin: var(--space-96) 0; }
   .block h2 {
-    font-size: var(--t-body); line-height: var(--lh-body);
-    text-transform: uppercase;
-    letter-spacing: var(--tr-kicker); color: var(--muted);
-    margin: 0 0 var(--space-4);
+    font-size: var(--t-section); line-height: var(--lh-section);
+    letter-spacing: var(--tr-section);
+    font-weight: var(--weight-heavy); color: var(--ink);
+    margin: 0 0 var(--space-32);
   }
 
   .events { list-style: none; padding: 0; margin: 0; }
@@ -231,13 +238,16 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      this column to about 11rem and buy back 48px on every row. */
   .events li {
     display: grid; grid-template-columns: 14rem 1fr; gap: var(--space-16);
-    padding: var(--space-16) 0; border-top: 1px solid var(--rule);
+    padding: var(--space-16) 0; border-top: var(--rule-weight) solid var(--rule);
   }
+  /* No rule directly under a section heading: the first row's top border was
+     reading as an underline on the title above it. */
+  .events li:first-child { border-top: none; padding-top: 0; }
   .when { display: flex; flex-direction: column; }
   /* No text-transform. `capitalize` title-cases every word, which gave
      "Jeudi 1 Octobre" -- French writes days and months in lower case. */
   .date { font-size: var(--t-body); }
-  .time { color: var(--muted); font-size: var(--t-body); }
+  .time { color: var(--ink); font-size: var(--t-body); }
   /* The eyebrow is the only repeated colour on the page, and --accent-text
      rather than --accent because it is TEXT: the raw brand orange is 3.71:1
      on paper and fails AA. */
@@ -246,10 +256,10 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
     text-transform: uppercase;
     letter-spacing: var(--tr-kicker); color: var(--accent-text);
   }
-  h3 { font-size: var(--t-card); line-height: var(--lh-card); margin: var(--space-4) 0 var(--space-4); }
+  h3 { font-size: var(--t-h2); line-height: var(--lh-h2); margin: var(--space-4) 0 var(--space-4); }
   h3 a { color: inherit; text-decoration: none; }
   h3 a:hover { text-decoration: underline; }
-  .meta { margin: 0; color: var(--muted); font-size: var(--t-body); }
+  .meta { margin: 0; color: var(--ink); font-size: var(--t-body); }
   /* Cancellation is structural, not chromatic: the strikethrough, the dimming
      and the stamp carry it. The red this used to be sits one hue from the
      brand orange and the two muddied each other, and the accent is already
@@ -258,7 +268,7 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      So the status is marked by CASE AND TRACKING, in ink, which is the same
      typographic register as the eyebrow without taking a second colour. The
      note after it stays muted: the stamp is the message, the note is detail. */
-  .status { margin: var(--space-4) 0 0; font-size: var(--t-body); color: var(--muted); }
+  .status { margin: var(--space-4) 0 0; font-size: var(--t-body); color: var(--ink); }
   .tag {
     text-transform: uppercase;
     letter-spacing: var(--tr-kicker);
@@ -280,8 +290,11 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      The media column only exists when there is a flyer: an empty box beside
      every text-only card would be a layout pretending to content it has not
      got, and most events here will never have one. */
+  /* No rules in this grid. A hairline separates rows in a LIST, where one
+     thing ends and the next begins on the line below it. A card is already
+     bounded by the space around it, and a border on every cell draws a table
+     nobody asked for. */
   .card {
-    border-top: 1px solid var(--rule); padding-top: var(--space-16);
     display: grid; grid-template-columns: 1fr; gap: var(--space-16);
   }
   .card.has-flyer { grid-template-columns: 1fr minmax(0, 8.5rem); }
@@ -298,15 +311,15 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
   .card h3 a:hover { text-decoration: underline; }
   .card-where { margin: 0; font-size: var(--t-body); }
   .card-when, .card-who {
-    margin: var(--space-4) 0 0; font-size: var(--t-body); color: var(--muted);
+    margin: var(--space-4) 0 0; font-size: var(--t-body); color: var(--ink);
   }
 
   /* A LINE, not a section. These are established regulars with no date inside
      the window; they are here so their pages are reachable, not to be read. */
   .standing {
     margin: var(--space-32) 0 0; padding-top: var(--space-16);
-    border-top: 1px solid var(--rule);
-    font-size: var(--t-body); color: var(--muted);
+    border-top: var(--rule-weight) solid var(--rule);
+    font-size: var(--t-body); color: var(--ink);
   }
   .standing-label {
     text-transform: uppercase; letter-spacing: var(--tr-kicker);
