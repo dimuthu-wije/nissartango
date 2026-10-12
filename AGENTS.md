@@ -546,6 +546,25 @@ experiments are live the moment they are pushed.
 `design` exists from 2026-10-12 for work that should not be visible until it is
 wanted. Merge it into `main` when it is.
 
+**The first such merge happened the same day**, 9 commits fast-forwarded onto
+`main` and deployed as `3601ecc`, `built_at` moving 16:38:49Z -> 21:50:42Z. It
+is worth recording how it is done, because the branch only pays for itself if
+the merge is boring:
+
+    git checkout main && git pull --ff-only
+    git merge --ff-only design && git push
+
+`--ff-only` twice is deliberate. If `main` has moved, both fail loudly instead
+of quietly producing a merge commit nobody chose — and `design` is only ever
+ahead of `main`, so a fast-forward is the honest shape of this history.
+
+**`origin/main` and the deployed commit are not the same thing**, and this merge
+showed it: the push read `974b441..3601ecc` while the live site was still
+serving `7b7dbad`. Nothing was wrong. `974b441` was a docs-only commit that the
+build watch paths of gotcha 11 correctly skipped, so git had moved two commits
+further than Cloudflare. **Compare a deploy against `build-info.json`, never
+against `git log`.**
+
 **Only the production branch builds.** Cloudflare's own words: "commits made on
 the production branch produce a production build", and the branch is set at
 Settings → Build → **Branch control**, defaulting to the repository's default
@@ -874,16 +893,26 @@ fake events had never left the laptop.
      and one verbatim copy beats two that drift. Measured — the public site
      fetches only the 500; 400 and 600 stay `unloaded` there. 24KB of storage,
      zero bytes of transfer.
+
+     **INTER NO LONGER SHIPS ANYWHERE** — two families replaced it on
+     2026-10-12, see the stage 5 entry below. The reasoning in this item did
+     not age: one generated `fonts.css` copied verbatim to both deployments is
+     still how it works, the editor still sets its body in 400 through
+     `--weight-ui`, and the per-face `@font-face` is still why an unused weight
+     costs nothing. Only the family name is dead.
    - ~~The shell is 64rem and that is not a measured result.~~ **SETTLED in
-     stage 4 below**, by rendering a synthetic sixteen-event agenda. At two
-     rows it looked sparse; at sixteen it reads correctly. The sparseness was
-     an artifact of the sample, not of the measure.
+     stage 4 below at 64rem, then RE-SETTLED at 75rem on 2026-10-12** when the
+     row grew a third column and every size went up a notch. The original
+     measurement was honest and its conclusion still expired: it was taken on
+     a two-column row at the old sizes. Re-render the fixture after a change
+     of that kind instead of carrying the old answer across it.
    - ~~A cancellation has no tag element.~~ **DONE in stage 4 below.**
      **ANNULÉ** is a tracked uppercase stamp in ink with the note muted beside
      it — marked by case rather than by colour, because the accent is already
      spent on the eyebrow two lines above.
-   - ~~Inter is not self-hosted.~~ **DONE in stage 5 below**, three subsets
-     served by both deployments from `/fonts/`.
+   - ~~Inter is not self-hosted.~~ **DONE in stage 5 below** — though what is
+     self-hosted is no longer Inter. Two families, seven faces, one latin
+     subset each, served by both deployments from `/fonts/`.
    - ~~Stage 3, the shell.~~ **DONE.** The wordmark is INLINED SVG, not an
      `<img>`, because its two ink paths are `currentColor` while the ART keeps
      its literal orange — one file that follows light and dark with no second
@@ -961,26 +990,49 @@ fake events had never left the laptop.
      by colour, because the accent is already spent on the eyebrow two lines
      above and a second warm colour muddied against it.
 
-     And the shell width is SETTLED at 64rem. At two rows the hairlines ran
-     ~150px past the longest title and it looked sparse; at sixteen it reads
-     correctly. The sparseness was an artifact of the sample, not the measure.
+     And the shell width was SETTLED at 64rem here — at two rows the hairlines
+     ran ~150px past the longest title and it looked sparse; at sixteen it read
+     correctly, so the sparseness was an artifact of the sample. **It is 75rem
+     since 2026-10-12**, because that answer described a two-column row at the
+     old type sizes and the row now has three columns. Kept rather than
+     overwritten: the method was right and only the number aged.
 
-   - ~~Stage 5, the font.~~ **DONE.** Inter is self-hosted:
-     `scripts/make-fonts.mjs` copies two 24KB woff2 files out of
-     `@fontsource/inter` (a devDependency, SIL OFL, there only to refresh
-     them) into `public/fonts/` AND `editor/public/fonts/`, and generates
-     `fonts.css` for both. The editor needs its own copy because it sends
-     `default-src 'self'` with no font-src, so a font from nissartango.fr
-     would be blocked there — and the fix for that is a copy, not a widened
-     policy.
+   - ~~Stage 5, the font.~~ **DONE, and then SUPERSEDED on 2026-10-12.**
+     Stage 5 self-hosted **Inter** as the single family. There are now **two**,
+     and Inter is gone from both deployments:
 
-     Only the 500 is preloaded. The 600 exists for `<strong>` in an
-     organizer's prose and, having its own `@font-face`, is not fetched at all
-     on a page without bold — verified in the browser rather than assumed
-     (`Inter 500 loaded, Inter 600 unloaded`). That Inter is genuinely in use
-     and not silently falling back was checked the same way: the same string
-     measures 355px in Inter, 346px in the fallback stack and 311px in a
-     family that does not exist.
+         --font-display   Space Grotesk    masthead, section headings, row
+                                           dates, venues, titles, card titles
+         --font-body      IBM Plex Sans    prose, meta, everything else
+
+     `scripts/make-fonts.mjs` takes a FAMILIES list and copies 7 woff2 files
+     out of `@fontsource/ibm-plex-sans` and `@fontsource/space-grotesk` (both
+     devDependencies, SIL OFL, there only to refresh them) into
+     `public/fonts/` AND `editor/public/fonts/`, generating one `fonts.css`
+     copied verbatim to both. 144KB on disk; a page fetches three faces.
+
+     The editor still needs its own copy because it sends `default-src 'self'`
+     with no font-src, so a font from nissartango.fr would be blocked there —
+     the fix for that is a copy, not a widened policy. That half of stage 5
+     has not aged.
+
+     **`@fontsource/inter` is STILL in devDependencies and nothing reads it.**
+     `make-fonts.mjs` no longer names it and no `@font-face` mentions Inter.
+     It is 0 bytes of transfer and a trap for the next reader, who will see
+     the dependency and believe the paragraph above it used to say.
+
+     **TWO faces are preloaded, not one** — `ibm-plex-sans-400` and
+     `space-grotesk-500`, because the first paint needs both the body and the
+     masthead. The other five have their own `@font-face` and are not fetched
+     on a page that does not use them.
+
+     One asymmetry worth knowing: **IBM Plex Sans ships 400/500/600 and has no
+     700; Space Grotesk ships 400/500/700 and has no 600.** The masthead asks
+     for `--weight-heavy` (700) and gets a real face because it is in the
+     display family. The editor sets its headings in 600 and gets a real face
+     because it is in the body family. Swap a family on either and the browser
+     silently matches to a weight that exists, which is exactly the failure
+     stage 5 recorded for Inter at 700.
 
      **The latin subset does not carry Ÿ (U+0178)**, which is in latin-ext.
      Accepted — it occurs in French essentially only in all-caps proper nouns

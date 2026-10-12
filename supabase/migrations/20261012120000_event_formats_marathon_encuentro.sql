@@ -13,12 +13,25 @@
 -- did have it, this fails loudly instead of leaving a table whose contents its
 -- own CHECK forbids.
 --
--- THE ORDER OF DEPLOYMENT IS THE REVERSE OF THE USUAL ONE, and AGENTS.md's rule
--- does not cover this case. Adding a column means migrate first, deploy second,
--- because the old code simply ignores the new column. REMOVING an allowed VALUE
--- is the other way round: the moment this lands, an editor still offering a
--- "Démonstration" checkbox produces a save the database refuses, and the person
--- sees a 400. So deploy the editor FIRST, then apply this.
+-- THERE IS NO CLEAN DEPLOYMENT ORDER, and an earlier version of this comment
+-- claimed there was. AGENTS.md's rule -- migrate first, deploy second -- covers
+-- ADDING a column, where the old code simply ignores it. This statement does two
+-- things at once, and they want opposite orders:
+--
+--     migration first   an editor still offering "Démonstration" writes `demo`,
+--                       the new CHECK refuses it, the person sees a 400
+--     editor first      the new editor offers Marathon and Encuentro, the OLD
+--                       CHECK refuses them, the person sees a 400
+--
+-- So pick either and run the two back to back; the window is seconds and the
+-- maintainer is the only account that has ever signed in. The split-safe version
+-- -- add the two new values, deploy, then drop `demo` in a third step -- is
+-- three deployments to protect a user who does not exist, and is the right
+-- answer only once somebody else is relying on the editor.
+--
+-- Editor first is the arbitrary choice made here, on the thin grounds that
+-- `demo` is a value nobody should be picking anyway while marathon and encuentro
+-- are the ones somebody might reach for immediately.
 --
 -- The public site is not exposed either way: formatsOf() in src/lib/format.js
 -- keeps a slug it does not recognise and renders it as itself, so an event

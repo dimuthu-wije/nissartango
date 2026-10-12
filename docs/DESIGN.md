@@ -177,9 +177,16 @@ the best idea in the system as received and nobody had asked for it.
 front of every visitor before anything is consented to, and this site carries no
 cookie banner precisely because it does nothing of the kind. Both families are
 OFL and on fontsource, so they are self-hosted by `scripts/make-fonts.mjs` like
-Inter before them. Six faces, 119KB on disk; a page fetches **two**, about 36KB,
+Inter before them. **Seven faces, 132KB on disk; the agenda fetches three, 47.6KB**,
 because every face has its own `@font-face` and is not downloaded until used.
-Verified in the browser: four report `unloaded`.
+Measured on the live site 2026-10-12, not derived: `document.fonts` reports three
+`loaded` and four `unloaded`, and the three are `ibm-plex-sans-400` (22.1KB),
+`space-grotesk-500` (13KB) and `space-grotesk-700` (12.5KB).
+
+**Only two of those three are preloaded.** `space-grotesk-700` arrives on its own
+because the masthead asks for it, which is the system working as intended rather
+than a gap in the preload list — a face is preloaded when the first paint cannot
+proceed without it, not merely because it will be used.
 
 **Its single `--terra: #D85A30`.** That colour is **3.71:1** on paper and fails
 AA for text — which is why this system has `--accent` for fills and rules and
@@ -225,14 +232,21 @@ honest translation of "structure comes from rules, not shadows."
 
 | | Value | Note |
 |---|---|---|
-| shell max-width | `64rem` (1024px) | reference says 1200px; see below |
+| shell max-width | `75rem` (1200px) | the reference's own measure; see below |
 | prose max-width | `45rem` | ~65 characters at the prose size of 22px |
 | gutter | `24px`, `16px` under 40rem | |
 
-The reference's 1200px suits four columns of meta plus an 80px thumbnail. Ours
-carries four short fields and no thumbnail, and at 1200px the row goes sparse
-and the eye has to travel. 64rem is a starting value to tune against real rows
-at implementation — not a measured result.
+**This was 64rem until 2026-10-12, on reasoning that stopped being true.** The
+argument was that the reference's 1200px suits four columns of meta plus an 80px
+thumbnail while ours carried four short fields and no thumbnail, so the row
+would go sparse. Both halves of that have since changed: the row is now three
+columns of equal weight, the cards below it carry flyers, and the type is a
+notch larger throughout. At 64rem the middle column was being squeezed before
+the breakpoint that rescues it.
+
+So the measure is now the reference's own, and that is a coincidence of two
+separate decisions rather than a late capitulation — it was derived from what
+the row needs, and landed where the reference already was.
 
 Everything is left-aligned. Nothing is centred.
 
@@ -325,11 +339,15 @@ flip, and does not need to — 3.71:1 on paper and 4.67:1 on ink, both above the
    ours does both jobs. Adding green would have meant importing a colour the
    identity does not have, to obey a rule written for a site that does. There
    is accordingly no green anywhere in `src/styles/tokens.css`.
-3. ~~Shell width.~~ **SETTLED 2026-10-09 at 64rem**, by rendering a synthetic
-   sixteen-event agenda rather than arguing about two. At two rows the
-   hairlines ran ~150px past the longest title and the measure looked too
-   wide; at sixteen, with real venue, price and organizer strings, it reads
-   correctly. The sparseness was an artifact of the sample.
+3. ~~Shell width.~~ **RE-SETTLED 2026-10-12 at 75rem.** It was settled at
+   64rem on 2026-10-09 by rendering a synthetic sixteen-event agenda rather
+   than arguing about two — at two rows the hairlines ran ~150px past the
+   longest title and the measure looked too wide; at sixteen it read
+   correctly. That measurement was sound and its conclusion still expired,
+   because what was measured was a TWO-column row at the old type sizes. The
+   row has three columns now and the type is a notch larger, so the fixture
+   has to be re-rendered after a change like that rather than trusted across
+   it. See §5.
 4. **Prose is defined but barely proven.** Both event bodies in production are
    plain paragraphs, so `p` is the only element real content exercises.
    Headings, lists, blockquotes and rules are derived from the scale and have
