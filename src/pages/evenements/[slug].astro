@@ -340,14 +340,14 @@ const jsonLd = nodes.length === 1
 </Layout>
 
 <style>
-  .back { font-size: var(--text-body); color: var(--muted); text-decoration: none; }
+  .back { font-size: var(--t-body); color: var(--muted); text-decoration: none; }
   /* --accent-text, not --accent: the raw brand orange is 3.71:1 on paper. */
   .type {
-    display: block; margin-top: var(--space-32); font-size: var(--text-body);
-    text-transform: uppercase; letter-spacing: var(--track-label);
+    display: block; margin-top: var(--space-32); font-size: var(--t-body);
+    text-transform: uppercase; letter-spacing: var(--tr-kicker);
     color: var(--accent-text);
   }
-  h1 { font-size: var(--text-head); margin: var(--space-4) 0 var(--space-20); }
+  h1 { font-size: var(--t-h1); margin: var(--space-4) 0 var(--space-20); }
 
   /* Both banners occupy the same place and only one ever shows. Neither is
      red any more: colour is rationed, and a cancellation is marked by a rule
@@ -373,24 +373,24 @@ const jsonLd = nodes.length === 1
     display: grid; grid-template-columns: 8rem 1fr; gap: var(--space-8) var(--space-16);
     margin: 0 0 var(--space-32); padding: var(--space-20) 0;
     border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
-    font-size: var(--text-body);
+    font-size: var(--t-body);
   }
   .details dt { color: var(--muted); }
   .details dd { margin: 0; }
-  .recur, .note { display: block; color: var(--muted); font-size: var(--text-body); }
-  .social { display: block; margin-top: var(--space-4); font-size: var(--text-body); }
+  .recur, .note { display: block; color: var(--muted); font-size: var(--t-body); }
+  .social { display: block; margin-top: var(--space-4); font-size: var(--t-body); }
   .social a { margin-right: var(--space-12); }
-  .contact { display: block; margin-top: var(--space-4); font-size: var(--text-body); }
+  .contact { display: block; margin-top: var(--space-4); font-size: var(--t-body); }
   .contact a { margin-right: var(--space-12); }
 
   .dates { margin-bottom: var(--space-32); }
   .dates h2 {
-    font-size: var(--text-body); line-height: var(--leading-body);
+    font-size: var(--t-body); line-height: var(--lh-body);
     text-transform: uppercase;
-    letter-spacing: var(--track-label); color: var(--muted);
+    letter-spacing: var(--tr-kicker); color: var(--muted);
     margin-bottom: var(--space-8);
   }
-  .dates ul { list-style: none; padding: 0; margin: 0; font-size: var(--text-body); }
+  .dates ul { list-style: none; padding: 0; margin: 0; font-size: var(--t-body); }
   .dates li { padding: var(--space-4) 0; }
   .dates li.off { color: var(--muted); text-decoration: line-through; }
 
@@ -414,6 +414,6 @@ const jsonLd = nodes.length === 1
   .cta {
     display: inline-block; background: var(--accent); color: var(--ink);
     padding: var(--space-12) var(--space-24); border-radius: var(--radius-pill);
-    text-decoration: none; font-size: var(--text-body);
+    text-decoration: none; font-size: var(--t-body);
   }
 </style>

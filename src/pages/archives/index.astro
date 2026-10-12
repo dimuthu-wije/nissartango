@@ -112,15 +112,15 @@ const title = 'Archives — événements passés et annulés | Nissartango';
 <style>
   /* No top margin: main's own padding already opens the page, and the two
      together left 84px of dead space above the title on a phone. */
-  h1 { font-size: var(--text-head); margin: 0 0 var(--space-4); }
+  h1 { font-size: var(--t-h1); margin: 0 0 var(--space-4); }
   .intro { color: var(--muted); margin: 0 0 var(--space-32); }
   .empty { color: var(--muted); }
   .year { margin: 0 0 var(--space-48); }
   /* Same treatment as the agenda's section labels, deliberately. */
   .year h2 {
-    font-size: var(--text-body); line-height: var(--leading-body);
+    font-size: var(--t-body); line-height: var(--lh-body);
     text-transform: uppercase;
-    letter-spacing: var(--track-label); color: var(--muted);
+    letter-spacing: var(--tr-kicker); color: var(--muted);
     margin: 0 0 var(--space-4);
   }
   .events { list-style: none; padding: 0; margin: 0; }
@@ -137,21 +137,21 @@ const title = 'Archives — événements passés et annulés | Nissartango';
     padding: var(--space-16) 0; border-top: 1px solid var(--rule);
   }
   .when { display: flex; flex-direction: column; }
-  .date { font-size: var(--text-body); }
-  .since { font-size: var(--text-body); color: var(--muted); }
-  .what h3 { margin: var(--space-4) 0 var(--space-4); font-size: var(--text-sub); }
+  .date { font-size: var(--t-body); }
+  .since { font-size: var(--t-body); color: var(--muted); }
+  .what h3 { margin: var(--space-4) 0 var(--space-4); font-size: var(--t-h2); }
   .what h3 a { color: inherit; text-decoration: none; }
   .what h3 a:hover { text-decoration: underline; }
   /* Muted, not the accent the agenda uses: a past event should not shout. */
   .type {
-    font-size: var(--text-body);
+    font-size: var(--t-body);
     text-transform: uppercase;
-    letter-spacing: var(--track-label); color: var(--muted);
+    letter-spacing: var(--tr-kicker); color: var(--muted);
   }
-  .meta { margin: 0; color: var(--muted); font-size: var(--text-body); }
+  .meta { margin: 0; color: var(--muted); font-size: var(--t-body); }
   /* Was var(--bad), which was never defined anywhere -- so this declaration
      was invalid and the text fell back to inherited ink. */
-  .off { margin: var(--space-4) 0 0; font-size: var(--text-body); color: var(--muted); }
+  .off { margin: var(--space-4) 0 0; font-size: var(--t-body); color: var(--muted); }
   .cancelled .what h3 { text-decoration: line-through; }
 
   @media (max-width: 34rem) {

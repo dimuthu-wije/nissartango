@@ -64,12 +64,17 @@ const og = image ?? {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     {/* favicon.ico is found at the root without a tag; the other two are not.
         All three come from scripts/make-favicon.mjs. */}
-    {/* Only the 500 — it is the system's only weight and every page sets it,
-        so it is on the critical path. The 600 exists for <strong> in an
-        organizer's prose and has its own @font-face, so a page without bold
-        never fetches it. `crossorigin` is required on a font preload even
-        same-origin; without it the browser fetches the file TWICE. */}
-    <link rel="preload" href="/fonts/inter-latin-500-normal.woff2"
+    {/* TWO preloads now, because the page needs two faces before it can be
+        read: the body face every paragraph is set in, and the display face
+        every heading is set in. The other four -- medium, bold, italic and the
+        display 400 -- have their own @font-face rules and are not fetched at
+        all until something uses them.
+
+        `crossorigin` is required on a font preload even same-origin; without
+        it the browser fetches the file TWICE. */}
+    <link rel="preload" href="/fonts/ibm-plex-sans-latin-400-normal.woff2"
+          as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/space-grotesk-latin-500-normal.woff2"
           as="font" type="font/woff2" crossorigin />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

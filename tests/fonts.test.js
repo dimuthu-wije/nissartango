@@ -97,11 +97,13 @@ test('the preload names a real file and carries crossorigin', () => {
   // Without crossorigin the browser fetches the font TWICE: the preload and
   // the CSS request are treated as different, and the preload is wasted.
   const layout = read('src/layouts/Layout.astro');
-  const m = /<link rel="preload" href="([^"]+)"[\s\S]{0,200}?\/>/.exec(layout);
-  assert.ok(m, 'no font preload in Layout.astro');
-  assert.ok(existsSync(path.join(ROOT, 'public', m[1].replace(/^\//, ''))),
-    `preloaded ${m[1]} does not exist`);
-  assert.match(m[0], /crossorigin/);
-  assert.match(m[0], /as="font"/);
-  assert.ok(read(SITE_CSS).includes(m[1]), 'the preloaded file is not one of the faces');
+  const all = [...layout.matchAll(/<link rel="preload" href="([^"]+)"[\s\S]{0,200}?\/>/g)];
+  assert.ok(all.length >= 1, 'no font preload in Layout.astro');
+  for (const m of all) {
+    assert.ok(existsSync(path.join(ROOT, 'public', m[1].replace(/^\//, ''))),
+      `preloaded ${m[1]} does not exist`);
+    assert.match(m[0], /crossorigin/);
+    assert.match(m[0], /as="font"/);
+    assert.ok(read(SITE_CSS).includes(m[1]), `preloaded ${m[1]} is not one of the faces`);
+  }
 });
