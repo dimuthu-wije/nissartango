@@ -35,7 +35,7 @@
  * the seam to split on.
  */
 import Layout from '../../layouts/Layout.astro';
-import { loadAgenda, formatSummary, fmtFull } from '../../lib/content';
+import { loadAgenda, formatSummary, fmtFull, fmtDay } from '../../lib/content';
 
 const { archived, organizers } = await loadAgenda();
 
@@ -82,9 +82,9 @@ const title = 'Archives — événements passés et annulés | Nissartango';
                 {/* A completed series gets its span, because "when was that?"
                     about one is a range. A single date, and a series cancelled
                     before it finished, get the one date that means anything. */}
-                <span class="date">{fmtFull(shown, e.timezone)}</span>
+                <span class="date">{fmtDay(shown, e.timezone)}</span>
                 {series && !e.cancelled_at && started < last && (
-                  <span class="since">depuis le {fmtFull(started, e.timezone)}</span>
+                  <span class="since">depuis le {fmtDay(started, e.timezone)}</span>
                 )}
                 {series && e.cancelled_at && (
                   <span class="since">série annulée</span>

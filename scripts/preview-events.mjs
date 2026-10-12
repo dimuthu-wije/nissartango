@@ -210,6 +210,14 @@ const EVENTS = [
        cancellation_note: 'la salle a été réquisitionnée, nous cherchons un autre lieu',
        organizer_id: org[2] }),
 
+  // NO venue name, which is the case the third column falls back for. Every
+  // other row here names a place, so until this existed the fallback could not
+  // be seen -- and a fallback nobody has looked at is a guess.
+  ev({ slug: `${day(2)}-bal-sans-nom`, title: 'Bal du mardi, sous les arcades',
+       starts_at: at(2, 19), formats: ['soiree'], city: 'Nice',
+       location_name: null, location_address: '7 place Garibaldi',
+       location_postal_code: '06300', price_full: 0, organizer_id: org[1] }),
+
   // A series that has been running for MONTHS, not one starting next week.
   // Every other recurrence here begins in the future because the dates are
   // relative to today, so until this row existed the fixture could not tell a

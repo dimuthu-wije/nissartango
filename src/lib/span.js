@@ -115,14 +115,20 @@ function pieces(d, tz) {
   return { weekday: get('weekday'), day: get('day'), month: get('month'), year: get('year') };
 }
 
-export function dateRangeLabel(first, last, tz = 'Europe/Paris') {
+export function dateRangeLabel(first, last, tz = 'Europe/Paris', opts = {}) {
   const a = pieces(first, tz);
   const b = pieces(last, tz);
+  // The year is droppable because the agenda cannot be ambiguous without it:
+  // expand() runs a SIX-MONTH horizon, so a given month occurs at most once in
+  // anything the listing shows. The archive is the other case and it is safe
+  // for a different reason -- it is grouped under year headings.
+  const year = opts.year === false ? '' : ` ${b.year}`;
   if (a.year !== b.year) {
-    return `du ${a.weekday} ${a.day} ${a.month} ${a.year} au ${b.weekday} ${b.day} ${b.month} ${b.year}`;
+    const ay = opts.year === false ? '' : ` ${a.year}`;
+    return `du ${a.weekday} ${a.day} ${a.month}${ay} au ${b.weekday} ${b.day} ${b.month}${year}`;
   }
   if (a.month !== b.month) {
-    return `du ${a.weekday} ${a.day} ${a.month} au ${b.weekday} ${b.day} ${b.month} ${b.year}`;
+    return `du ${a.weekday} ${a.day} ${a.month} au ${b.weekday} ${b.day} ${b.month}${year}`;
   }
-  return `du ${a.weekday} ${a.day} au ${b.weekday} ${b.day} ${b.month} ${b.year}`;
+  return `du ${a.weekday} ${a.day} au ${b.weekday} ${b.day} ${b.month}${year}`;
 }

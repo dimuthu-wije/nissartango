@@ -73,18 +73,14 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
                   data-event={e.slug} data-date={o.dateKey}>
                 <div class="when">
                   <span class="date">{row.multi
-                    ? dateRangeLabel(row.first.start, row.last.start, e.timezone)
-                    : fmtFull(o.start, e.timezone)}</span>
+                    ? dateRangeLabel(row.first.start, row.last.start, e.timezone, { year: false })
+                    : fmtDay(o.start, e.timezone)}</span>
                   <span class="time">{fmtTime(o.start, e.timezone)}</span>
                 </div>
                 <div class="what">
                   <span class="type">{formatSummary(e)}</span>
                   <h3><a href={`/evenements/${e.slug}/`}>{e.title}</a></h3>
-                  <p class="meta">
-                    {e.location_name}{e.location_name && ', '}{e.city}
-                    {price && <> · {price}</>}
-                    {organizer && <> · {organizer.name}</>}
-                  </p>
+                  {organizer && <p class="meta">{organizer.name}</p>}
                   {/* A STAMP, not a coloured sentence. The accent is already
                       spent on the eyebrow directly above, and a second warm
                       colour here would muddy against it -- so this is marked
@@ -114,6 +110,18 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
                     </p>
                   )}
                 </div>
+                  {/* The NAME of the place when it has one, and the whole
+                      address when it does not. A venue name is what somebody
+                      recognises -- "La Casita" means more locally than the
+                      street it is on -- and the address is only worth the room
+                      when there is no name to recognise. */}
+                  <div class="where">
+                    {e.location_name
+                      ? <span class="venue">{e.location_name}</span>
+                      : [e.location_address, e.location_postal_code, e.city]
+                          .filter(Boolean)
+                          .map((part, i) => <span class="venue">{i > 0 && ' '}{part}</span>)}
+                  </div>
               </li>
             );
           })}
@@ -147,8 +155,9 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
               <p class="card-when">
                 {run
                   ? dateRangeLabel(occurrences[0].start,
-                                   occurrences[occurrences.length - 1].start, e.timezone)
-                  : fmtFull(shown.start, e.timezone)}
+                                   occurrences[occurrences.length - 1].start, e.timezone,
+                                   { year: false })
+                  : fmtDay(shown.start, e.timezone)}
                 {', '}{fmtTime(shown.start, e.timezone)}
                 {rhythm && <> · {rhythm}</>}
               </p>
@@ -237,7 +246,7 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      showing the next few weeks mostly does not, and dropping it would take
      this column to about 11rem and buy back 48px on every row. */
   .events li {
-    display: grid; grid-template-columns: 14rem 1fr; gap: var(--space-16);
+    display: grid; grid-template-columns: 17rem 1fr 15rem; gap: var(--space-24);
     padding: var(--space-16) 0; border-top: var(--rule-weight) solid var(--rule);
   }
   /* No rule directly under a section heading: the first row's top border was
@@ -246,7 +255,20 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
   .when { display: flex; flex-direction: column; }
   /* No text-transform. `capitalize` title-cases every word, which gave
      "Jeudi 1 Octobre" -- French writes days and months in lower case. */
-  .date { font-size: var(--t-body); }
+  /* The date and the place are set at the TITLE's size: a row answers three
+     questions of equal weight -- when, what, where -- and setting two of them
+     in meta type answered one loudly and two quietly. */
+  .date {
+    font-size: var(--t-h2); line-height: var(--lh-h2);
+    letter-spacing: var(--tr-h2); font-family: var(--font-display);
+    font-weight: var(--weight-medium);
+  }
+  .where {
+    display: flex; flex-direction: column;
+    font-size: var(--t-h2); line-height: var(--lh-h2);
+    letter-spacing: var(--tr-h2); font-family: var(--font-display);
+    font-weight: var(--weight-medium);
+  }
   .time { color: var(--ink); font-size: var(--t-body); }
   /* The eyebrow is the only repeated colour on the page, and --accent-text
      rather than --accent because it is TEXT: the raw brand orange is 3.71:1
@@ -337,8 +359,15 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
     .card.has-flyer { grid-template-columns: 1fr minmax(0, 6rem); gap: var(--space-12); }
   }
 
+  /* Three columns need the width. Below it the place goes under the title
+     rather than beside it. */
+  @media (max-width: 62rem) {
+    .events li { grid-template-columns: 15rem 1fr; }
+    .where { grid-column: 2; flex-direction: row; gap: var(--space-8); }
+  }
   @media (max-width: 30rem) {
     .events li { grid-template-columns: 1fr; gap: var(--space-4); }
+    .where { grid-column: auto; }
     /* Not a flex row. A date range wraps to two lines on a phone, and as a
        flex item the time was then stranded at the top right of the wrapped
        date instead of following it. As inline text it simply flows after. */

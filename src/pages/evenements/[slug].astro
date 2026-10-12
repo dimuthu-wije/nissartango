@@ -6,7 +6,7 @@ import { getImage } from 'astro:assets';
 import {
   loadAgenda, socialLinks, contactLinks, formatSummary, formatProse, priceSummary, paymentSummary,
   spanLabel, dateRangeLabel,
-  fmtFull, isoWithOffset, toRow,
+  fmtFull, fmtDay, isoWithOffset, toRow,
 } from '../../lib/content';
 import { expand, nextDate, RECURRENCE_LABELS } from '../../lib/occurrences.js';
 
@@ -263,8 +263,8 @@ const jsonLd = nodes.length === 1
           because for a multi-day workshop whose days differ in length that is
           the honest answer rather than a missing one. */}
       {isRun
-        ? dateRangeLabel(dates[0].start, dates[dates.length - 1].start, tz)
-        : fmtFull(when, tz)} {spanLabel(when, e.duration_minutes, tz)}
+        ? dateRangeLabel(dates[0].start, dates[dates.length - 1].start, tz, { year: false })
+        : fmtDay(when, tz)} {spanLabel(when, e.duration_minutes, tz)}
       {recurrenceLabel && <span class="recur">{recurrenceLabel}</span>}
     </dd>
 
@@ -323,7 +323,7 @@ const jsonLd = nodes.length === 1
             {/* o.start is the MOVED instant for a moved occurrence, so the
                 span is that date's real time without special-casing. The list
                 said "— déplacé" and never said what it was moved to. */}
-            {fmtFull(o.start, tz)} {spanLabel(o.start, e.duration_minutes, tz)}
+            {fmtDay(o.start, tz)} {spanLabel(o.start, e.duration_minutes, tz)}
             {o.cancelled && <> — annulé{o.note ? ` (${o.note})` : ''}</>}
             {o.moved && <> — déplacé{o.note ? ` (${o.note})` : ''}</>}
           </li>
