@@ -5,7 +5,7 @@ import Layout from '../../layouts/Layout.astro';
 import { getImage } from 'astro:assets';
 import {
   loadAgenda, socialLinks, contactLinks, formatSummary, formatProse, priceSummary, paymentSummary,
-  spanLabel,
+  spanLabel, dateRangeLabel,
   fmtFull, isoWithOffset, toRow,
 } from '../../lib/content';
 import { expand, nextDate, RECURRENCE_LABELS } from '../../lib/occurrences.js';
@@ -55,6 +55,24 @@ const futureOccurrences = allOccurrences.filter((o) => o.start >= now);
 // a series with one remaining date behaves exactly as it did before.
 const manyDates = Boolean(recurrenceLabel) || allOccurrences.length > 1;
 const dates = manyDates ? futureOccurrences : [];
+
+// A multi-day one-off -- a weekend workshop, a three-day festival -- is NOT a
+// series, and this page should say so the way the agenda already does.
+//
+// Until 2026-10-12 the detail row was labelled "Prochaine date" and printed
+// the first date, two lines above a "Prochaines dates" list beginning with
+// that same date. On a two-day workshop the 17th appeared twice within four
+// lines, which reads as a mistake rather than a summary. Worse, it DISAGREED
+// with the agenda, which calls the same event "du samedi 17 au dimanche 18
+// octobre 2026" -- one object described two ways by two pages of one site.
+//
+// A SERIES keeps "Prochaine date": the next one is the useful fact, and a
+// range running to the end of a weekly series would say nothing. The range is
+// taken from `dates`, the same array the list below renders, so the row and
+// the list cannot drift apart -- which is the mistake being fixed here.
+const isSeries = Boolean(recurrenceLabel);
+const isRun = !isSeries && dates.length > 1;
+const dateLabel = isSeries ? 'Prochaine date' : isRun ? 'Dates' : 'Date';
 
 // Has this already happened? Nothing still to come, which is the same test
 // loadAgenda() uses to decide the archive -- so a page that says "passé"
@@ -236,7 +254,7 @@ const jsonLd = nodes.length === 1
   )}
 
   <dl class="details">
-    <dt>{manyDates ? 'Prochaine date' : 'Date'}</dt>
+    <dt>{dateLabel}</dt>
     <dd>
       {/* The END TIME, which until 2026-10-02 appeared nowhere on this page.
           duration_minutes had one use in the whole site -- schema.org's
@@ -244,7 +262,9 @@ const jsonLd = nodes.length === 1
           the page told a reader nothing. No duration still renders "à 18:00",
           because for a multi-day workshop whose days differ in length that is
           the honest answer rather than a missing one. */}
-      {fmtFull(when, tz)} {spanLabel(when, e.duration_minutes, tz)}
+      {isRun
+        ? dateRangeLabel(dates[0].start, dates[dates.length - 1].start, tz)
+        : fmtFull(when, tz)} {spanLabel(when, e.duration_minutes, tz)}
       {recurrenceLabel && <span class="recur">{recurrenceLabel}</span>}
     </dd>
 
