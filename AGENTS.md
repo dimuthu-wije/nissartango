@@ -26,7 +26,7 @@ Consult these guides before working on related tasks:
 ## What this is
 
 A French-language agenda for social dance across Nice and the Côte d'Azur —
-classes, practicas, milongas, stages, demos, festivals. Covers both my own
+classes, practicas, milongas, stages, festivals, marathons, encuentros. Covers my own
 events and other organizers'. Roughly 200 events a year expected. I'm the sole
 maintainer.
 
@@ -77,6 +77,22 @@ dance evening was stored as a `milonga` and its page said so.
 
 The dance STYLE is deliberately not a column: it is in the title of every such
 event, and a `dance` field earns its keep only once something filters on it.
+
+**The list changed again on 2026-10-13**, applied to production as
+`20261012120000`: `demo` left it, `marathon` and `encuentro` joined. A
+demonstration is a thing that happens INSIDE an event rather than a kind of
+event somebody travels to; a marathon and an encuentro are the opposite, and on
+this coast people come from Italy for exactly those. Zero rows carried `demo`,
+measured before the push rather than assumed — and `add constraint` validates,
+so a row that did would have failed loudly instead of leaving a table its own
+CHECK forbids. The eight legal values are now:
+
+    cours  practica  milonga  stage  festival  marathon  encuentro  soiree
+
+That migration also proved there is **no clean deployment order** when one
+statement both removes and adds a value — see its header, which said there was
+until it was corrected. Editor first was chosen arbitrarily; the two were run
+back to back and the window was seconds.
 
 `formats` is `not null`, constrained by `events_formats_known` (containment, not
 an enum — see the comment in `20260930120000`) and bounded at three. The labels
