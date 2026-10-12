@@ -22,7 +22,9 @@
     "deploy:notifier": "wrangler deploy --config workers/build-notifier/wrangler.jsonc",
     "deploy:editor": "wrangler deploy --config editor/wrangler.jsonc",
     "dev:editor": "node scripts/serve-editor.mjs",
-    "seed:dev-editor": "bash scripts/seed-dev-editor.sh"
+    "seed:dev-editor": "bash scripts/seed-dev-editor.sh",
+    "preview:fake": "node scripts/preview-events.mjs",
+    "preview:real": "node scripts/preview-events.mjs --off"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.3",

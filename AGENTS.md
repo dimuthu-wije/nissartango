@@ -138,6 +138,7 @@ src/pages/archives/index.astro  past events, grouped by year
 src/pages/evenements/[slug].astro      event detail
 src/pages/build-info.json.ts  the deploy's own receipt: ref, commit, counts
 scripts/fetch-content.mjs     fetches Supabase -> snapshot
+scripts/preview-events.mjs    a fake agenda to design against; local only
 ```
 
 Every path above was confirmed to exist on 2026-09-19. The list previously named
@@ -855,12 +856,36 @@ leave it out of git: nothing in one should need a secret to be useful.
 
    - ~~Stage 4, the agenda row.~~ **DONE**, and the way it was decided matters
      more than what was decided. With two events in the database the row could
-     not be judged at all, so a synthetic sixteen-event agenda was generated
-     into `data/snapshot.preview.json`, pointed at with `data/.snapshot-current`
-     and rendered. `data/snapshot.json` was never written — proven by md5
-     before and after — and both scratch files are gitignored and were deleted.
-     Do this again rather than guess; it is the only way to see this listing
-     until there is real volume.
+     not be judged at all, so a synthetic agenda was generated into
+     `data/snapshot.preview.json`, pointed at with `data/.snapshot-current`
+     and rendered.
+
+     **That is now a committed tool rather than something to retype**, after
+     being written by hand into gitignored scratch twice:
+
+         npm run preview:fake     # a fake agenda, local only
+         npm run build:snapshot && npm run preview
+         npm run preview:real     # back to the real two events
+
+     It covers the things that each render differently — every format and two
+     combinations, all four recurrences, a multi-day event, a cancelled date
+     and a moved one, free/full/member/noted prices, a signup link, teachers,
+     an event crossing midnight, one with no duration, rich prose, and a past
+     event so `/archives/` is not empty. Dates are RELATIVE to today, because
+     the hand-written versions hard-coded October and would have quietly become
+     an archive fixture a month later.
+
+     It cannot cover flyers: `image_file` names a file fetch-content downloads
+     into `src/assets/events/`, and a row without the bytes behind it renders
+     nothing. Test images against a real upload.
+
+     **Nothing it writes can reach production**, structurally rather than
+     carefully: it writes only `snapshot.preview.json` and the pointer and
+     checks the real file's md5 afterwards (`tests/snapshot-safety.test.js`
+     asserts both); every snapshot file and the pointer are gitignored; and
+     Cloudflare's build command is `npm run build`, which fetches from Supabase
+     and REWRITES the pointer. Running `npm run build` locally resets it too,
+     so the state is self-healing rather than something to remember.
 
      It immediately showed a defect nobody had named: **a three-day festival
      filled three byte-identical rows**, and a two-day workshop two. So
