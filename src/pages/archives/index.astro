@@ -1,6 +1,17 @@
 ---
 /**
- * Événements passés.
+ * Événements passés -- ET annulés, which is not the same thing and is why
+ * the wording on this page changed on 2026-10-12.
+ *
+ * `partition()` sends an event here when it produces no listed occurrence,
+ * and an event with `cancelled_at` set produces none BY DESIGN: it keeps its
+ * page and it does not occupy a slot in the agenda. So a milonga cancelled
+ * three weeks before it was due lands on this page -- while the page said
+ * "les événements qui ont eu lieu", above a milonga dated three weeks in the
+ * FUTURE that had not happened and now never would.
+ *
+ * Invisible with real content, because nothing in production is cancelled
+ * outright; found by adding one to scripts/preview-events.mjs.
  *
  * WHY THIS PAGE EXISTS. Every approved event already had a page, and four of
  * the five on this site had nothing linking to them — the agenda shows only
@@ -42,13 +53,14 @@ for (const row of archived) {
 }
 const years = [...byYear.keys()].sort((a, b) => b - a);
 
-const title = 'Archives — événements passés | Nissartango';
+const title = 'Archives — événements passés et annulés | Nissartango';
 ---
 
-<Layout title={title} description="Les événements passés de l'agenda des danses de Nice et de la Côte d'Azur.">
+<Layout title={title} description="Les événements passés et annulés de l'agenda des danses de Nice et de la Côte d'Azur.">
   <h1>Archives</h1>
   <p class="intro">
-    Les événements qui ont eu lieu. Pour ce qui vient, voir l'<a href="/">agenda</a>.
+    Les événements qui ont eu lieu, et ceux qui ont été annulés.
+    Pour ce qui vient, voir l'<a href="/">agenda</a>.
   </p>
 
   {archived.length === 0 && (

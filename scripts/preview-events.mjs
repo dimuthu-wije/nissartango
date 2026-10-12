@@ -33,10 +33,11 @@
  *
  * WHAT IT DELIBERATELY COVERS, because each one renders differently:
  *   every format and two combinations · all four recurrences · a multi-day
- *   event (one row, a date range) · a cancelled date and a moved one · free,
- *   full-price, member-price and a price note · a signup link (the CTA) ·
- *   named teachers · an event that crosses midnight · one with no duration at
- *   all · rich prose · a past event, so /archives/ is not empty.
+ *   event (one row, a date range) · a cancelled DATE and a moved one · an
+ *   event cancelled OUTRIGHT, which is a different state and a different
+ *   banner · free, full-price, member-price and a price note · a signup link
+ *   (the CTA) · named teachers · an event that crosses midnight · one with no
+ *   duration at all · rich prose · a past event, so /archives/ is not empty.
  *
  * WHAT IT CANNOT COVER: flyers. events.image_file names a file that
  * fetch-content downloads into src/assets/events/, and inventing a row without
@@ -178,6 +179,15 @@ const EVENTS = [
        starts_at: at(11, 20, 30), formats: ['milonga'], city: 'Cannes', recurrence: 'monthly',
        recurrence_end: day(240), location_name: 'Villa Domergue', price_full: 14,
        organizer_id: org[1] }),
+
+  // An event cancelled OUTRIGHT, not one cancelled date. Different state,
+  // different banner, and it was invisible until this row existed.
+  ev({ slug: `${day(21)}-milonga-annulee`, title: 'Milonga de la Toussaint',
+       starts_at: at(21, 21), formats: ['milonga'], city: 'Nice',
+       location_name: 'La Casita del Tango', price_full: 12,
+       cancelled_at: new Date().toISOString(),
+       cancellation_note: 'la salle a été réquisitionnée, nous cherchons un autre lieu',
+       organizer_id: org[2] }),
 
   // --- the past, so /archives/ is not empty ---
   ev({ slug: `${day(-30)}-milonga-aux-amarras`, title: 'MILONGA "El Gato Tanguero" aux Amarras',
