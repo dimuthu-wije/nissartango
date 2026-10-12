@@ -138,7 +138,12 @@
   --radius-pill:  999px;
 
   /* ---- Layout ----------------------------------------------------------- */
-  --width-shell: 64rem;
+  /* 75rem, widened 2026-10-12. The reference's own spec says 1200px, and its
+     live site runs wider still -- measured at a 1440 viewport its Events grid
+     held two 698px cells, so it is nearly full bleed with small gutters. 64rem
+     was chosen when a row had two columns; it now has three, and the middle
+     one was being squeezed before the breakpoint that rescues it. */
+  --width-shell: 75rem;
   /* 45rem, not 34. A measure is a count of CHARACTERS, not a width: 34rem
      held ~65 characters at 16px and holds ~40 at the reference's 22px, which
      is a column, not a paragraph. The reference itself caps prose at nothing
