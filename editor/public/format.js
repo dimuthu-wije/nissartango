@@ -29,8 +29,9 @@ export const FORMAT_LABELS = {
   practica: 'Practica',
   milonga: 'Milonga',
   stage: 'Stage',
-  demo: 'Démonstration',
   festival: 'Festival',
+  marathon: 'Marathon',
+  encuentro: 'Encuentro',
   soiree: 'Soirée',
 };
 

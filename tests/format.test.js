@@ -19,7 +19,7 @@ const { FORMAT_LABELS, FORMATS, formatsOf, formatSummary, formatProse } = origin
 
 test('a single-format event reads as it always did', () => {
   assert.equal(formatSummary({ formats: ['milonga'] }), 'Milonga');
-  assert.equal(formatSummary({ formats: ['demo'] }), 'Démonstration');
+  assert.equal(formatSummary({ formats: ['marathon'] }), 'Marathon');
 });
 
 test('a class followed by dancing is two formats, in reading order', () => {
@@ -77,11 +77,13 @@ test('soiree exists, and every label is non-empty', () => {
 });
 
 test('FORMATS matches the database CHECK, exactly', () => {
-  // events_formats_known in 20261001120000 lists these seven. If the two ever
+  // The list 20261012120000 leaves in place: demo removed, marathon and
+  // encuentro added. If the two ever
   // disagree the editor offers a checkbox the database refuses, and the
   // refusal surfaces as a 400 with no explanation on screen.
   assert.deepEqual(FORMATS.map((f) => f.value),
-    ['cours', 'practica', 'milonga', 'stage', 'demo', 'festival', 'soiree']);
+    ['cours', 'practica', 'milonga', 'stage', 'festival', 'marathon',
+     'encuentro', 'soiree']);
 });
 
 test('the copy exports exactly what the original does', () => {
@@ -109,7 +111,7 @@ test('the prose form is a sentence fragment, not a badge', () => {
   assert.equal(formatProse({ formats: ['milonga'] }), 'Milonga');
   // Only the first word capitalised: the rest are common nouns and French does
   // not title-case them. The agenda's dates learned the same thing.
-  assert.equal(formatProse({ formats: ['cours', 'demo'] }), 'Cours et démonstration');
+  assert.equal(formatProse({ formats: ['cours', 'soiree'] }), 'Cours et soirée');
   assert.equal(formatProse({}), '');
 });
 
@@ -164,7 +166,14 @@ test('event_type is dropped, and stays dropped', () => {
 });
 
 test('events_formats_known holds exactly the same list', () => {
-  const check = migrations.match(/events_formats_known[\s\S]*?array\[([^\]]*)\]/);
+  // The LAST definition, not the first. This was `.match()` until 2026-10-12,
+  // which takes the EARLIEST occurrence in the concatenated migrations. Fine
+  // while the CHECK was written once; wrong the moment it was redefined, as
+  // the test would then compare FORMAT_LABELS against the SUPERSEDED list and
+  // fail against correct code. A migration history has one current answer and
+  // several previous ones, and this asserts about the current one.
+  const defs = [...migrations.matchAll(/events_formats_known[\s\S]*?array\[([^\]]*)\]/g)];
+  const check = defs[defs.length - 1];
   assert.ok(check, 'could not find events_formats_known in the migrations');
   assert.deepEqual(quoted(check[1]).sort(), Object.keys(FORMAT_LABELS).sort(),
     'the CHECK and FORMAT_LABELS disagree: the editor would offer a checkbox '
