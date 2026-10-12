@@ -452,6 +452,13 @@ export function horizon(occurrences = [], opts = {}) {
   const beyond = new Map();
 
   for (const o of occurrences) {
+    // A date that has already passed is not "in the next seven days". The real
+    // caller hands over partition()'s `listed`, which is future-only, so this
+    // never fired in the site -- but a past occurrence would otherwise land in
+    // the window merely for being <= edge, and would then mark its whole event
+    // as already shown, hiding it from both of the other lists. Found by a test
+    // that passed expand() straight in.
+    if (o.start < now) continue;
     if (o.start <= edge) { inWindow.push(o); continue; }
     const key = o.event.id ?? o.event.slug;
     const list = beyond.get(key) ?? [];
@@ -464,8 +471,21 @@ export function horizon(occurrences = [], opts = {}) {
   // rolling window removes.
   const shown = new Set(inWindow.map((o) => o.event.id ?? o.event.slug));
 
+  /**
+   * A recurring event earns a card only while it is NEW -- its first date has
+   * not happened yet. A series announcing itself is news; the same series in
+   * its fourth month is furniture, and a card is a loud thing to spend on
+   * furniture.
+   *
+   * `starts_at` IS the first date of the series, so no extra column is needed
+   * and no "created_at" guesswork either: a thing is new until it has happened
+   * once, which is a fact about the event rather than about the database row.
+   */
+  const isNew = (event) => new Date(event.starts_at) > now;
+
   const later = [...beyond.entries()]
     .filter(([key]) => !shown.has(key))
+    .filter(([, list]) => list[0].event.recurrence === 'none' || isNew(list[0].event))
     .map(([, list]) => ({
       event: list[0].event,
       // The next date it actually HAPPENS. Null only when every remaining date
@@ -475,7 +495,32 @@ export function horizon(occurrences = [], opts = {}) {
     }))
     .sort((a, b) => (a.next ?? a.occurrences[0]).start - (b.next ?? b.occurrences[0]).start);
 
-  return { window: inWindow, later };
+  /**
+   * ESTABLISHED regulars with no date in the window, and the reason this third
+   * list exists at all.
+   *
+   * They are not cards, by request. But `later` is what makes an event page
+   * reachable when the window does not hold it, and verify-build check 8b
+   * FAILS THE BUILD when a page is reachable from neither the agenda nor the
+   * archive. A monthly milonga in its fourth month, next falling in eleven
+   * days, is in neither -- so dropping it from the cards without putting it
+   * anywhere turns a design preference into a broken deploy.
+   *
+   * So it gets a line of links rather than a grid of cards: present, reachable,
+   * and quiet. Most of the time this is EMPTY -- a weekly series always falls
+   * inside a seven-day window -- and the page renders nothing at all.
+   */
+  const standing = [...beyond.entries()]
+    .filter(([key]) => !shown.has(key))
+    .filter(([, list]) => list[0].event.recurrence !== 'none' && !isNew(list[0].event))
+    .map(([, list]) => ({
+      event: list[0].event,
+      next: list.find((o) => !o.cancelled) ?? null,
+      occurrences: list,
+    }))
+    .sort((a, b) => (a.next ?? a.occurrences[0]).start - (b.next ?? b.occurrences[0]).start);
+
+  return { window: inWindow, later, standing };
 }
 
 export function rhythmLabel(recurrence, start, tz = 'Europe/Paris') {

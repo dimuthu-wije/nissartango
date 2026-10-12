@@ -210,6 +210,17 @@ const EVENTS = [
        cancellation_note: 'la salle a été réquisitionnée, nous cherchons un autre lieu',
        organizer_id: org[2] }),
 
+  // A series that has been running for MONTHS, not one starting next week.
+  // Every other recurrence here begins in the future because the dates are
+  // relative to today, so until this row existed the fixture could not tell a
+  // new series from an established one -- and "show a regular only when it is
+  // new" is a rule about exactly that difference.
+  ev({ slug: `${day(-79)}-milonga-de-la-vieille-ville`,
+       title: 'Milonga de la Vieille Ville', starts_at: at(-79, 21),
+       formats: ['milonga'], city: 'Nice', recurrence: 'monthly',
+       recurrence_end: day(240), location_name: 'Palais Lascaris',
+       price_full: 12, organizer_id: org[1] }),
+
   // --- the past, so /archives/ is not empty ---
   ev({ slug: `${day(-30)}-milonga-aux-amarras`, title: 'MILONGA "El Gato Tanguero" aux Amarras',
        starts_at: at(-30, 20, 30), formats: ['milonga'], city: 'Nice',

@@ -704,6 +704,76 @@ test('the window is configurable, and defaults to seven days', () => {
 });
 
 test('horizon() tolerates nothing at all', () => {
-  assert.deepEqual(horizon([], AT2), { window: [], later: [] });
-  assert.deepEqual(horizon(), { window: [], later: [] });
+  assert.deepEqual(horizon([], AT2), { window: [], later: [], standing: [] });
+  assert.deepEqual(horizon(), { window: [], later: [], standing: [] });
+});
+
+test('a NEW recurring series gets a card; an established one gets the line', () => {
+  // "New" is decided by the event's own first date, not by created_at: a thing
+  // is new until it has happened once. A series announcing itself is news; the
+  // same series in its fourth month is furniture.
+  const fresh = expand(series({
+    id: 'fresh', slug: 'fresh', starts_at: '2026-11-04T20:00:00+01:00',
+    recurrence: 'monthly', recurrence_end: '2027-06-30',
+  }), [], AT2);
+  const old = expand(series({
+    id: 'old', slug: 'old', starts_at: '2026-07-25T20:00:00+02:00',
+    recurrence: 'monthly', recurrence_end: '2027-06-30',
+  }), [], AT2);
+
+  const { later, standing } = horizon([...fresh, ...old].sort((a, b) => a.start - b.start), AT2);
+  assert.deepEqual(later.map((l) => l.event.id), ['fresh'],
+    'the series that has not started yet is a card');
+  assert.deepEqual(standing.map((l) => l.event.id), ['old'],
+    'the one running since July is a line');
+});
+
+test('a one-off is always a card, however far out', () => {
+  const rows = expand(oneOff({ starts_at: '2027-03-01T20:00:00+01:00' }), [], AT2);
+  const { later, standing } = horizon(rows, AT2);
+  assert.equal(later.length, 1);
+  assert.equal(standing.length, 0, 'standing is only ever recurring events');
+});
+
+test('every upcoming event lands in exactly one of the three', () => {
+  // The invariant verify-build check 8b depends on: an event page reachable
+  // from neither listing fails the build, and an event in two of them is the
+  // duplication the window exists to remove.
+  const made = [
+    oneOff({ id: 'a', slug: 'a', starts_at: '2026-10-14T20:00:00+02:00' }),   // window
+    oneOff({ id: 'b', slug: 'b', starts_at: '2026-12-01T20:00:00+01:00' }),   // card
+    series({ id: 'c', slug: 'c', starts_at: '2026-10-15T20:00:00+02:00' }),   // window
+    series({ id: 'd', slug: 'd', starts_at: '2026-11-04T20:00:00+01:00',
+             recurrence: 'monthly', recurrence_end: '2027-06-30' }),          // new -> card
+    series({ id: 'e', slug: 'e', starts_at: '2026-07-25T20:00:00+02:00',
+             recurrence: 'monthly', recurrence_end: '2027-06-30' }),          // old -> line
+  ];
+  const all = made.flatMap((ev) => expand(ev, [], AT2)).sort((x, y) => x.start - y.start);
+  const { window: w, later, standing } = horizon(all, AT2);
+
+  const where = (id) => [
+    w.some((o) => o.event.id === id),
+    later.some((l) => l.event.id === id),
+    standing.some((l) => l.event.id === id),
+  ].filter(Boolean).length;
+
+  for (const ev of made) {
+    assert.equal(where(ev.id), 1, `${ev.id} should appear in exactly one list`);
+  }
+});
+
+test('a date that has already passed is not "in the next seven days"', () => {
+  // The real caller hands over partition()'s `listed`, which is future-only.
+  // Given raw expand() output a past occurrence would land in the window just
+  // for being <= edge, and would then mark its event as shown -- hiding it from
+  // the cards AND from the line, which is how an event page goes missing.
+  const rows = expand(series({
+    starts_at: '2026-07-25T20:00:00+02:00', recurrence: 'monthly',
+    recurrence_end: '2027-06-30',
+  }), [], AT2);
+  assert.ok(rows.some((o) => o.start < AT2.now), 'precondition: it has past dates');
+
+  const { window: w, standing } = horizon(rows, AT2);
+  assert.equal(w.length, 0, 'none of the past dates counted as this week');
+  assert.equal(standing.length, 1, 'and the event is still accounted for');
 });

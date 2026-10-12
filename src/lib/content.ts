@@ -40,7 +40,7 @@ export async function loadAgenda(now = new Date()) {
   // disagree about which dates exist. See horizon() for why the window rolls
   // rather than following the calendar week, and why `later` carries one entry
   // per EVENT rather than per occurrence.
-  const { window: soon, later } = horizon(listed, { now });
+  const { window: soon, later, standing } = horizon(listed, { now });
 
   return {
     events,
@@ -49,6 +49,7 @@ export async function loadAgenda(now = new Date()) {
     occurrences: listed,
     soon,
     later,
+    standing,
     archived,
   };
 }

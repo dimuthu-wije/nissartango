@@ -37,8 +37,8 @@ import { dateRangeLabel } from '../lib/span.js';
 const images = import.meta.glob<{ default: ImageMetadata }>(
   '../assets/events/*.{jpeg,jpg,png,webp,avif}', { eager: true });
 
-const { soon, later, organizers, archived } = await loadAgenda();
-const nothingAtAll = soon.length === 0 && later.length === 0;
+const { soon, later, standing, organizers, archived } = await loadAgenda();
+const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length === 0;
 ---
 
 <Layout title="Nissartango — Agenda du tango et des danses à Nice">
@@ -127,8 +127,6 @@ const nothingAtAll = soon.length === 0 && later.length === 0;
       <h2>Évènements</h2>
       <ul class="cards">
         {later.map(({ event: e, next, occurrences }) => {
-          const organizer = organizers.get(e.organizer_id);
-          const price = priceSummary(e);
           // `next` is the next date it actually HAPPENS; null only when every
           // remaining date is cancelled, which must still render. The first
           // occurrence stands in then, so the card keeps a date for
@@ -154,9 +152,6 @@ const nothingAtAll = soon.length === 0 && later.length === 0;
                 {' '}{fmtTime(shown.start, e.timezone)}
                 {rhythm && <> · {rhythm}</>}
               </p>
-              {(price || organizer) && (
-                <p class="card-who">{price}{price && organizer && ' · '}{organizer && organizer.name}</p>
-              )}
               </div>
               {/* alt="" on purpose: the title sits beside it and a screen
                   reader announcing the flyer would read the event twice. */}
@@ -172,6 +167,27 @@ const nothingAtAll = soon.length === 0 && later.length === 0;
       </ul>
     </section>
   )}
+
+    {/* ESTABLISHED regulars whose next date is past the window. Not cards, by
+        choice -- a series in its fourth month is furniture and a card is a loud
+        thing to spend on furniture. But verify-build check 8b fails the build
+        when an event page is reachable from neither listing, so they get a line
+        of links: present, reachable, quiet. Usually this renders nothing at
+        all, because a weekly series always falls inside seven days. */}
+    {standing.length > 0 && (
+      <p class="standing">
+        <span class="standing-label">Aussi, régulièrement</span>
+        {standing.map(({ event: e, next, occurrences }, i) => (
+          <>
+            {i > 0 && <> · </>}
+            <a href={`/evenements/${e.slug}/`}>{e.title}</a>
+            {' '}<span class="standing-when">
+              {rhythmLabel(e.recurrence, (next ?? occurrences[0]).start, e.timezone)}
+            </span>
+          </>
+        ))}
+      </p>
+    )}
   {archived.length > 0 && (
     <p class="more">
       <a href="/archives/">Archives — {archived.length} événement{archived.length > 1 ? 's' : ''} passé{archived.length > 1 ? 's' : ''}</a>
@@ -283,6 +299,19 @@ const nothingAtAll = soon.length === 0 && later.length === 0;
   .card-when, .card-who {
     margin: var(--space-4) 0 0; font-size: var(--text-body); color: var(--muted);
   }
+
+  /* A LINE, not a section. These are established regulars with no date inside
+     the window; they are here so their pages are reachable, not to be read. */
+  .standing {
+    margin: var(--space-32) 0 0; padding-top: var(--space-16);
+    border-top: 1px solid var(--rule);
+    font-size: var(--text-body); color: var(--muted);
+  }
+  .standing-label {
+    text-transform: uppercase; letter-spacing: var(--track-label);
+    margin-right: var(--space-8);
+  }
+  .standing a { color: var(--ink); }
 
   /* One column before the cards get too narrow to hold a 27px title. */
   @media (max-width: 48rem) {
