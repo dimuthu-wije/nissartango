@@ -533,6 +533,41 @@ leave it out of git: nothing in one should need a secret to be useful.
    no CI in this repo at all. The filter does not make that worse; it does
    make it easier to forget.
 
+## Branches, and what actually deploys
+
+**`main` is the production branch, and pushing to it is a deploy.** Everything
+through 2026-10-12 was committed straight to `main`, which was fine for a
+one-maintainer site where the last good build stays up — but it means design
+experiments are live the moment they are pushed.
+
+    main      pushing deploys to nissartango.fr
+    design    pushing deploys nothing
+
+`design` exists from 2026-10-12 for work that should not be visible until it is
+wanted. Merge it into `main` when it is.
+
+**Only the production branch builds.** Cloudflare's own words: "commits made on
+the production branch produce a production build", and the branch is set at
+Settings → Build → **Branch control**, defaulting to the repository's default
+branch. Measured here the same day: pushing `design` left `built_at` and the
+deployed commit unchanged.
+
+**Do NOT enable preview builds just to get a URL.** The checkbox is on that
+same panel, but this Worker was connected to Builds before Worker Previews
+existed, so turning them on requires a one-time migration that Cloudflare's
+docs state **cannot be reversed** — previews stop using production settings and
+need their own variables, secrets and bindings configured. There is no reason
+to pay that for this project: `npm run build:snapshot && npm run preview`
+shows the real thing on localhost, and `npm run preview:fake` fills it with a
+realistic agenda first. Reach for previews only if somebody who is not at this
+laptop has to look at a branch.
+
+**The local dev server is not a staging site**, and reading it as one is the
+mistake worth naming here. It shows CODE you have not pushed and CONTENT that
+is fake; the live site shows pushed code and real content. Those are two
+different axes, and on 2026-10-12 the design had been live for days while the
+fake events had never left the laptop.
+
 ## Outstanding
 
 **Unverified from the last round:**
