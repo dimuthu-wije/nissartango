@@ -417,6 +417,67 @@ export function runs(stream = []) {
   });
 }
 
+/**
+ * The agenda as two parts: a rolling window, and everything after it.
+ *
+ * REPLACES sections(), which split news from furniture. That split existed
+ * because a weekly milonga filled one row per week -- eight identical rows at
+ * the time it was written. A rolling window solves the same problem in a way a
+ * reader recognises: a weekly event appears once or twice because that is how
+ * often it actually happens in seven days, not because it was filed under a
+ * heading about regularity.
+ *
+ * ROLLING, NOT A CALENDAR WEEK. "Cette semaine" read on a Sunday evening means
+ * today only, so the top of the agenda would collapse every seventh day,
+ * forever. Seven days from now always holds about the same amount.
+ *
+ * `later` is ONE ENTRY PER EVENT, not per occurrence, and it is the half that
+ * stops pages going missing. An event with no date inside the window still
+ * needs somewhere to be listed: a biweekly milonga and a monthly one both fall
+ * outside a seven-day window most of the time, and verify-build check 8b fails
+ * the build if an event page is reachable from neither the agenda nor the
+ * archive. So `later` carries every event the window does not, by its next
+ * date -- which also means nothing can appear in both halves.
+ *
+ * @param {Occurrence[]} occurrences  what partition() already produced
+ * @param {{now?: Date, days?: number}} [opts]
+ * @returns {{window: Occurrence[], later: {event, next, occurrences}[]}}
+ */
+export function horizon(occurrences = [], opts = {}) {
+  const now = opts.now ?? new Date();
+  const days = opts.days ?? 7;
+  const edge = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+  const inWindow = [];
+  const beyond = new Map();
+
+  for (const o of occurrences) {
+    if (o.start <= edge) { inWindow.push(o); continue; }
+    const key = o.event.id ?? o.event.slug;
+    const list = beyond.get(key) ?? [];
+    list.push(o);
+    beyond.set(key, list);
+  }
+
+  // An event with ANY date in the window is already shown there. Listing it
+  // again under "Évènements" would reintroduce exactly the duplication the
+  // rolling window removes.
+  const shown = new Set(inWindow.map((o) => o.event.id ?? o.event.slug));
+
+  const later = [...beyond.entries()]
+    .filter(([key]) => !shown.has(key))
+    .map(([, list]) => ({
+      event: list[0].event,
+      // The next date it actually HAPPENS. Null only when every remaining date
+      // is cancelled, which must still render rather than throw.
+      next: list.find((o) => !o.cancelled) ?? null,
+      occurrences: list,
+    }))
+    .sort((a, b) => (a.next ?? a.occurrences[0]).start - (b.next ?? b.occurrences[0]).start);
+
+  return { window: inWindow, later };
+}
+
 export function rhythmLabel(recurrence, start, tz = 'Europe/Paris') {
   if (recurrence === 'monthly') return 'chaque mois';
   if (recurrence !== 'weekly' && recurrence !== 'biweekly') return null;

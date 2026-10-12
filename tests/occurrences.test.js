@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { expand, upcoming, nextDate, sections, runs, rhythmLabel } from '../src/lib/occurrences.js';
+import { expand, upcoming, nextDate, sections, runs, horizon, rhythmLabel } from '../src/lib/occurrences.js';
 import { localDateKey, zonedToInstant, partsInZone } from '../src/lib/zone.js';
 
 const PARIS = 'Europe/Paris';
@@ -619,4 +619,91 @@ test('a range every date of which is cancelled reads as cancelled', () => {
 test('runs() tolerates nothing at all', () => {
   assert.deepEqual(runs([]), []);
   assert.deepEqual(runs(), []);
+});
+
+// horizon(): a rolling window, and everything after it.
+// ---------------------------------------------------------------------------
+// The half that matters is `later`. An event with no date inside the window
+// still needs somewhere to be listed, and a biweekly or monthly series falls
+// outside seven days most of the time. verify-build check 8b fails the build
+// when an event page is reachable from neither listing, so a bug here is a
+// broken deploy rather than a cosmetic slip.
+
+const AT2 = { now: new Date('2026-10-12T09:00:00Z') };
+
+test('a date inside the window is in the window, not in later', () => {
+  const rows = expand(oneOff({ starts_at: '2026-10-14T20:00:00+02:00' }), [], AT2);
+  const { window: w, later } = horizon(rows, AT2);
+  assert.equal(w.length, 1);
+  assert.equal(later.length, 0);
+});
+
+test('an event entirely beyond the window is ONE entry in later', () => {
+  const rows = expand(oneOff({
+    starts_at: '2026-11-14T20:00:00+01:00', extra_dates: ['2026-11-15'],
+  }), [], AT2);
+  assert.equal(rows.length, 2, 'precondition: two occurrences');
+  const { window: w, later } = horizon(rows, AT2);
+  assert.equal(w.length, 0);
+  assert.equal(later.length, 1, 'two dates of one event are one entry');
+  assert.equal(later[0].occurrences.length, 2);
+});
+
+test('an event with dates on BOTH sides appears only in the window', () => {
+  // A weekly series: some dates inside seven days, many beyond. Listing it
+  // again under "Évènements" would reintroduce the duplication the rolling
+  // window exists to remove.
+  const rows = expand(series({ starts_at: '2026-10-15T20:00:00+02:00' }), [], AT2);
+  const { window: w, later } = horizon(rows, AT2);
+  assert.ok(w.length > 0, 'it has a date inside the window');
+  assert.equal(later.length, 0, 'and is therefore not repeated in later');
+});
+
+test('a series whose next date is BEYOND the window is still listed', () => {
+  // The reachability case, and the reason `later` is not "one-off events".
+  // A monthly milonga is outside a seven-day window most of the time; without
+  // this its page is reachable from nowhere and the build fails.
+  const rows = expand(series({
+    starts_at: '2026-11-07T20:30:00+01:00', recurrence: 'monthly',
+    recurrence_end: '2027-06-30',
+  }), [], AT2);
+  assert.ok(rows.length > 0, 'precondition: it has dates');
+  const { window: w, later } = horizon(rows, AT2);
+  assert.equal(w.length, 0, 'none of them inside seven days');
+  assert.equal(later.length, 1, 'but the event is still listed');
+  assert.equal(later[0].next.dateKey, '2026-11-07');
+});
+
+test('later is ordered by when each event next happens', () => {
+  const a = expand(oneOff({ id: 'a', slug: 'a', starts_at: '2026-11-20T20:00:00+01:00' }), [], AT2);
+  const b = expand(oneOff({ id: 'b', slug: 'b', starts_at: '2026-10-28T20:00:00+01:00' }), [], AT2);
+  const { later } = horizon([...a, ...b].sort((x, y) => x.start - y.start), AT2);
+  assert.deepEqual(later.map((l) => l.event.id), ['b', 'a']);
+});
+
+test('a cancelled date is not a next date', () => {
+  const rows = expand(series({
+    starts_at: '2026-11-05T20:00:00+01:00', recurrence: 'weekly',
+    recurrence_end: '2026-12-31',
+  }), [
+    { event_id: 'r1', occurrence_date: '2026-11-05', kind: 'cancelled', note: null,
+      moved_starts_at: null },
+  ], AT2);
+  const { later } = horizon(rows, AT2);
+  assert.equal(later.length, 1);
+  assert.equal(later[0].next.cancelled, false);
+  assert.equal(later[0].occurrences[0].cancelled, true,
+    'the cancelled date is still an occurrence of the event');
+});
+
+test('the window is configurable, and defaults to seven days', () => {
+  const rows = expand(oneOff({ starts_at: '2026-10-18T20:00:00+02:00' }), [], AT2);
+  assert.equal(horizon(rows, AT2).window.length, 1, 'six days out is inside the default');
+  assert.equal(horizon(rows, { ...AT2, days: 3 }).window.length, 0, 'and outside a three-day one');
+  assert.equal(horizon(rows, { ...AT2, days: 3 }).later.length, 1);
+});
+
+test('horizon() tolerates nothing at all', () => {
+  assert.deepEqual(horizon([], AT2), { window: [], later: [] });
+  assert.deepEqual(horizon(), { window: [], later: [] });
 });

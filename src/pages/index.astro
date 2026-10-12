@@ -1,5 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import {
   loadAgenda, formatSummary, priceSummary, fmtFull, fmtDay, fmtTime, rhythmLabel,
 } from '../lib/content';
@@ -7,26 +9,36 @@ import { runs } from '../lib/occurrences.js';
 import { dateRangeLabel } from '../lib/span.js';
 
 /**
- * TWO SECTIONS, NOT ONE STREAM.
+ * A ROLLING WINDOW, THEN EVERYTHING ELSE.
  *
- * A recurring event used to occupy one row per occurrence: on 2026-10-02 the
- * live agenda showed a single weekly milonga EIGHT times, identical but for the
- * date. At ~200 events a year with half a dozen weekly regulars that is several
- * hundred near-identical rows between a reader and the thing that is actually
- * unusual. A weekly practica is furniture; a festival on 14 November is news.
+ * This was "À venir" and "Rendez-vous réguliers" until 2026-10-12 -- news and
+ * furniture, with regulars collapsed to one row each because a weekly milonga
+ * had otherwise filled eight consecutive identical rows.
  *
- * So `stream` holds one-off events plus the dates on which a regular does NOT
- * behave normally -- cancelled or moved -- and `regulars` holds one entry per
- * series. The reasoning and the invariant live with the logic, in sections() in
- * src/lib/occurrences.js, where tests/occurrences.test.js can reach them.
+ * The window solves that in a way a reader recognises. A weekly event appears
+ * once or twice because that is how often it happens in seven days, not
+ * because it was filed under a heading about regularity -- and somebody
+ * opening an agenda is asking what is on, not which things recur.
  *
- * The cancellation landing in the stream is the point rather than a side
- * effect: "pas de milonga à la Casita ce jeudi" is the most useful line the
- * agenda can carry about a regular, and it used to sit among seven identical
- * rows saying the opposite.
+ * ROLLING, NOT THE CALENDAR WEEK. "Cette semaine" read on a Sunday evening
+ * means today only, so the top of the page would empty out every seventh day,
+ * forever.
+ *
+ * `later` is ONE CARD PER EVENT and carries everything the window does not,
+ * including a biweekly or monthly series whose next date is further out. That
+ * is not tidiness: verify-build check 8b fails the build when an event page is
+ * reachable from neither listing, and with "Rendez-vous réguliers" deleted
+ * those two series would have been reachable from nowhere.
  */
-const { stream, regulars, organizers, archived } = await loadAgenda();
-const nothingAtAll = stream.length === 0 && regulars.length === 0;
+// Flyers, resolved the same way the event page resolves them: fetch-content
+// downloads each referenced object into src/assets/events/ and records the
+// flattened filename in image_file, and the glob is how a build-time import
+// reaches a directory whose contents it cannot know in advance.
+const images = import.meta.glob<{ default: ImageMetadata }>(
+  '../assets/events/*.{jpeg,jpg,png,webp,avif}', { eager: true });
+
+const { soon, later, organizers, archived } = await loadAgenda();
+const nothingAtAll = soon.length === 0 && later.length === 0;
 ---
 
 <Layout title="Nissartango — Agenda du tango et des danses à Nice">
@@ -42,12 +54,12 @@ const nothingAtAll = stream.length === 0 && regulars.length === 0;
 
   {!nothingAtAll && (
     <section class="block">
-      <h2>À venir</h2>
-      {stream.length === 0 ? (
-        <p class="empty">Rien d'exceptionnel à venir — voir les rendez-vous réguliers ci-dessous.</p>
+      <h2>Les 7 prochains jours</h2>
+      {soon.length === 0 ? (
+        <p class="empty">Rien dans les sept prochains jours — voir les évènements ci-dessous.</p>
       ) : (
         <ul class="events">
-          {runs(stream).map((row) => {
+          {runs(soon).map((row) => {
             const e = row.event;
             const o = row.first;
             const organizer = organizers.get(e.organizer_id);
@@ -110,44 +122,56 @@ const nothingAtAll = stream.length === 0 && regulars.length === 0;
     </section>
   )}
 
-  {regulars.length > 0 && (
+  {later.length > 0 && (
     <section class="block">
-      <h2>Rendez-vous réguliers</h2>
-      <ul class="events">
-        {regulars.map(({ event: e, next, occurrences }) => {
+      <h2>Évènements</h2>
+      <ul class="cards">
+        {later.map(({ event: e, next, occurrences }) => {
           const organizer = organizers.get(e.organizer_id);
           const price = priceSummary(e);
-          // `next` is the next date it actually HAPPENS; it is null only when
-          // every upcoming date is cancelled, which must still render. The
-          // first occurrence then stands in, so the row keeps a date for
-          // verify-build check 10 to verify against the event's own page.
+          // `next` is the next date it actually HAPPENS; null only when every
+          // remaining date is cancelled, which must still render. The first
+          // occurrence stands in then, so the card keeps a date for
+          // verify-build check 9 to check against the event's own page.
           const shown = next ?? occurrences[0];
+          const rhythm = rhythmLabel(e.recurrence, shown.start, e.timezone);
+          const flyer = e.image_file
+            ? images[`../assets/events/${e.image_file}`]?.default
+            : undefined;
+          const run = !rhythm && occurrences.length > 1;
           return (
-            <li data-event={e.slug} data-date={shown.dateKey}>
-              <div class="when">
-                <span class="date">{rhythmLabel(e.recurrence, shown.start, e.timezone)}</span>
-                <span class="time">{fmtTime(shown.start, e.timezone)}</span>
+            <li class={flyer ? 'card has-flyer' : 'card'}
+                data-event={e.slug} data-date={shown.dateKey}>
+              <div class="card-text">
+              <span class="type">{formatSummary(e)}</span>
+              <h3><a href={`/evenements/${e.slug}/`}>{e.title}</a></h3>
+              <p class="card-where">{e.location_name}{e.location_name && ', '}{e.city}</p>
+              <p class="card-when">
+                {run
+                  ? dateRangeLabel(occurrences[0].start,
+                                   occurrences[occurrences.length - 1].start, e.timezone)
+                  : fmtFull(shown.start, e.timezone)}
+                {' '}{fmtTime(shown.start, e.timezone)}
+                {rhythm && <> · {rhythm}</>}
+              </p>
+              {(price || organizer) && (
+                <p class="card-who">{price}{price && organizer && ' · '}{organizer && organizer.name}</p>
+              )}
               </div>
-              <div class="what">
-                <span class="type">{formatSummary(e)}</span>
-                <h3><a href={`/evenements/${e.slug}/`}>{e.title}</a></h3>
-                <p class="meta">
-                  {e.location_name}{e.location_name && ', '}{e.city}
-                  {price && <> · {price}</>}
-                  {organizer && <> · {organizer.name}</>}
-                </p>
-                {next
-                  ? <p class="next">Prochaine séance le {fmtFull(next.start, e.timezone)}</p>
-                  : <p class="status"><span class="tag">Aucune séance</span>
-                      {' '}toutes les dates à venir sont annulées</p>}
-              </div>
+              {/* alt="" on purpose: the title sits beside it and a screen
+                  reader announcing the flyer would read the event twice. */}
+              {flyer && (
+                <div class="card-media">
+                  <Image src={flyer} alt="" widths={[220, 440]}
+                         sizes="(max-width: 48rem) 34vw, 220px" />
+                </div>
+              )}
             </li>
           );
         })}
       </ul>
     </section>
   )}
-
   {archived.length > 0 && (
     <p class="more">
       <a href="/archives/">Archives — {archived.length} événement{archived.length > 1 ? 's' : ''} passé{archived.length > 1 ? 's' : ''}</a>
@@ -210,7 +234,6 @@ const nothingAtAll = stream.length === 0 && regulars.length === 0;
   h3 a { color: inherit; text-decoration: none; }
   h3 a:hover { text-decoration: underline; }
   .meta { margin: 0; color: var(--muted); font-size: var(--text-body); }
-  .next { margin: var(--space-4) 0 0; color: var(--muted); font-size: var(--text-body); }
   /* Cancellation is structural, not chromatic: the strikethrough, the dimming
      and the stamp carry it. The red this used to be sits one hue from the
      brand orange and the two muddied each other, and the accent is already
@@ -227,6 +250,50 @@ const nothingAtAll = stream.length === 0 && regulars.length === 0;
   }
   li.cancelled .date, li.cancelled h3 { text-decoration: line-through; }
   li.cancelled { opacity: 0.75; }
+  /* ÉVÈNEMENTS -- a grid, after the reference's own Events section: two
+     columns, and type a long way up the scale. Measured on that site rather
+     than guessed: its card title is 33.8px and its venue 26.6px, both weight
+     500. Ours steps one down to --text-head-sm, because its columns are ~700px
+     wide and these are ~460px, and a French tango title is long. */
+  .cards {
+    list-style: none; padding: 0; margin: 0;
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-48) var(--space-32);
+  }
+  /* Text beside a square crop, as the reference's own Events section does it.
+     The media column only exists when there is a flyer: an empty box beside
+     every text-only card would be a layout pretending to content it has not
+     got, and most events here will never have one. */
+  .card {
+    border-top: 1px solid var(--rule); padding-top: var(--space-16);
+    display: grid; grid-template-columns: 1fr; gap: var(--space-16);
+  }
+  .card.has-flyer { grid-template-columns: 1fr minmax(0, 8.5rem); }
+  .card-media img {
+    display: block; width: 100%; aspect-ratio: 1;
+    object-fit: cover; border-radius: var(--radius-media);
+  }
+  .card h3 {
+    font-size: var(--text-head-sm); line-height: var(--leading-head-sm);
+    margin: var(--space-4) 0 var(--space-12);
+  }
+  .card h3 a { color: inherit; text-decoration: none; }
+  .card h3 a:hover { text-decoration: underline; }
+  .card-where { margin: 0; font-size: var(--text-body); }
+  .card-when, .card-who {
+    margin: var(--space-4) 0 0; font-size: var(--text-body); color: var(--muted);
+  }
+
+  /* One column before the cards get too narrow to hold a 27px title. */
+  @media (max-width: 48rem) {
+    .cards { grid-template-columns: 1fr; gap: var(--space-32); }
+  }
+  /* The crop narrows before it is dropped: a flyer is the most useful thing on
+     a card, and on a phone it is the thing a reader recognises first. */
+  @media (max-width: 30rem) {
+    .card.has-flyer { grid-template-columns: 1fr minmax(0, 6rem); gap: var(--space-12); }
+  }
+
   @media (max-width: 30rem) {
     .events li { grid-template-columns: 1fr; gap: var(--space-4); }
     /* Not a flex row. A date range wraps to two lines on a phone, and as a

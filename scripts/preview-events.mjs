@@ -39,11 +39,20 @@
  *   (the CTA) · named teachers · an event that crosses midnight · one with no
  *   duration at all · rich prose · a past event, so /archives/ is not empty.
  *
- * WHAT IT CANNOT COVER: flyers. events.image_file names a file that
- * fetch-content downloads into src/assets/events/, and inventing a row without
- * the bytes behind it renders nothing. Test images against a real upload.
+ * FLYERS ARE COVERED, as of 2026-10-12, because the card grid is built around
+ * them and a grid of empty boxes cannot be judged. `events.image_file` names a
+ * file that fetch-content downloads into src/assets/events/, so this writes
+ * placeholder JPEGs there -- `preview-*.jpg`, deliberately drab so nobody
+ * mistakes a screenshot for finished work -- and removes them again on --off.
+ * That directory is gitignored (.gitignore:40), like everything else here.
+ *
+ * They are PLACEHOLDERS, not photographs. They prove the layout, the crop and
+ * the srcset; they say nothing about how a real flyer -- usually portrait,
+ * usually dense with type -- survives a square crop. That still needs a real
+ * upload.
  */
-import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync, readdirSync, mkdirSync } from 'node:fs';
+import sharp from 'sharp';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -54,14 +63,26 @@ const DATA = path.join(ROOT, 'data');
 const REAL = path.join(DATA, 'snapshot.json');
 const FAKE = path.join(DATA, 'snapshot.preview.json');
 const POINTER = path.join(DATA, '.snapshot-current');
+const ASSETS = path.join(ROOT, 'src', 'assets', 'events');
 const TZ = 'Europe/Paris';
 
 const md5 = (f) => (existsSync(f) ? createHash('md5').update(readFileSync(f)).digest('hex') : null);
 const realBefore = md5(REAL);
 
+/** Only ever the files this script wrote. A real flyer downloaded by
+ *  fetch-content must survive `--off`. */
+const dropPlaceholders = () => {
+  if (!existsSync(ASSETS)) return 0;
+  const gone = readdirSync(ASSETS).filter((f) => f.startsWith('preview-'));
+  for (const f of gone) unlinkSync(path.join(ASSETS, f));
+  return gone.length;
+};
+
 if (process.argv.includes('--off')) {
   writeFileSync(POINTER, 'snapshot.json\n');
   if (existsSync(FAKE)) unlinkSync(FAKE);
+  const n = dropPlaceholders();
+  if (n) console.log(`  removed ${n} placeholder image(s) from src/assets/events/`);
   if (md5(REAL) !== realBefore) throw new Error('the real snapshot changed — it must not');
   console.log('preview OFF — the pointer is back on snapshot.json');
   console.log(`  real snapshot untouched (md5 ${realBefore?.slice(0, 12)}…)`);
@@ -195,6 +216,35 @@ const EVENTS = [
        location_name: 'Les Amarras', price_full: 10, organizer_id: org[0] }),
 ];
 
+// Placeholder flyers for the cards that would carry one. Drab on purpose: a
+// screenshot of this must not be mistakable for a finished page, and a bright
+// invented image would flatter a layout that has never met a real poster.
+// Portrait source, square crop -- which is what a real flyer will do.
+mkdirSync(ASSETS, { recursive: true });
+const TONES = ['#CFC8BE', '#C3BDB4', '#D6CFC5', '#BDB6AC'];
+let toned = 0;
+for (const e of EVENTS) {
+  if (!['stage-mauro', 'festival-tango', 'nuit-de-la-milonga', 'encuentro'].some((k) => e.slug.includes(k))) continue;
+  // The name fetch-content would give it. That script derives image_file from
+  // image_path by flattening, and SKIPS the download when the file is already
+  // on disk -- so writing it under exactly that name makes the fixture satisfy
+  // the real pipeline instead of going round it. Getting this wrong fails the
+  // build loudly, which is how it was found.
+  e.image_path = `preview/${e.id}/${e.slug}.jpg`;
+  const file = e.image_path.replace(/[^a-zA-Z0-9._-]+/g, '-');
+  const bg = TONES[toned % TONES.length];
+  const fg = toned % 2 ? '#8E867B' : '#A29A8F';
+  await sharp(Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200">
+       <rect width="900" height="1200" fill="${bg}"/>
+       <rect x="0" y="720" width="900" height="16" fill="${fg}"/>
+       <circle cx="450" cy="430" r="190" fill="none" stroke="${fg}" stroke-width="16"/>
+     </svg>`,
+  )).jpeg({ quality: 80 }).toFile(path.join(ASSETS, file));
+  e.image_file = file;
+  toned += 1;
+}
+
 const find = (frag) => EVENTS.find((e) => e.slug.includes(frag)).id;
 const EXCEPTIONS = [
   { event_id: find('milonga-casita'), occurrence_date: day(11), kind: 'cancelled',
@@ -215,7 +265,7 @@ writeFileSync(POINTER, 'snapshot.preview.json\n');
 
 if (md5(REAL) !== realBefore) throw new Error('the real snapshot changed — it must not');
 
-console.log(`preview ON — ${EVENTS.length} events, ${EXCEPTIONS.length} exceptions`);
+console.log(`preview ON — ${EVENTS.length} events, ${EXCEPTIONS.length} exceptions, ${toned} placeholder flyer(s)`);
 console.log(`  real snapshot untouched (md5 ${realBefore.slice(0, 12)}…)`);
 console.log('  run: npm run build:snapshot && npm run preview');
 console.log('  off: node scripts/preview-events.mjs --off');
