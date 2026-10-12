@@ -20,29 +20,50 @@
 
 :root {
   color-scheme: light dark;
+}
+
+/* Whoever opts out of the dark block above must opt out of the UA's dark
+ * widgets too, or the page is white with dark scrollbars and dark form
+ * controls around it. Inert in the editor, which sets no data-theme. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root {
 
   /* ---- Brand ------------------------------------------------------------
-   * --accent is the logo's orange and is NEVER used for text: 3.71:1 on paper
-   * fails AA. --accent-text is that same orange scaled to 88% -- identical
-   * hue, the lightest value that clears 4.5:1 (it lands at 4.61:1). Use it for
-   * the format eyebrow, links, and any other coloured lettering.
+   * THIS PARAGRAPH DESCRIBES AN ARRANGEMENT THAT NO LONGER EXISTS and is kept
+   * only because the next one answers it. It said --accent is never used for
+   * text and that --accent-text is a darkened variant clearing 4.5:1. Both
+   * stopped being true when #E55039 was asked for as the text colour: the two
+   * tokens are now the same value, and the note below is the live one.
    */
   --accent:       #E55039;
-  /* THE SAME COLOUR, deliberately, and it does not meet AA. #E55039 is 3.64:1
-     on paper where text needs 4.5:1 -- marginally worse than the #D85A30 it
-     replaced. It was asked for as the text colour and is used as asked rather
-     than quietly substituted; #C74632 is the same hue at 87% and reaches
-     4.63:1 if that is ever wanted. The kicker is the only coloured text left
-     on the site, so this is the whole of the exposure. */
+  /* THE SAME COLOUR, deliberately, and it does not meet AA. On the white
+     canvas #E55039 is 3.79:1 where text needs 4.5:1 -- it was 3.64:1 on the
+     old off-white, so going white helped and did not fix it. It was asked for
+     as the text colour and is used as asked rather than quietly substituted;
+     #C74632 is the same hue at 87% and now reaches 4.83:1 on white if that is
+     ever wanted. The kicker is the only coloured text left on the site, so
+     this is the whole of the exposure. */
   --accent-text:  #E55039;
 
   /* ---- Surfaces and ink -------------------------------------------------
    * Warm, from the logo. --ink and --paper are the logo's own two colours.
    */
-  --paper:        #FBFAF8;   /* page canvas                                  */
-  --linen:        #EFEBE4;   /* quiet bands and notices; non-text            */
-  --ink:          #171614;   /* all primary text            17.34:1 on paper */
-  --muted:        #6B6660;   /* meta and secondary text      5.45:1 on paper */
+  /* PURE WHITE since 2026-10-13, asked for directly. It was #FBFAF8, the
+     logo's own off-white, and the line above saying both surfaces come from
+     the logo is now half true: the ink does, the canvas does not. Every
+     measured ratio improved slightly, so nothing had to be rechecked downward
+     -- but they are all RE-MEASURED below rather than carried over, because a
+     ratio quoted against a colour that changed is exactly the kind of claim
+     this project keeps being wrong about. --linen stays warm on purpose: it
+     is a band that has to read as a band, and at 1.19:1 on white it still
+     does. */
+  --paper:        #FFFFFF;   /* page canvas                                  */
+  --linen:        #EFEBE4;   /* quiet bands and notices; non-text 1.19:1     */
+  --ink:          #171614;   /* all primary text            18.08:1 on paper */
+  --muted:        #6B6660;   /* meta and secondary text      5.68:1 on paper */
   /* The row rule went darker and thicker on 2026-10-12. #DED8CF at 1px was a
      whisper -- 1.36:1 on paper, which is about as close to invisible as a
      line gets while still technically being drawn. #A79F93 is 2.6:1, read as
@@ -170,9 +191,23 @@
  *
  * No toggle, deliberately: verify-build check 3 fails the build on any client
  * JavaScript, so following the OS is not a limitation worked around, it is the
- * only honest option. */
+ * only honest option.
+ *
+ * THE PUBLIC SITE OPTS OUT, from 2026-10-13: its <html> carries
+ * data-theme="light" and this block does not match it, so nissartango.fr is
+ * white whatever the OS says. The EDITOR carries no such attribute and still
+ * follows it.
+ *
+ * It is done by selector and not by deleting this block, because the two
+ * deployments share THIS FILE BYTE FOR BYTE -- tests/design-tokens.test.js
+ * asserts it. Deleting the block would have taken the editor's dark mode with
+ * it, and worse than cleanly: editor/public/style.css has a dark block of its
+ * own that would have gone on matching, leaving a half-dark editor with
+ * light-mode ink on dark panels. Overriding it site-side was not an option
+ * either -- 'the public site declares no design values of its own' is a test,
+ * so the light values cannot be restated in base.css. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --paper:       #171614;
     --linen:       #201E1B;
     --ink:         #FBFAF8;   /* 17.34:1 on paper */

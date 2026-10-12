@@ -8,8 +8,8 @@
  * notices.
  *
  * It reads only COMMITTED files -- never node_modules -- so it means the same
- * in CI, where @fontsource/inter may not be installed at all (it is a
- * devDependency that exists only to regenerate these artefacts).
+ * in CI, where the @fontsource packages may not be installed at all (they are
+ * devDependencies that exist only to regenerate these artefacts).
  *
  * If something here fails, re-run `node scripts/make-fonts.mjs` rather than
  * hand-editing the generated CSS.

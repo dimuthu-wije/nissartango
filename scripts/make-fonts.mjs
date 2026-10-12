@@ -1,11 +1,17 @@
 /**
- * Puts Inter where both deployments can serve it themselves.
+ * Puts the two families where both deployments can serve them themselves.
  *
  *     node scripts/make-fonts.mjs
  *
  * RUN BY HAND, OUTPUT COMMITTED — same reasoning as make-favicon.mjs and
- * make-og-default.mjs. @fontsource/inter is a devDependency and exists only to
- * refresh these files; nothing at build time or run time needs it.
+ * make-og-default.mjs. The @fontsource packages named in FAMILIES below are
+ * devDependencies and exist only to refresh these files; nothing at build time
+ * or run time needs them.
+ *
+ * THIS SHIPPED INTER UNTIL 2026-10-12, as the single family. Space Grotesk and
+ * IBM Plex Sans replaced it, and @fontsource/inter was then left in
+ * devDependencies for a day, reading as though Inter were still in use. If a
+ * family leaves FAMILIES, drop its package in the same commit.
  *
  * SELF-HOSTED, NOT GOOGLE'S CDN. Hotlinking fonts.gstatic.com puts an EU IP
  * transfer in front of every visitor before anything is consented to, and this
