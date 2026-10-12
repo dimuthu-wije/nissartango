@@ -564,19 +564,33 @@ leave it out of git: nothing in one should need a secret to be useful.
   times.
 
 **Next up:**
-1. ~~Add ~10 real events~~ — **DONE 2026-10-01**, 11 events by 3 organizers,
-   entered through the editor rather than directly in Supabase. The friction it
-   was meant to surface is what the 2026-09-26..10-01 editor commits fixed.
+1. **Add real events. STILL THE BOTTLENECK, and the most important line in
+   this file.** Measured 2026-10-12 against production: `public.events` holds
+   **two** rows, both `approved`, nothing pending or rejected. The live agenda
+   therefore shows two rows which are the SAME event — a weekly milonga, and
+   its own cancellation in "À venir" — so the first thing a visitor reads is
+   something that is not happening.
 
-   Still open from it: **Bicilonga is `recurrence: none`** where it should be
-   `weekly` + `recurrence_end`, and **Milonga de Cécile is typed `demo`** — a
-   weekly demonstration running to 31 December reads as a slip for `milonga`.
+   This entry used to say "~~DONE 2026-10-01, 11 events by 3 organizers~~" and
+   listed two fixes owed on **Bicilonga** and **Milonga de Cécile**. Neither
+   event exists any more: the 11 were the maintainer's own test data and were
+   deleted on 2026-10-02. The note survived the content it described by ten
+   days, which is this file's recurring failure in its purest form — a
+   to-do list for rows that are gone.
 
-   What the 11 do NOT cover, which is where to spend the next few rather than
-   on volume: no `monthly` or `biweekly` series, no `festival`, no `signup_url`
-   on any of the 11, 10 of 11 in Nice, and **no organizer with a social handle**
-   — which is why "confirm organizer social links render" below is not merely
-   unverified, it is unverifiable until one exists.
+   What those 11 did establish is still worth keeping, because it says where
+   to spend the next few rather than chasing volume: nothing then covered
+   `monthly` or `biweekly`, no `festival`, no `signup_url` at all, 10 of 11
+   were in Nice, and **no organizer held a social handle**. Of those, only the
+   social handles have since been fixed (Nissartango has all three). The rest
+   are still gaps.
+
+   `scripts/preview-events.mjs` covers every one of those shapes with FAKE
+   data, which is how the design was finished — but a fixture cannot make the
+   site useful, and nothing in this repo can. The cheap test named in item 7
+   is the actual next move: invite El Gato Tanguero and Rosa Gervasi, point
+   them at `/aide/`, and find out whether organizers will self-serve or
+   whether curation is the product.
 2. ~~One column holds two axes: format and dance style.~~ — **DONE
    2026-10-01.** `formats text[]` replaced `type`, `soiree` was added, and the
    old column and its enum are dropped. See the Content model above for what it
