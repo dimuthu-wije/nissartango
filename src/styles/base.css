@@ -101,6 +101,13 @@ main {
   margin: 0 auto;
   padding: var(--space-32) var(--gutter) var(--space-96);
 }
+/* The tail of the page, on a phone. 96px of main padding under a block that
+   already carries its own bottom margin measured 345px of nothing between the
+   last card and the footer -- 42% of the viewport, below the fold, doing
+   nothing but making the page feel unfinished. */
+@media (max-width: 40rem) {
+  main { padding-bottom: var(--space-48); }
+}
 
 footer {
   max-width: var(--width-shell);

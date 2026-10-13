@@ -174,14 +174,35 @@
   --gutter:      24px;
 }
 
+/* THE PHONE STEP OF THE SCALE, 2026-10-13.
+ *
+ * What was here was one dead token. --text-head belonged to the pre-refactor
+ * naming and nothing has read it since; index.astro still carried a comment
+ * about a --text-head-sm that never existed at all. So until today the only
+ * thing this breakpoint actually did was narrow the gutter, and every size on
+ * a 375px screen was a value measured at 1200px.
+ *
+ * Measured there before changing anything, with the 17-event fixture:
+ * "AGENDA" at 63px ran 273px of the 343px available, and "Les 7 prochains
+ * jours" at 44px took two lines. Nothing overflowed -- it was not broken, it
+ * was simply set for a screen four times wider.
+ *
+ * Tracking LOOSENS as the sizes come down, which is the part that is easy to
+ * get backwards. Negative tracking buys back the air that large type has too
+ * much of; at 40px there is less of it to buy back, so -0.034em becomes
+ * -0.028em rather than staying put. Line height moves the same way.
+ *
+ * The space tokens are deliberately NOT redefined here. A token called
+ * --space-96 holding 48px is a lie that every future reader has to discover;
+ * where a phone wants less air, the RULE asks for a smaller token. */
 @media (max-width: 40rem) {
   :root {
     --gutter: 16px;
-    /* 34px is a desktop measurement. On a 375px screen a long event title --
-       and tango titles are long -- takes three lines of it. 28px is also on
-       the reference's own ramp, so this steps DOWN the scale rather than
-       inventing a size off it. */
-    --text-head: 1.75rem;
+    --t-masthead: 40px;   --lh-masthead: 1.05; --tr-masthead: -0.028em;
+    --t-section:  28px;   --lh-section:  1.08; --tr-section:  -0.024em;
+    --t-h1:       28px;
+    --t-h2:       22px;
+    --t-card:     24px;   --lh-card:     1.25; --tr-card:     -0.026em;
   }
 }
 

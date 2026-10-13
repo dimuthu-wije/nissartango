@@ -301,8 +301,10 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
   /* ÉVÈNEMENTS -- a grid, after the reference's own Events section: two
      columns, and type a long way up the scale. Measured on that site rather
      than guessed: its card title is 33.8px and its venue 26.6px, both weight
-     500. Ours steps one down to --text-head-sm, because its columns are ~700px
-     wide and these are ~460px, and a French tango title is long. */
+     500. Ours steps one down to --t-card (31px), because its columns are
+     ~700px wide and these are ~460px, and a French tango title is long. This
+     said --text-head-sm until 2026-10-13, which is a token that has never
+     existed in this file or any other. */
   .cards {
     list-style: none; padding: 0; margin: 0;
     display: grid; grid-template-columns: repeat(2, 1fr);
@@ -365,9 +367,35 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
     .events li { grid-template-columns: 15rem 1fr; }
     .where { grid-column: 2; flex-direction: row; gap: var(--space-8); }
   }
+  /* 96px between blocks is a desktop rhythm. On an 812px screen it put 190px
+     of nothing between the lede and the first section heading -- most of a
+     screenful, scrolled past before anything is read. */
+  @media (max-width: 40rem) {
+    .block { margin: var(--space-48) 0; }
+  }
+
   @media (max-width: 30rem) {
     .events li { grid-template-columns: 1fr; gap: var(--space-4); }
     .where { grid-column: auto; }
+
+    /* THE ROW GIVES UP ITS EQUAL WEIGHTS HERE, deliberately, and this reverses
+       the rule three columns up. Across three columns, setting when/what/where
+       at one size reads as three questions of equal rank on three axes. Once
+       they stack into a single column that axis is gone, and three identical
+       25px lines read as a flat list with nothing marking where a row starts.
+       So on a phone the title keeps the heading size and everything else steps
+       down to tokens that already exist: the thing being scanned for stays
+       largest.
+
+       WHEN and WHERE stay equal to each other -- that half of the desktop rule
+       is sound and survives the stack. What gives way is the ORGANIZER, which
+       was the same 18px as both and is the one field a reader does not need to
+       decide whether to go. Venue under organizer, which is what a first pass
+       at this produced, had "MJC Magnan" set smaller than "El Gato Tanguero"
+       on a screen where the venue is the harder question. */
+    .date  { font-size: var(--t-body); line-height: var(--lh-body); }
+    .where { font-size: var(--t-body); line-height: var(--lh-body); }
+    .meta  { font-size: var(--t-meta); line-height: var(--lh-meta); }
     /* Not a flex row. A date range wraps to two lines on a phone, and as a
        flex item the time was then stranded at the top right of the wrapped
        date instead of following it. As inline text it simply flows after. */
