@@ -372,6 +372,16 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      screenful, scrolled past before anything is read. */
   @media (max-width: 40rem) {
     .block { margin: var(--space-48) 0; }
+
+    /* A row title's line box is 27.5px and a card's 30px, so 10px either side
+       takes them to 47.5 and 50. 8px was tried first and produced 43.5 -- half
+       a pixel short, and invisible to a probe that rounds before comparing.
+       See the touch-target note in base.css for why the margin cancels. */
+    h3 a, .more a {
+      display: inline-block;
+      padding: 10px 0;
+      margin: -10px 0;
+    }
   }
 
   @media (max-width: 30rem) {

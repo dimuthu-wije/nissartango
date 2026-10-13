@@ -382,6 +382,17 @@ const jsonLd = nodes.length === 1
   .social a { margin-right: var(--space-12); }
   .contact { display: block; margin-top: var(--space-4); font-size: var(--t-body); }
   .contact a { margin-right: var(--space-12); }
+  /* Touch targets; see the note in base.css. These are the only ones that also
+     needed WIDTH -- "Site" is 31px of lettering, so vertical padding alone
+     would have left a 31x44 target. 8px either side takes it to 47, and the
+     12px margin still sits OUTSIDE that, so two hit areas never touch. */
+  @media (max-width: 40rem) {
+    .social a, .contact a {
+      display: inline-block;
+      padding: 10px var(--space-8);
+      margin: -10px var(--space-12) -10px calc(var(--space-8) * -1);
+    }
+  }
 
   .dates { margin: var(--space-64) 0; }
   .dates h2 {

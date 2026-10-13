@@ -77,6 +77,44 @@ header {
 .logo { display: block; color: var(--ink); }
 .logo svg { display: block; height: 1.25rem; width: auto; }
 
+/* ---- Touch targets, phones only -------------------------------------------
+ * Measured at 375px with the 17-event fixture: the wordmark was 20px tall, nav
+ * 24, the back link 24, social links 24, and event titles 28-31. All of them
+ * clear WCAG 2.5.8 (AA, 24x24) and all of them miss 2.5.5 (AAA, 44x44), which
+ * is also what Apple asks for and roughly what a thumb actually is.
+ *
+ * THE TECHNIQUE IS PADDING CANCELLED BY NEGATIVE MARGIN. Padding alone grows
+ * the hit area AND the layout, which would push a tuned vertical rhythm apart
+ * everywhere at once; an equal negative margin pulls the surrounding content
+ * back so the page looks identical and only the target is bigger. The links
+ * become inline-block because padding does not grow the box of an inline one.
+ *
+ * TWO LINKS ARE DELIBERATELY LEFT ALONE: "agenda" in the archive's intro
+ * sentence and "Proposez-le à l'agenda" in the footer invite. Both sit inside
+ * running prose, and WCAG 2.5.8 exempts exactly that case -- a target "in a
+ * sentence, or its size otherwise constrained by the line-height". Padding
+ * them would open gaps mid-paragraph and overlap the lines above and below,
+ * which is worse for everyone than the thing it fixes.
+ *
+ * Desktop keeps the tight chrome it was designed with: none of this applies
+ * above 40rem, where a pointer is pixel-accurate anyway. */
+@media (max-width: 40rem) {
+  /* 20px of SVG + 12px either side = 44. The logo is already display:block, so
+     it needs no inline-block and no negative margin -- header is a flex row and
+     the padding simply makes the item taller than its content. */
+  .logo { padding: var(--space-12) 0; margin: calc(var(--space-12) * -1) 0; }
+
+  nav a,
+  .back {
+    display: inline-block;
+    padding: 10px 0;
+    margin: -10px 0;
+  }
+  /* The wrap gap grows with the targets: at 24px apart, two 44px-tall boxes
+     sit close enough to mis-tap when the nav wraps to two lines. */
+  nav ul { gap: var(--space-12) var(--space-24); }
+}
+
 /* Type only -- no icons, no background pills. Wraps rather than collapsing:
  * a disclosure menu needs JavaScript and the build forbids it. */
 nav ul {
