@@ -386,7 +386,29 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      375px screen asks for a 127px file to put in a 343px box. */
   @media (max-width: 30rem) {
     .card.has-flyer { grid-template-columns: 1fr; gap: var(--space-12); }
-    .card-media { order: -1; }
+
+    /* THE FLYER SITS BETWEEN THE KICKER AND THE TITLE, not above both. It was
+       above the whole card first, which made the card open on an image with no
+       word of context -- on a page of them you scroll past three pictures
+       before learning what any of them is. The kicker first says what KIND of
+       thing this is, then the flyer shows it, then the title names it.
+
+       .card-text is a pure wrapper with no styles of its own: it exists only so
+       the text is ONE grid item beside the media on wide screens. display:
+       contents dissolves it here, so its children become grid items of the card
+       itself and `order` can interleave the flyer among them. Safe on a plain
+       div -- the accessibility bug that made display:contents risky applied to
+       elements carrying an implicit ARIA role, like a list or a button.
+
+       The children's own margins go with it. Spacing is the grid's gap now, and
+       keeping both would have stacked one on the other. */
+    .card.has-flyer .card-text { display: contents; }
+    .card.has-flyer .type       { order: 1; }
+    .card.has-flyer .card-media { order: 2; }
+    .card.has-flyer h3          { order: 3; margin: 0; }
+    .card.has-flyer .card-where { order: 4; }
+    .card.has-flyer .card-when  { order: 5; margin-top: 0; }
+
     /* `height: auto` is NOT redundant here, and leaving it out cost a
        deadlock. The base rule sets width:100% with aspect-ratio:1, and that
        square ratio was quietly doing a second job: reserving the box before a
