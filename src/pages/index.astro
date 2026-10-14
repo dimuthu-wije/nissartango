@@ -166,8 +166,8 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
                   reader announcing the flyer would read the event twice. */}
               {flyer && (
                 <div class="card-media">
-                  <Image src={flyer} alt="" widths={[220, 440]}
-                         sizes="(max-width: 48rem) 34vw, 220px" />
+                  <Image src={flyer} alt="" widths={[220, 440, 686, 900]}
+                         sizes="(max-width: 30rem) calc(100vw - 32px), (max-width: 48rem) 136px, 220px" />
                 </div>
               )}
             </li>
@@ -349,16 +349,58 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
     text-transform: uppercase; letter-spacing: var(--tr-kicker);
     margin-right: var(--space-8);
   }
+  /* On a phone the label and the link ran together into one wrapped sentence --
+     "Aussi, régulièrement Milonga de la Vieille Ville chaque mois" across 76px
+     and nine inline fragments, with tracked uppercase butting straight into a
+     link. The label is a heading for the line, so on a narrow screen it gets
+     its own. */
+  @media (max-width: 40rem) {
+    .standing-label { display: block; margin-right: 0; margin-bottom: var(--space-4); }
+  }
   .standing a { color: var(--ink); }
 
   /* One column before the cards get too narrow to hold a 27px title. */
   @media (max-width: 48rem) {
     .cards { grid-template-columns: 1fr; gap: var(--space-32); }
   }
-  /* The crop narrows before it is dropped: a flyer is the most useful thing on
-     a card, and on a phone it is the thing a reader recognises first. */
+  /* ON A PHONE THE FLYER STOPS BEING A THUMBNAIL. The note that used to be
+     here said a flyer is "the thing a reader recognises first" on a phone, and
+     then gave it the smallest size it has anywhere -- 96px beside a text block
+     that dominated it. Either the claim was wrong or the layout was; the claim
+     is right, so the layout changes.
+
+     THE SQUARE CROP GOES WITH IT, and that is the part that matters. The
+     fixture's placeholders are 900x1200 because real flyers are portrait, so
+     `aspect-ratio: 1` was already discarding a quarter of every one. At 96px
+     nobody notices. At 343px it would cut the top and the bottom -- which on a
+     flyer is the title and the date, the two things it exists to tell you. A
+     hero that has had its headline cropped off is not a hero.
+
+     The cost is honest: a 3:4 flyer at 343px wide is 457px tall, so a card
+     with one is most of a screen. Two of the seventeen fixture events have a
+     flyer and most real ones never will, so this is a tall exception rather
+     than a tall list. If that ever stops being true, cap it with a
+     max-height and accept cropping again -- but measure the ratio first.
+
+     sizes/widths had to move with it: the old sizes said 34vw, which on a
+     375px screen asks for a 127px file to put in a 343px box. */
   @media (max-width: 30rem) {
-    .card.has-flyer { grid-template-columns: 1fr minmax(0, 6rem); gap: var(--space-12); }
+    .card.has-flyer { grid-template-columns: 1fr; gap: var(--space-12); }
+    .card-media { order: -1; }
+    /* `height: auto` is NOT redundant here, and leaving it out cost a
+       deadlock. The base rule sets width:100% with aspect-ratio:1, and that
+       square ratio was quietly doing a second job: reserving the box before a
+       lazy image arrives. Replacing it with `auto` alone computed height:0,
+       so the intersection observer never fired, so the image never loaded, so
+       naturalHeight stayed 0 and the height stayed 0 -- a permanently empty
+       box, not a slow one. Measured: complete:false, naturalWidth:0 and an
+       empty currentSrc after scrolling it into view and waiting.
+
+       With height:auto the browser takes the ratio from the width/height
+       attributes Astro emits (900x1200) before any byte is fetched, so the
+       space is reserved, the observer fires, and the real ratio takes over on
+       load. Verified cold, not after a style poke. */
+    .card-media img { aspect-ratio: auto; height: auto; }
   }
 
   /* Three columns need the width. Below it the place goes under the title
