@@ -384,6 +384,75 @@ mode is silence, which is the one thing the notifier exists to prevent.
 
 ---
 
+### `contact@` receives — RULE NOT YET CONFIRMED FROM HERE, 2026-10-15
+
+`contact@nissartango.fr` forwards to `dimuthu.wije@outlook.com`, through the
+same Email Routing machinery as `dmarc@` and `no-reply@`.
+
+**It is the one address meant to be given out.** The domain now carries four,
+and they are four different jobs:
+
+| address | direction | what it is |
+|---|---|---|
+| `contact@` | **in** | the public address: flyers, the site, an organizer writing for the first time |
+| `no-reply@` | out, and in | what magic links are sent FROM; forwards because replies to it were bouncing |
+| `builds@` | out only | the build-failure notifier's sender |
+| `dmarc@` | in | DMARC aggregate reports, which must be an address in this domain |
+
+**A forward, not a mailbox, and that is the whole point.** A real mailbox at
+Migadu, Fastmail or Zoho would also let the address send natively — but it
+needs the MX records, and pointing MX away from Cloudflare stops `dmarc@` and
+`no-reply@` forwarding the same minute. It would also put a second SPF source
+in front of the apex, which is the permanent error this file warns about two
+sections up. Forwarding adds a destination to machinery already running and
+changes no DNS at all.
+
+    Cloudflare dashboard -> nissartango.fr -> Email -> Email Routing
+      -> Routing rules -> Create address
+         Custom address:  contact@nissartango.fr
+         Action:          Send to an existing destination
+         Destination:     dimuthu.wije@outlook.com  (already verified —
+                          dmarc@ and no-reply@ use it)
+
+Still a specific rule and still NOT a catch-all, for the reason given above:
+the addresses worth receiving are now three, and a catch-all on a domain this
+public collects whatever finds it.
+
+**Receiving is half of it.** Replying AS `contact@nissartango.fr` is a separate
+mechanism and needs no DNS either: Email Routing has no outbound path, so the
+sending identity goes through Resend's SMTP, which is already a verified sender
+for this domain and already DKIM-signs as `header.d=nissartango.fr`.
+
+    Gmail -> Settings -> Accounts and Import -> Send mail as
+         Address:   contact@nissartango.fr
+         SMTP:      smtp.resend.com   port 587, TLS
+         Username:  resend
+         Password:  a send-scoped Resend API key
+
+Gmail then mails a confirmation code to `contact@`, which only arrives if the
+Email Routing rule above exists — so the two steps must be done in that order,
+and the code arriving is itself the first real proof the forward works.
+
+**What was verified, and what was not.** The mail DNS was re-read on 2026-10-15
+and is undisturbed: 3 Cloudflare MX, exactly ONE apex SPF (still
+`include:_spf.mx.cloudflare.net`), `rsend.nissartango.fr` still publishing
+`v=spf1 include:amazonses.com ~all`, DKIM and DMARC present. That is the check
+that matters, because a botched Email Routing change is how a second apex SPF
+record appears.
+
+**The rule itself was NOT verified**, and neither was delivery. Both were
+written here from the procedure rather than from a measurement, which is the
+opposite of how the rest of this file is meant to work — so the heading says so.
+It cannot be checked from the command line: Cloudflare's MX accepts a connection
+from a residential IP and then refuses on reverse-DNS grounds
+(`550 Sender IP reverse lookup rejected`, measured 2026-09-26), so `RCPT TO`
+cannot answer whether an address is routed. **Change this heading to
+`DONE <date>` once a message has actually arrived** — a rule in the dashboard
+and a message in the inbox are different claims, and only the second is the
+feature.
+
+---
+
 **Why it was a blocker, kept because the reasoning still applies to any project
 that has not done this yet:**
 
