@@ -51,6 +51,24 @@ stage 3. Whatever is in there, it is not what this repo builds now.
 const index = files.find((f) => path.relative(DIST, f) === 'index.html');
 const snapshotPath = currentSnapshotPath();
 
+/* COMBIEN D'ÉVÉNEMENTS LA BASE CONTIENT, lu une fois ici parce que deux
+ * contrôles plus bas en dépendent.
+ *
+ * Ils garantissent qu'un agenda ne cesse pas silencieusement d'émettre ses
+ * lignes -- une vraie panne, déjà vue -- mais ils ne distinguaient pas « cassé »
+ * de « légitimement vide ». Le 2026-10-15 la production est passée à zéro
+ * événement et la construction a échoué sur ces deux lignes, laissant le site
+ * figé sur le déploiement précédent avec deux événements supprimés toujours
+ * affichés. L'état vide est écrit, rendu et testé ; il n'était simplement pas
+ * déployable.
+ *
+ * L'invariant juste n'est pas « il doit y avoir des lignes », c'est « s'il y a
+ * des événements, il doit y avoir des lignes ». */
+let snapshotEventCount = null;
+try {
+  snapshotEventCount = (JSON.parse(await readFile(snapshotPath, 'utf8')).events ?? []).length;
+} catch { /* le contrôle de cohérence du snapshot, plus bas, s'en chargera */ }
+
 // --- is this output from the project we are pointed at? --------------------
 //
 // ORDER MATTERS, AND THIS IS DELIBERATELY FIRST. The three guards here run
@@ -263,7 +281,13 @@ ok(`every page has an og:image, and the file exists`);
 //    change: a series whose 22 October is cancelled must SAY so, and a single
 //    node covering the whole series cannot.
 const eventPages = html.filter((f) => rel(f).startsWith('evenements' + path.sep));
-if (!eventPages.length) fail('no event detail pages were generated');
+if (!eventPages.length) {
+  if (snapshotEventCount === 0) {
+    ok('no event detail pages, and the database has no events — correct, not empty output');
+  } else {
+    fail(`no event detail pages were generated, but the database has ${snapshotEventCount ?? 'an unknown number of'} event(s)`);
+  }
+}
 
 /** Every Event object in a page's JSON-LD, whether bare or inside an @graph. */
 function ldEvents(data) {
@@ -568,8 +592,13 @@ if (index) {
     if (slug && date) agendaRows.push({ slug, date });
   }
 }
-if (!agendaRows.length) {
-  fail('the agenda emitted no data-event/data-date rows — this check would pass vacuously');
+if (!agendaRows.length && snapshotEventCount === 0) {
+  // Rien à lister et rien dans la base: l'agenda affiche son état vide, et le
+  // contrôle d'orphelins qui suit n'a rien à faire. Dit à voix haute plutôt que
+  // sauté en silence, pour qu'un zéro ne puisse pas passer pour une vérification.
+  ok('the agenda emitted no rows, and the database has no events — the empty state is correct');
+} else if (!agendaRows.length) {
+  fail(`the agenda emitted no data-event/data-date rows while the database has ${snapshotEventCount ?? 'an unknown number of'} event(s)`);
 } else {
   let orphans = 0;
   const cache = new Map();
