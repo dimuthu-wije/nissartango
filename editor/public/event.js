@@ -433,7 +433,13 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
     const chosen = organizers.find((o) => o.id === fields.get('organizer_id').control.value);
     const empty = chosen && REACHABLE.every((k) => !chosen[k]);
     if (!empty) return cardNotice.replaceChildren();
-    const b = box('idle', 'La fiche de cet organisateur est vide.',
+    // `bad` et non `idle`: demandé rouge le 2026-10-15, pour que ce soit vu.
+    // Mesuré avant de changer, parce que .box.bad a déjà caché un défaut de
+    // contraste dans ce projet -- le titre donne 7.24:1 en clair et 7.52:1 en
+    // sombre, et le corps 16:1 dans les deux. Le défaut d'alors était du blanc
+    // SUR un fond --bad, une autre combinaison, et c'est pourquoi --bad-fg
+    // existe. Rien ici ne s'en approche.
+    const b = box('bad', 'La fiche de cet organisateur est vide.',
       'Aucun site, aucun réseau, aucun e-mail public — la page de vos événements '
       + 'n\'affichera que le nom. Vous pouvez publier quand même ; un seul de ces '
       + 'champs suffit à rendre la page utile.');
