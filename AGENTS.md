@@ -1197,6 +1197,36 @@ nothing looks wrong:
   status, so a failing command reads as `exit=0`. This corrupted three separate
   measurements in one sitting, including both staleness guards being recorded as
   silent when each had correctly exited 1. **Capture exit codes without a pipe.**
+- **GREPPING THE DEPLOYED CSS LIES IN TWO SEPARATE WAYS**, and both return an
+  empty result that is indistinguishable from "the deploy failed". Both were hit
+  on 2026-10-14/15 while confirming rules that were, in fact, live.
+
+  **The minifier rewrites media queries into range syntax.**
+  `@media (max-width: 30rem)` ships as `@media (width<=30rem)`. A grep for
+  `max-width` against the served CSS found **0** hits for every rule looked
+  for — including ones known to exist — which reads exactly like nothing having
+  deployed. What the build serves:
+
+      @media (width<=30rem){ … }   @media (width<=40rem){ … }
+      @media (width<=48rem){ … }   @media (width<=62rem){ … }
+
+  **Astro inlines small scoped stylesheets into the page HTML.** A component's
+  rules are then in a `<style>` block, not in any `/_astro/*.css` the page
+  links. Confirming `.flyer` on an event page by fetching the linked stylesheet
+  found nothing — and neither were `.details`, `.back`, `.banner`, `.dates`,
+  `.prose` or `.cta` there, which is the tell: a whole component's worth of
+  rules missing at once is a wrong FILE, not a lost rule. It was 3309 bytes of
+  inline CSS in the page itself.
+
+  So **read both, and let the inconsistency be the signal**. The thing that
+  actually resolved it was not a better grep: it was noticing that the word
+  `flyer` appeared once in the HTML while the page emitted zero `<img>` tags.
+
+      curl -s -H 'Cache-Control: no-cache' <url> > p.html
+      # linked:
+      for c in $(grep -o '/_astro/[^"]*\.css' p.html | sort -u); do curl -s "<origin>$c"; done
+      # inline — do not skip this one:
+      python3 -c "import re,sys;print(''.join(re.findall(r'<style>(.*?)</style>',open('p.html').read(),re.S)))"
 
 The shape they share: a confident answer from a layer nobody was thinking about.
 When a result is surprising, suspect the instrument before the system.
