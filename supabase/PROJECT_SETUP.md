@@ -384,7 +384,7 @@ mode is silence, which is the one thing the notifier exists to prevent.
 
 ---
 
-### `contact@` receives — RULE NOT YET CONFIRMED FROM HERE, 2026-10-15
+### `contact@` receives — RULE ADDED 2026-10-15, delivery unconfirmed
 
 `contact@nissartango.fr` forwards to `dimuthu.wije@outlook.com`, through the
 same Email Routing machinery as `dmarc@` and `no-reply@`.
@@ -418,20 +418,45 @@ Still a specific rule and still NOT a catch-all, for the reason given above:
 the addresses worth receiving are now three, and a catch-all on a domain this
 public collects whatever finds it.
 
-**Receiving is half of it.** Replying AS `contact@nissartango.fr` is a separate
-mechanism and needs no DNS either: Email Routing has no outbound path, so the
-sending identity goes through Resend's SMTP, which is already a verified sender
-for this domain and already DKIM-signs as `header.d=nissartango.fr`.
+**Receiving is half of it, and the other half is NOT solved.** Replying AS
+`contact@nissartango.fr` is a different mechanism, and the first version of this
+section got it wrong in a way worth recording rather than quietly fixing.
 
-    Gmail -> Settings -> Accounts and Import -> Send mail as
-         Address:   contact@nissartango.fr
-         SMTP:      smtp.resend.com   port 587, TLS
-         Username:  resend
-         Password:  a send-scoped Resend API key
+**What was written here on 2026-10-15 and was wrong:** add the address to Gmail
+under *Send mail as*, pointing at Resend's SMTP. The mechanism is real — Resend
+has been a verified sender for this domain since 2026-09-21 and DKIM-signs as
+`header.d=nissartango.fr`, so mail sent that way would align — but **the mailbox
+here is Outlook, not Gmail**, and Outlook has no equivalent feature.
 
-Gmail then mails a confirmation code to `contact@`, which only arrives if the
-Email Routing rule above exists — so the two steps must be done in that order,
-and the code arriving is itself the first real proof the forward works.
+That is the part to remember, because it looks like a detail and is not:
+
+- **Gmail's *Send mail as* with an arbitrary external SMTP server is close to
+  unique among consumer providers.** It is the reason so much advice on this
+  subject assumes Gmail, and the reason that advice does not transfer.
+- **Outlook.com cannot do it.** Consumer custom-domain support was retired by
+  Microsoft, personal Outlook.com IMAP now requires OAuth rather than a
+  password, and there is no setting for an outbound server of your choosing.
+- So Email Routing gives this domain **receiving only**. Nothing in the current
+  setup sends as `contact@`.
+
+**Three ways out, none of them free of cost, recorded so the next person does
+not re-derive them:**
+
+1. **A mail client with separate identities.** Thunderbird will send as one
+   address through another server; the Resend SMTP details above are then
+   correct. Costs nothing and changes no DNS, but it means a desktop client
+   rather than the Outlook web app, and Outlook's OAuth makes the incoming half
+   fiddly.
+2. **A real mailbox on the domain** — Migadu, Fastmail, Zoho's free tier. This
+   is the only option that makes `contact@` a genuine two-way address. It needs
+   the MX records, so `dmarc@` and `no-reply@` must be re-created as forwards at
+   the new provider in the same change, and the apex SPF has to be merged rather
+   than added to. Read the one-SPF warning two sections up before starting.
+3. **Do not send as it.** Reply from Outlook as yourself with a signature naming
+   the agenda. Zero work, and honest; what it loses is the domain in the From
+   line.
+
+No choice has been made. `contact@` receives today and that is all it does.
 
 **What was verified, and what was not.** The mail DNS was re-read on 2026-10-15
 and is undisturbed: 3 Cloudflare MX, exactly ONE apex SPF (still
@@ -440,16 +465,17 @@ and is undisturbed: 3 Cloudflare MX, exactly ONE apex SPF (still
 that matters, because a botched Email Routing change is how a second apex SPF
 record appears.
 
-**The rule itself was NOT verified**, and neither was delivery. Both were
-written here from the procedure rather than from a measurement, which is the
-opposite of how the rest of this file is meant to work — so the heading says so.
-It cannot be checked from the command line: Cloudflare's MX accepts a connection
-from a residential IP and then refuses on reverse-DNS grounds
-(`550 Sender IP reverse lookup rejected`, measured 2026-09-26), so `RCPT TO`
-cannot answer whether an address is routed. **Change this heading to
-`DONE <date>` once a message has actually arrived** — a rule in the dashboard
-and a message in the inbox are different claims, and only the second is the
-feature.
+**The rule exists** — created in the dashboard on 2026-10-15, pattern
+`contact` @ `nissartango.fr`, action *Send to an email*, destination
+`dimuthu.wije@outlook.com`.
+
+**Delivery is still unconfirmed**, and cannot be checked from the command line:
+Cloudflare's MX accepts a connection from a residential IP and then refuses on
+reverse-DNS grounds (`550 Sender IP reverse lookup rejected`, measured
+2026-09-26), so `RCPT TO` cannot answer whether an address is routed. **Change
+this heading to `DONE <date>` once a message has actually arrived** — a rule in
+the dashboard and a message in the inbox are different claims, and only the
+second one is the feature. Send one from any outside address to test it.
 
 ---
 
