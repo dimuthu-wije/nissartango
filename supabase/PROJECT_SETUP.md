@@ -384,7 +384,7 @@ mode is silence, which is the one thing the notifier exists to prevent.
 
 ---
 
-### `contact@` receives — RULE ADDED 2026-10-15, delivery unconfirmed
+### `contact@` both receives and sends — DONE 2026-10-15
 
 `contact@nissartango.fr` forwards to `dimuthu.wije@outlook.com`, through the
 same Email Routing machinery as `dmarc@` and `no-reply@`.
@@ -439,24 +439,54 @@ That is the part to remember, because it looks like a detail and is not:
 - So Email Routing gives this domain **receiving only**. Nothing in the current
   setup sends as `contact@`.
 
-**Three ways out, none of them free of cost, recorded so the next person does
-not re-derive them:**
+**WHAT WAS DONE, 2026-10-15: a dedicated Gmail account, replying through
+Resend's SMTP.** Gmail was chosen for one reason — its *Send mail as* is the
+only consumer feature that will send from an arbitrary address through an
+arbitrary outbound server, which is exactly the shape this problem has.
 
-1. **A mail client with separate identities.** Thunderbird will send as one
-   address through another server; the Resend SMTP details above are then
-   correct. Costs nothing and changes no DNS, but it means a desktop client
-   rather than the Outlook web app, and Outlook's OAuth makes the incoming half
-   fiddly.
-2. **A real mailbox on the domain** — Migadu, Fastmail, Zoho's free tier. This
-   is the only option that makes `contact@` a genuine two-way address. It needs
-   the MX records, so `dmarc@` and `no-reply@` must be re-created as forwards at
-   the new provider in the same change, and the apex SPF has to be merged rather
-   than added to. Read the one-SPF warning two sections up before starting.
-3. **Do not send as it.** Reply from Outlook as yourself with a signature naming
-   the agenda. Zero work, and honest; what it loses is the domain in the From
-   line.
+    contact@nissartango.fr      ->  Email Routing  ->  a dedicated Gmail
+    replying from that Gmail    ->  smtp.resend.com  ->  From: contact@
 
-No choice has been made. `contact@` receives today and that is all it does.
+**THE INBOX MOVED, and that is the part to notice.** `contact@` no longer lands
+in Outlook. It was pointed at the Gmail instead, because reading in one mailbox
+and replying from another means copying messages between them. The split is now:
+
+| | inbox | why |
+|---|---|---|
+| `contact@` | the Gmail | the public address; it must be repliable AS itself |
+| `dmarc@`, `no-reply@` | Outlook | operational, read rarely, never replied to as the domain |
+| `builds@` | — | outbound only, the notifier's sender |
+
+The Gmail's address is in Cloudflare → Email Routing → **Destination addresses**;
+it is not written here because an address that exists in exactly one place
+cannot drift from a copy of itself.
+
+    Gmail -> Settings -> Accounts and Import -> Send mail as
+         Address:           contact@nissartango.fr
+         Treat as an alias: yes (it now delivers to this same mailbox)
+         SMTP:              smtp.resend.com   port 587, TLS
+         Username:          resend
+         Password:          a send-scoped Resend API key
+    then: set as default, and "Reply from the same address the message was
+    sent to"
+
+**Nothing in this touched DNS, which is the whole reason it was preferred over
+a real mailbox.** A mailbox at Migadu, Fastmail or Zoho would also have made
+`contact@` two-way, but it needs the MX records — and pointing MX away from
+Cloudflare stops `dmarc@` and `no-reply@` forwarding the same minute, and puts
+a second SPF source in front of the apex. That option stays open if a real
+mailbox is ever wanted; the migration is MX plus re-creating two forwards plus
+merging SPF, in one change, not three.
+
+**Why it aligns, already proven on this domain before today.** Resend DKIM-signs
+as `header.d=nissartango.fr` and its envelope sender is `rsend.nissartango.fr`,
+which carries its own SPF — so DMARC has both legs, SPF aligned by subdomain and
+DKIM aligned at the apex. That was measured on 2026-09-21 for a magic link and
+the mechanism is identical here.
+
+**The cost to keep in mind:** Resend is sold as transactional email and the free
+allowance is now shared between magic links and human replies. If sign-ins ever
+start failing silently, this is a place to look.
 
 **What was verified, and what was not.** The mail DNS was re-read on 2026-10-15
 and is undisturbed: 3 Cloudflare MX, exactly ONE apex SPF (still
@@ -465,17 +495,23 @@ and is undisturbed: 3 Cloudflare MX, exactly ONE apex SPF (still
 that matters, because a botched Email Routing change is how a second apex SPF
 record appears.
 
-**The rule exists** — created in the dashboard on 2026-10-15, pattern
-`contact` @ `nissartango.fr`, action *Send to an email*, destination
-`dimuthu.wije@outlook.com`.
+**What was measured here, and what was taken on report.** The mail DNS was
+re-read after the change, at 2026-10-15T09:24Z, and is identical to the reading
+three hours earlier: 3 Cloudflare MX, **exactly one** apex SPF (still
+`include:_spf.mx.cloudflare.net`), `rsend.` carrying Resend's SPF, `send.`
+CNAME, DKIM and DMARC all present. That is the check that matters, because a
+botched Email Routing change is how a second apex SPF record appears.
 
-**Delivery is still unconfirmed**, and cannot be checked from the command line:
-Cloudflare's MX accepts a connection from a residential IP and then refuses on
-reverse-DNS grounds (`550 Sender IP reverse lookup rejected`, measured
-2026-09-26), so `RCPT TO` cannot answer whether an address is routed. **Change
-this heading to `DONE <date>` once a message has actually arrived** — a rule in
-the dashboard and a message in the inbox are different claims, and only the
-second one is the feature. Send one from any outside address to test it.
+**Delivery and sending were confirmed by the maintainer, not from here**, and
+cannot be checked from the command line: Cloudflare's MX accepts a connection
+from a residential IP and then refuses on reverse-DNS grounds (`550 Sender IP
+reverse lookup rejected`, measured 2026-09-26), so `RCPT TO` cannot answer
+whether an address is routed. The honest test is the one that was run — mail
+the address from outside, reply, and read the From line at the far end.
+
+Worth re-reading the headers once, at the far end, if it has not been done:
+`dkim=pass header.d=nissartango.fr` is the line that says the reply was signed
+as this domain rather than merely claiming to be from it.
 
 ---
 
