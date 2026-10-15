@@ -65,7 +65,17 @@ body {
   padding: 2.5rem 1rem;
   background: var(--paper);
   color: var(--ink);
-  font: var(--weight) var(--t-body)/var(--lh-body) var(--font-body);
+  /* --weight-ui, NOT --weight. The editor's body is 400 on purpose while the
+     site's is not: one weight at every size is the reference's editorial
+     signature and belongs on a reading page, where in a dense form of labels,
+     inputs and status chips it reads heavy.
+
+     That was the stated design since 2026-10-09 and the rule said var(--weight)
+     anyway, so --weight-ui sat declared and unread two lines above and the
+     editor simply inherited whatever the site chose. It went unnoticed while
+     both happened to be 400. It stopped being free the moment the site's body
+     went to 500. */
+  font: var(--weight-ui) var(--t-body)/var(--lh-body) var(--font-body);
 }
 
 main { max-width: 42rem; margin: 0 auto; }

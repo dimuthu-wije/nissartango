@@ -138,7 +138,12 @@ const title = 'Archives — événements passés et annulés | Nissartango';
      showing the next few weeks mostly does not, and dropping it would take
      this column to about 11rem and buy back 48px on every row. */
   .events li {
-    display: grid; grid-template-columns: 14rem 1fr; gap: var(--space-16);
+    /* 15rem, widened 2026-10-15 with the scale. At 14rem this cleared the
+       longest date French can produce -- "dimanche 28 septembre", 223px at
+       20px/500 IBM Plex Sans -- by ONE PIXEL, which is a coincidence rather
+       than a margin. The index's own column records that these dates have
+       wrapped mid-date before. 15rem leaves 17px. */
+    display: grid; grid-template-columns: 15rem 1fr; gap: var(--space-16);
     padding: var(--space-16) 0; border-top: var(--rule-weight) solid var(--rule);
   }
   /* No rule directly under a section heading: the first row's top border was

@@ -121,20 +121,39 @@
      card title also tightened again, to -0.032em, since a 31px line of French
      needs less air between letters than a 27px one, not more. Line height on
      the card came down with it, 1.3 -> 1.22. */
-  --t-masthead: 63px;   --lh-masthead: 1.02; --tr-masthead: -0.034em;
-  --t-h1:       34px;   --lh-h1:       1.14; --tr-h1:       -0.028em;
-  --t-h2:       25px;   --lh-h2:       1.25; --tr-h2:       -0.018em;
-  --t-card:     31px;   --lh-card:     1.22; --tr-card:     -0.032em;
-  --t-kicker:   18px;   --lh-kicker:   1.33; --tr-kicker:    0.09em;
+  /* EVERY STEP UP AGAIN, 2026-10-15, asked for directly. The ramp and its
+     order are unchanged; only the absolute values move, by about a tenth.
+
+     TRACKING TIGHTENS AS THE SIZES GROW, which is the half that is easy to
+     forget. Negative tracking buys back air that large type has too much of,
+     and a 70px line has more of it to buy back than a 63px one -- so the big
+     steps go further negative rather than staying put. The kicker's POSITIVE
+     tracking is left alone: it is spaced to read as a label, and that is a
+     function of its role, not of its size. */
+  --t-masthead: 70px;   --lh-masthead: 1.02; --tr-masthead: -0.036em;
+  --t-h1:       38px;   --lh-h1:       1.14; --tr-h1:       -0.030em;
+  --t-h2:       28px;   --lh-h2:       1.25; --tr-h2:       -0.020em;
+  --t-card:     34px;   --lh-card:     1.22; --tr-card:     -0.034em;
+  --t-kicker:   20px;   --lh-kicker:   1.33; --tr-kicker:    0.09em;
   --word-space: -0.02em;
-  --t-lead:     18px;   --lh-lead:     1.55;
-  --t-body:     18px;   --lh-body:     1.6;
-  --t-meta:     15px;   --lh-meta:     1.5;
-  --t-caption:  12px;   --lh-caption:  1.54;
+  --t-lead:     20px;   --lh-lead:     1.55;
+  --t-body:     20px;   --lh-body:     1.6;
+  --t-meta:     16px;   --lh-meta:     1.5;
+  --t-caption:  13px;   --lh-caption:  1.54;
 
   /* Weights. The display face carries 400 and 500; the body face adds 600 for
      emphasis inside an organizer's own prose and an italic for the same. */
-  --weight:        400;
+  /* 500, not 400, from 2026-10-15. Asked for directly: make the normal text
+     thicker. It also lands the system where the reference already was -- ONE
+     WEIGHT AT EVERY SIZE is its editorial signature, and with body text at 500
+     the site now has a single weight from the meta line to the card title,
+     with 700 reserved for section headings alone.
+
+     Both families ship a real 500, so nothing is synthesised: IBM Plex Sans
+     carries 400/500/600 and Space Grotesk 400/500/700. The 400 faces stay in
+     fonts.css -- the editor still uses one, and a face nobody requests costs
+     no transfer. */
+  --weight:        500;
   --weight-medium: 500;
   --weight-strong: 600;
   /* Section headings only. The display face carries a real 700, so "thicker"
@@ -143,7 +162,7 @@
 
   /* A section name is a MASTHEAD, not a label. It was a 16px tracked kicker in
      muted grey until 2026-10-12 and read as filing rather than as a heading. */
-  --t-section:  44px;   --lh-section: 1.03;  --tr-section: -0.03em;
+  --t-section:  48px;   --lh-section: 1.03;  --tr-section: -0.032em;
 
   /* ---- Space ------------------------------------------------------------ */
   --space-4:  4px;   --space-8:  8px;   --space-12: 12px;
@@ -198,11 +217,11 @@
 @media (max-width: 40rem) {
   :root {
     --gutter: 16px;
-    --t-masthead: 40px;   --lh-masthead: 1.05; --tr-masthead: -0.028em;
-    --t-section:  28px;   --lh-section:  1.08; --tr-section:  -0.024em;
-    --t-h1:       28px;
-    --t-h2:       22px;
-    --t-card:     24px;   --lh-card:     1.25; --tr-card:     -0.026em;
+    --t-masthead: 44px;   --lh-masthead: 1.05; --tr-masthead: -0.030em;
+    --t-section:  31px;   --lh-section:  1.08; --tr-section:  -0.026em;
+    --t-h1:       31px;
+    --t-h2:       24px;
+    --t-card:     27px;   --lh-card:     1.25; --tr-card:     -0.028em;
   }
 }
 

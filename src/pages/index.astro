@@ -237,16 +237,28 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
   }
 
   .events { list-style: none; padding: 0; margin: 0; }
-  /* 14rem because the longest date French can produce -- "dimanche 28
-     septembre 2026" -- measures 219px (13.69rem) at --text-body in this
-     stack. Measured in the browser against the real font, not estimated;
-     at 10rem the archive's dates wrapped mid-date.
+  /* 20rem, RE-MEASURED 2026-10-15. The comment here claimed 14rem on the
+     strength of "dimanche 28 septembre 2026" measuring 219px at --text-body --
+     and three separate things had since made that false: the year was dropped
+     from the listing, the date moved to --t-h2 in the display face, and the
+     scale went up twice. The number in the code had already drifted to 17rem
+     without the comment following it.
 
-     Stage 4 should ask whether the LISTING needs the year at all. An agenda
-     showing the next few weeks mostly does not, and dropping it would take
-     this column to about 11rem and buy back 48px on every row. */
+     Measured again, against the font actually in use (28px/500 Space Grotesk):
+
+         dimanche 28 septembre   315px = 19.69rem   <- the longest
+         mercredi 24 septembre   301px
+         vendredi 28 novembre    288px
+         dimanche 18 octobre     273px              <- wrapped at 17rem by 1px
+         lundi 2 mars            156px
+
+     So 20rem, which clears the longest by 5px. A RANGE is a different animal
+     and is left to wrap: "du mardi 20 au mercredi 21 octobre" is 456px
+     (28.5rem), and no column worth giving a date will hold it. Wrapping a
+     range across two lines reads correctly; wrapping "dimanche 18 / octobre"
+     does not, and that is the distinction this width is for. */
   .events li {
-    display: grid; grid-template-columns: 17rem 1fr 15rem; gap: var(--space-24);
+    display: grid; grid-template-columns: 20rem 1fr 15rem; gap: var(--space-24);
     padding: var(--space-16) 0; border-top: var(--rule-weight) solid var(--rule);
   }
   /* No rule directly under a section heading: the first row's top border was
@@ -426,9 +438,13 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
   }
 
   /* Three columns need the width. Below it the place goes under the title
-     rather than beside it. */
+     rather than beside it -- but the DATE COLUMN KEEPS ITS 20rem, and that is
+     the part that was wrong until 2026-10-15. It was 15rem here while the date
+     was still set at the desktop --t-h2, so at 768 and 900px every plain date
+     in the fixture wrapped: a 240px column holding type that needs 315. The
+     two-column row is narrower than the three-column one; the DATE is not. */
   @media (max-width: 62rem) {
-    .events li { grid-template-columns: 15rem 1fr; }
+    .events li { grid-template-columns: 20rem 1fr; }
     /* NOT A FLEX ROW -- AN ADDRESS IS A SENTENCE. It was `flex-direction: row`
        with a gap, which turns "7 place Garibaldi", "06300" and "Nice" into
        three shrinkable boxes. Flex items shrink before they wrap, so in this
@@ -444,7 +460,7 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
        gap, which was doubling with those spaces, is no longer needed.
 
        Only this band was ever wrong. Above 62rem the column stacks the parts
-       deliberately; below 30rem the row is full width and the address fits on
+       deliberately; below 40rem the row is full width and the address fits on
        one line either way. */
     .where { grid-column: 2; display: block; }
   }
@@ -465,7 +481,12 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
     }
   }
 
-  @media (max-width: 30rem) {
+  /* THE ROW STACKS AT 40rem, not 30rem, from 2026-10-15. Two columns need
+     room for a 20rem date beside a title, and a 448px shell cannot give it:
+     at 30rem the title column came out at 152px. 40rem is also where the type
+     steps down, so the two changes now happen together instead of leaving a
+     band with desktop-sized dates in a phone-sized layout. */
+  @media (max-width: 40rem) {
     .events li { grid-template-columns: 1fr; gap: var(--space-4); }
     .where { grid-column: auto; }
 
