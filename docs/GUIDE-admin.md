@@ -94,11 +94,57 @@ que d'échouer vaguement.
 
 ---
 
-## Créer un organisateur
+## Créer un organisateur, pas à pas
 
 **En SQL uniquement.** Personne ne détient de droit `INSERT` sur
 `public.organizers` — pas même un administrateur — ce qui est délibéré et écrit
 dans `20260828190100` : *« Creating and deleting organizers stays with you. »*
+Vérifié le 2026-10-15 : `authenticated` n'a que `SELECT`, plus `UPDATE` sur
+onze colonnes ; seul `postgres` peut insérer.
+
+**Trois choses différentes, et les confondre est l'erreur d'origine :**
+
+| | ce que c'est |
+|---|---|
+| un **compte** | une personne qui se connecte — une ligne dans `auth.users` |
+| un **organisateur** | la fiche sous laquelle des événements paraissent |
+| une **appartenance** | le lien entre les deux, `owner` ou `editor` |
+
+Une fiche peut porter un nom de personne — « Rosa Gervasi » en est une — mais
+elle reste distincte du compte qui la pilote.
+
+### 1. Choisir le nom et le slug
+
+Le `name` est ce qui s'affiche sur l'agenda. Le `slug` est **définitif** : il
+figure dans chaque lien vers cette fiche.
+
+La base impose son format, `organizers_slug_check` :
+
+    ^[a-z0-9]+(-[a-z0-9]+)*$
+
+Minuscules, chiffres, traits d'union simples, ni au début ni à la fin, jamais
+doublés. Pas d'accents. La convention de fait est le nom en minuscules, espaces
+en traits d'union : `El Gato Tanguero` → `el-gato-tanguero`.
+
+Il est aussi `UNIQUE` : un second organisateur du même slug est refusé par la
+base, pas par vous.
+
+### 2. Créer le compte de la personne, si elle n'en a pas
+
+**Tableau de bord → Authentication → Users → Invite user.**
+
+Impossible depuis l'éditeur, et c'est voulu : `requestLink()` envoie
+`create_user: false`, donc une adresse inconnue qui demande un lien reçoit
+« Signups not allowed for otp ».
+
+**Lisez la RÉFÉRENCE du projet, jamais son nom.** `eqcgeqzzuzcwrflwasjo` est la
+production ; `hjsekipqryfuwdkhxuks` s'appelle « nissartango-dev » et ne l'est
+pas. Le 2026-10-15 une invitation est partie sur dev : le lien a ouvert
+`localhost:3000`, le `site_url` de dev, sur une page blanche — et l'éditeur en
+ligne, qui est la production, continuait à répondre « Signups not allowed for
+otp » pour un compte qui existait ailleurs.
+
+### 3. Créer la fiche
 
 Tableau de bord → **SQL Editor** (il s'agit de données, pas de schéma ; la règle
 « la CLI, jamais le tableau de bord » d'`AGENTS.md` concerne les migrations) :
@@ -109,8 +155,68 @@ values ('El Gato Tanguero', 'el-gato-tanguero')
 returning id, name, slug;
 ```
 
-Le `slug` est définitif : il figure dans chaque lien vers cet organisateur.
-Ajoutez ensuite son premier membre depuis l'éditeur, comme ci-dessus.
+`name` et `slug` suffisent. Tout le reste est facultatif et peut être rempli
+ensuite **par l'organisateur lui-même** depuis l'éditeur.
+
+Si vous remplissez les champs optionnels ici, la base impose leur forme :
+
+| colonne | contrainte |
+|---|---|
+| `website` | doit commencer par `http://` ou `https://` |
+| `instagram`, `tiktok` | le PSEUDO seul, 1 à 40 caractères — pas une URL |
+| `facebook` | le pseudo seul, 1 à 60 caractères |
+| `contact_email`, `contact_phone` | refusés sans `contact_*_consent_at` à côté |
+
+Ce dernier point est le garde-fou du consentement : un formulaire qui oublie la
+case « publié publiquement, définitivement » ne peut pas écrire la colonne.
+
+### 4. Rattacher la personne, en propriétaire
+
+```sql
+insert into public.organizer_members (organizer_id, user_id, role)
+select o.id, u.id, 'owner'
+from public.organizers o, auth.users u
+where o.slug = 'el-gato-tanguero'
+  and u.email = 'adresse@exemple.fr'
+returning organizer_id, user_id, role;
+```
+
+**`owner`, pas `editor`, pour un vrai organisateur extérieur sur sa propre
+fiche.** Il pourra alors modifier son nom, ses liens et ses coordonnées, et
+ajouter ses propres collègues, sans repasser par vous. Gardez `editor` pour
+quelqu'un qui aide sur une fiche qui n'est pas la sienne.
+
+L'enum n'a que ces deux valeurs.
+
+**Zéro ligne renvoyée veut dire que le `select` n'a rien trouvé** — un slug ou
+une adresse qui ne correspond pas — et non que l'insertion a échoué. C'est la
+seule façon dont cette requête peut échouer en silence : vérifiez à l'étape 5.
+
+### 5. Vérifier
+
+```sql
+select o.name, o.slug, u.email, m.role
+from public.organizer_members m
+join public.organizers o on o.id = m.organizer_id
+join auth.users u on u.id = m.user_id
+where o.slug = 'el-gato-tanguero';
+```
+
+Une ligne, le bon rôle, la bonne adresse.
+
+### 6. Ce qu'il fait ensuite, sans vous
+
+Il se connecte sur **editor.nissartango.fr**, demande un lien, l'ouvre dans le
+même navigateur, et trouve sa fiche sous **Organisateur**.
+
+`/organizer/` liste les fiches auxquelles il appartient ; `/organizer/?id=<uuid>`
+en ouvre une. **Un administrateur qui n'est membre de rien ne voit rien dans
+cette liste** et doit passer par l'URL — `myOrganizers()` répond à « les
+organisateurs pour lesquels je peux créer des ÉVÉNEMENTS », pas « ceux que je
+peux administrer ». C'est délibéré et documenté dans `AGENTS.md` item 7.
+
+Ses événements partent en `pending` dans votre file. C'est la file qui publie,
+jamais le formulaire.
 
 ---
 
