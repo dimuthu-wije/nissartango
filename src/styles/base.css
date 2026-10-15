@@ -70,12 +70,38 @@ header {
   justify-content: space-between;
   align-items: center;
 }
+/* THE HEADER STACKS ON A PHONE, and it is arithmetic rather than taste.
+ * Measured at 375px: the shell is 343px inside the gutters and the nav needs
+ * 213px on one line -- it grew with the type and again with the 44px tap
+ * targets. That leaves 106px for the wordmark, which at its 6.46:1 aspect is
+ * SIXTEEN PIXELS tall: smaller than the 20px it was before anyone asked for a
+ * bigger logo. The two cannot share a line at any size worth having.
+ *
+ * So the header is two lines either way. Left alone it chose the bad two: the
+ * nav wrapped INSIDE its own box and "Agenda" came to rest on the wordmark's
+ * line, overlapping it. Stacking puts the mark on one line and both links,
+ * unwrapped, on the next. */
+@media (max-width: 40rem) {
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-12);
+  }
+}
 
 /* The wordmark is inlined SVG whose ink paths are currentColor, so it takes
- * its colour from here and follows the theme. 20px tall is the size it was
- * checked at; below that the ART stops reading. */
+ * its colour from here and follows the theme.
+ *
+ * 32px since 2026-10-15, up from 20. The BOLDNESS is not here and could not
+ * be: the lettering is outlined, with no <text> and no font-family, so there
+ * is no weight to raise -- docs/DESIGN.md §9 records that the typeface was
+ * never identified and that an attempt to identify it locally was abandoned
+ * rather than guessed. The mark is thickened by a stroke baked into
+ * design/brand/, in the SAME colour each path already fills with, so the ART
+ * stays orange. Baked there rather than set here so the social card, which
+ * reads those files directly, is bold too. */
 .logo { display: block; color: var(--ink); }
-.logo svg { display: block; height: 1.25rem; width: auto; }
+.logo svg { display: block; height: 2rem; width: auto; }
 
 /* ---- Touch targets, phones only -------------------------------------------
  * Measured at 375px with the 17-event fixture: the wordmark was 20px tall, nav
