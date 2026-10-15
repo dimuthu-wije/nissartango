@@ -429,7 +429,24 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      rather than beside it. */
   @media (max-width: 62rem) {
     .events li { grid-template-columns: 15rem 1fr; }
-    .where { grid-column: 2; flex-direction: row; gap: var(--space-8); }
+    /* NOT A FLEX ROW -- AN ADDRESS IS A SENTENCE. It was `flex-direction: row`
+       with a gap, which turns "7 place Garibaldi", "06300" and "Nice" into
+       three shrinkable boxes. Flex items shrink before they wrap, so in this
+       band -- where the column is 321px and the parts need 322 -- the browser
+       squeezed the first box and broke the STREET NAME across two lines:
+
+           7 place
+           Garibaldi      06300   Nice
+
+       The markup already writes it as prose: each part after the first carries
+       its own leading space. Making the box a block lets the spans be inline
+       text again, so it wraps at word boundaries like any sentence and the
+       gap, which was doubling with those spaces, is no longer needed.
+
+       Only this band was ever wrong. Above 62rem the column stacks the parts
+       deliberately; below 30rem the row is full width and the address fits on
+       one line either way. */
+    .where { grid-column: 2; display: block; }
   }
   /* 96px between blocks is a desktop rhythm. On an 812px screen it put 190px
      of nothing between the lede and the first section heading -- most of a
