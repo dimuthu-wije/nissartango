@@ -250,7 +250,7 @@ const jsonLd = nodes.length === 1
 
   {image && (
     <Image src={image} alt={e.title} widths={[400, 800, 1200]}
-           sizes="(max-width: 46rem) 100vw, 46rem" class="flyer" />
+           sizes="(max-width: 45rem) 100vw, 45rem" class="flyer" />
   )}
 
   <dl class="details">
@@ -365,8 +365,39 @@ const jsonLd = nodes.length === 1
   .banner.past { border-left-color: var(--rule-strong); color: var(--ink); }
   .banner.past a { color: inherit; }
 
+  /* TWO CAPS, because a flyer can be wrong in two directions.
+   *
+   * It was `width: 100%` of the shell, which at a 1200px viewport rendered
+   * 1137x1516: wider than the prose it introduces and half again taller than
+   * the window, so the page opened on an image and nothing else, with the
+   * date, the venue and the price at y=1809.
+   *
+   * THE WIDTH CAP WAS ALREADY DECLARED, in the `sizes` attribute, and the CSS
+   * had simply never agreed with it. `sizes` promised the browser the image
+   * would never exceed 46rem, so the browser fetched a 736px file and the CSS
+   * then stretched it across 1137px -- a 1.54x upscale, soft on every screen.
+   * Capping the width is what makes that attribute true again; it is not a new
+   * decision, it is the one the markup already recorded.
+   *
+   * The width cap is --width-prose rather than 46rem: the flyer now sits on
+   * exactly the measure of the text below it, which is a relationship rather
+   * than a number, and it cannot drift from the prose if that ever changes.
+   *
+   * THE HEIGHT CAP IS THE NEW ONE. A portrait flyer -- and they are portrait,
+   * the fixture's are 900x1200 because real ones are -- hits the width cap
+   * without ever hitting a sensible height, so width alone does not fix the
+   * wall. 60vh keeps the details inside the first screen on the laptop and
+   * desktop heights this is read at, which is the point: the flyer is the
+   * poster, not the page.
+   *
+   * width/height auto let the two caps fight it out while the aspect ratio
+   * holds. For a 3:4 flyer the height cap binds; for a landscape one the width
+   * cap does. */
   .flyer {
-    width: 100%; height: auto;
+    display: block;
+    width: auto; height: auto;
+    max-width: min(100%, var(--width-prose));
+    max-height: 60vh;
     border-radius: var(--radius-media); margin-bottom: var(--space-32);
   }
   /* NO LABEL COLUMN AND NO RULES, from 2026-10-14. This was a two-column
