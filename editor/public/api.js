@@ -215,9 +215,14 @@ async function write(method, path, body) {
  * promised -- rows this caller may READ -- and that was never the same question
  * as "rows about this caller".
  */
+// Les champs de CONTACT sont ramenés en plus de l'identité, pour que le
+// formulaire d'événement puisse dire « votre fiche est vide » sans une seconde
+// requête. `authenticated` a SELECT sur toutes les colonnes d'organizers, donc
+// cela n'élargit aucun droit -- seulement ce qu'on prend la peine de demander.
 export const myOrganizers = async () => {
   const { sub } = claimsOf((await getSession()).access_token);
-  return select('organizer_members?select=role,organizers(id,name,slug)'
+  return select('organizer_members?select=role,organizers'
+    + '(id,name,slug,website,instagram,facebook,tiktok,contact_email)'
     + `&user_id=eq.${encodeURIComponent(sub)}`);
 };
 

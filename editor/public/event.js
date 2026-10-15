@@ -409,6 +409,41 @@ function buildForm(organizers, existing, isEdit = Boolean(existing)) {
   form.appendChild(field('organizer_id', 'Organisateur',
     selectOf(organizers.map((o) => ({ value: o.id, label: o.name })), existing?.organizer_id),
     { required: true }));
+
+  /* UNE FICHE VIDE NE BLOQUE PAS, elle se signale. Décidé le 2026-10-15 après
+     avoir pesé le blocage : refuser la création tant que la fiche est vide
+     arrête aussi l'organisateur pressé, un soir de date limite, pour une
+     information que personne n'attend ce soir-là. Un événement publié sans
+     coordonnées vaut mieux qu'un événement non publié.
+  
+     CE QU'ELLE RÉCLAME EST UNE FAÇON D'ÊTRE TROUVÉ, pas un champ précis : site,
+     Instagram, Facebook, TikTok ou e-mail public — un seul suffit. C'est le
+     résultat qui compte, et il est visible : la page d'un événement n'affiche
+     aujourd'hui qu'un nom pour El Gato Tanguero et pour Rosa Gervasi, parce
+     qu'aucun des deux n'a rempli quoi que ce soit.
+  
+     ELLE SUIT LE SELECT. Un avertissement portant sur une autre fiche que celle
+     qu'on est en train de remplir serait pire que pas d'avertissement : on
+     corrigerait la mauvaise. */
+  const cardNotice = el('div');
+  form.appendChild(cardNotice);
+
+  const REACHABLE = ['website', 'instagram', 'facebook', 'tiktok', 'contact_email'];
+  const refreshCardNotice = () => {
+    const chosen = organizers.find((o) => o.id === fields.get('organizer_id').control.value);
+    const empty = chosen && REACHABLE.every((k) => !chosen[k]);
+    if (!empty) return cardNotice.replaceChildren();
+    const b = box('idle', 'La fiche de cet organisateur est vide.',
+      'Aucun site, aucun réseau, aucun e-mail public — la page de vos événements '
+      + 'n\'affichera que le nom. Vous pouvez publier quand même ; un seul de ces '
+      + 'champs suffit à rendre la page utile.');
+    const a = el('a', `Compléter la fiche de ${chosen.name}`);
+    a.href = `/organizer/?id=${encodeURIComponent(chosen.id)}`;
+    b.appendChild(el('p')).appendChild(a);
+    cardNotice.replaceChildren(b);
+  };
+  fields.get('organizer_id').control.addEventListener('change', refreshCardNotice);
+  refreshCardNotice();
   form.appendChild(field('title', 'Titre',
     input('text', { value: existing?.title ?? '', maxLength: 200 }), { required: true }));
   // CHECKBOXES, not a select, because an evening is often a class AND then
