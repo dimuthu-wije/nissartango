@@ -201,8 +201,20 @@ scriptable. But GoTrue redirects an INVALID token to `redirect_to` when that
 target is allow-listed and to `site_url` when it is not, so one unauthenticated
 GET reveals both. No email, no state change, no row:
 
-    curl -sI --max-redirs 0 \
+    curl -s -o /dev/null -D- --max-redirs 0 \
       "$SUPABASE_URL/auth/v1/verify?token=probe-invalid&type=magiclink&redirect_to=https%3A%2F%2Fexample.com%2Fnope"
+
+**`-I` NO LONGER WORKS and this cost a confusing minute on 2026-10-15.** The
+probe was written with `curl -sI`, which sends HEAD; `/auth/v1/verify` now
+answers `405` with `allow: POST, GET` and no `location` at all. An empty result
+reads exactly like "the setting is gone" — it means the method is. Use `-o
+/dev/null -D-` to keep a GET while discarding the body.
+
+Re-measured 2026-10-15 with the corrected command, production unchanged:
+
+    redirect_to=https://example.com/nope                    -> https://editor.nissartango.fr
+    redirect_to=https://editor.nissartango.fr/auth/callback -> https://editor.nissartango.fr/auth/callback
+    redirect_to=http://localhost:3000                       -> https://editor.nissartango.fr
 
 Measured 2026-09-19, raw `location:` headers:
 
