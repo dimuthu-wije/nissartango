@@ -392,6 +392,58 @@ values ('ca401000-0000-0000-0000-000000000003', 'carol@example.org');
 insert into public.organizer_members (organizer_id, user_id, role)
 values ('0b000000-0000-0000-0000-0000000000bb', 'ca401000-0000-0000-0000-000000000003', 'owner');
 
+-- === deleting an ORGANIZER must not be blocked by its own membership =======
+--
+-- The mirror of the block above, and it did not hold until 20261015120000.
+-- The guard had an escape hatch for a deleted account and none for a deleted
+-- organizer, so the CASCADE on organizer_members.organizer_id -- which exists
+-- precisely to make this work -- raised NT001 instead. Found by trying to
+-- delete a test organizer on 2026-10-15 and being refused.
+--
+-- ON A THROWAWAY ORGANIZER, not on Rosa Gervasi. A first version of this block
+-- deleted her two events to get past the RESTRICT and put the organizer back
+-- without them, which left the admin assertions below looking for four events
+-- and finding two. A test that has to dismantle a fixture to exercise itself
+-- should build its own.
+
+insert into public.organizers (id, name, slug)
+values ('0c000000-0000-0000-0000-0000000000cc', 'Éphémère', 'ephemere');
+insert into public.organizer_members (organizer_id, user_id, role)
+values ('0c000000-0000-0000-0000-0000000000cc', 'ca401000-0000-0000-0000-000000000003', 'owner');
+insert into public.events (organizer_id, created_by, status, slug, title, formats,
+                           starts_at, timezone, city)
+values ('0c000000-0000-0000-0000-0000000000cc', 'ca401000-0000-0000-0000-000000000003',
+        'approved', '2026-12-01-ephemere', 'Éphémère', array['milonga'],
+        '2026-12-01T20:00:00Z', 'Europe/Paris', 'Nice');
+
+select check_eq('precondition: the throwaway has one owner and one event',
+  (select count(*)::text from public.organizer_members
+    where organizer_id = '0c000000-0000-0000-0000-0000000000cc' and role = 'owner')
+  || '/' ||
+  (select count(*)::text from public.events
+    where organizer_id = '0c000000-0000-0000-0000-0000000000cc'), '1/1');
+
+-- RESTRICT bites before the trigger is ever reached. Asserted so a later
+-- change cannot quietly relax it.
+select must_fail('an organizer with events cannot be deleted',
+  $$delete from public.organizers where id = '0c000000-0000-0000-0000-0000000000cc'$$);
+
+delete from public.events where organizer_id = '0c000000-0000-0000-0000-0000000000cc';
+delete from public.organizers where id = '0c000000-0000-0000-0000-0000000000cc';
+
+select check_eq('with its events gone, the organizer deletes',
+  (select count(*)::text from public.organizers
+    where id = '0c000000-0000-0000-0000-0000000000cc'), '0');
+select check_eq('...and its memberships cascade away rather than raising NT001',
+  (select count(*)::text from public.organizer_members
+    where organizer_id = '0c000000-0000-0000-0000-0000000000cc'), '0');
+select check_eq('...while the owner''s account survives, untouched',
+  (select count(*)::text from auth.users
+    where id = 'ca401000-0000-0000-0000-000000000003'), '1');
+select check_eq('...and Rosa Gervasi is undisturbed by any of it',
+  (select count(*)::text from public.events
+    where organizer_id = '0b000000-0000-0000-0000-0000000000bb'), '2');
+
 \echo ''
 \echo '--- as dave, admin ---'
 set role authenticated;
