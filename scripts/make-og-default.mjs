@@ -42,7 +42,7 @@ import { fileURLToPath } from 'node:url';
 const at = (p) => fileURLToPath(new URL(`../${p}`, import.meta.url));
 
 /* Values come from src/styles/tokens.css. --accent-text, not --accent, for the
- * domain: it is lettering, and the raw brand orange is 3.71:1 on paper. */
+ * domain: it is lettering, and the raw brand orange is 3.79:1 on paper. */
 const PAPER = '#FBFAF8';
 const MUTED = '#6B6660';
 const RULE  = '#B8B0A4';

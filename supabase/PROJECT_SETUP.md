@@ -297,6 +297,141 @@ opposite and was wrong.
 | Sender address | `Nissartango <no-reply@nissartango.fr>` | — |
 | Rate limit, emails/hour | **30** | 2 (the built-in ceiling) |
 
+### Email templates — FRENCH, written 2026-10-15
+
+Dashboard → **Authentication → Emails → Templates**, per project, not in this
+repo. Recorded here because nothing else records them.
+
+**Only TWO of the six matter**, and that follows from the code rather than from
+preference. `editor/public/auth.js` calls `signInWithOtp` with
+`create_user: false` and nothing else: there is no password anywhere in this
+project, so *Reset Password* and *Confirm signup* can never fire, and
+*Reauthentication* has no caller. Leave them at their defaults; editing them
+would be maintaining prose nobody will read.
+
+**They do NOT say "ne pas répondre".** `no-reply@nissartango.fr` forwards to the
+maintainer's inbox since 2026-09-26, added precisely because replies to it were
+bouncing — and the realistic reply is *"je n'arrive pas à me connecter"* from
+somebody who has just been sent a link. An address that says do-not-reply and
+then reads the replies is lying in the helpful direction; one that says it and
+discards them is the failure the forward exists to prevent.
+
+**The three facts are IN the magic-link mail, not only in the guide.** One use,
+one hour, same browser. They cause nearly every failed sign-in, and the guide
+is on a site you reach by signing in — which is exactly where somebody who
+cannot sign in will not be looking.
+
+#### 1. Invite user
+
+Subject:
+
+    Votre accès à l'agenda nissARTango
+
+Body:
+
+```html
+<div style="font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#171614;max-width:34rem">
+  <p>Bonjour,</p>
+
+  <p>Vous pouvez désormais publier vos événements sur
+    <strong>niss<span style="color:#E55039">ART</span>ango</strong>, l'agenda du
+    tango et des danses sociales à Nice et sur la Côte d'Azur.</p>
+
+  <p style="margin:28px 0">
+    <a href="{{ .ConfirmationURL }}"
+       style="background:#E55039;color:#171614;text-decoration:none;padding:12px 24px;border-radius:999px;display:inline-block;font-weight:600">Activer
+       mon accès</a>
+  </p>
+
+  <p>Ce lien crée votre compte et vous connecte. <strong>Il ne sert qu'une
+    fois.</strong></p>
+
+  <p>Ensuite, tout se passe sur <strong>editor.nissartango.fr</strong>. Il n'y a
+    pas de mot de passe : vous demandez un lien de connexion, vous l'ouvrez, vous
+    êtes connecté.</p>
+
+  <p>Si le bouton ne fonctionne pas, copiez cette adresse dans votre
+    navigateur :<br>
+    <span style="color:#6B6660;word-break:break-all">{{ .ConfirmationURL }}</span></p>
+
+  <p style="margin-top:28px;color:#6B6660">Une question ? Répondez simplement à
+    ce message, ou écrivez à contact@nissartango.fr.</p>
+</div>
+```
+
+#### 2. Magic Link
+
+Subject:
+
+    Votre lien de connexion — nissARTango
+
+Body:
+
+```html
+<div style="font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#171614;max-width:34rem">
+  <p>Voici votre lien pour vous connecter à l'espace éditeur de
+    <strong>niss<span style="color:#E55039">ART</span>ango</strong> :</p>
+
+  <p style="margin:28px 0">
+    <a href="{{ .ConfirmationURL }}"
+       style="background:#E55039;color:#171614;text-decoration:none;padding:12px 24px;border-radius:999px;display:inline-block;font-weight:600">Me
+       connecter</a>
+  </p>
+
+  <p><strong>Trois choses à savoir</strong>, et elles expliquent presque toutes
+    les pannes de connexion :</p>
+  <ul>
+    <li>ce lien ne sert <strong>qu'une seule fois</strong> ;</li>
+    <li>il est valable <strong>une heure</strong> ;</li>
+    <li>il doit être ouvert <strong>dans le même navigateur</strong> que celui
+      où vous l'avez demandé. Si vous le demandez sur l'ordinateur et ouvrez
+      l'e-mail sur le téléphone, il ne fonctionnera pas.</li>
+  </ul>
+
+  <p>Si un lien ne marche pas, demandez-en simplement un nouveau.</p>
+
+  <p>Si le bouton ne fonctionne pas, copiez cette adresse dans votre
+    navigateur :<br>
+    <span style="color:#6B6660;word-break:break-all">{{ .ConfirmationURL }}</span></p>
+
+  <p style="margin-top:28px;color:#6B6660">Vous n'avez pas demandé ce lien ?
+    Ignorez ce message : personne ne peut se connecter sans l'ouvrir.</p>
+
+  <p style="color:#6B6660">Besoin d'aide ? Répondez à ce message, ou écrivez à
+    contact@nissartango.fr.</p>
+</div>
+```
+
+#### Why they look like this
+
+**Plain HTML with inline styles and no image.** Mail clients strip `<style>`
+blocks, Outlook ignores most of what survives, and a remote image is blocked by
+default in roughly every client that matters — a logo that does not load is
+worse than no logo. The wordmark is therefore set as TEXT with the orange on
+the `ART`, which is the one piece of the identity that survives a text-only
+rendering.
+
+**The raw URL is printed under every button.** Some clients mangle a styled
+anchor, and a magic link that cannot be copied is a dead end for the one person
+least able to work around it.
+
+**Ink on the accent, never cream.** `#171614` on `#E55039` is **4.77:1** and
+passes; white on that orange is **3.79:1** and fails. The same conclusion as
+the site's own pill, for the same reason.
+
+**No tracking pixel and no analytics.** Nothing here needs to know whether a
+link was opened, and this project carries no cookie banner precisely because it
+does nothing of the kind.
+
+#### After changing them
+
+Supabase does not preview a template against a real send. The only honest check
+is to invite a throwaway address and read what arrives — and to do it on the
+project you mean, which is the mistake that cost an afternoon on 2026-10-15:
+an invitation went to `hjsekipqryfuwdkhxuks`, whose `site_url` is
+`http://localhost:3000`, so the link opened a blank page on a dev server that
+was not running. **Read the ref, never the name.**
+
 **Proven, not configured.** A magic link was delivered on 2026-09-21 to a
 `@gmail.com` address that is NOT on the Supabase organization and holds zero
 rows in `user_roles`. That is precisely the case the built-in service refuses.

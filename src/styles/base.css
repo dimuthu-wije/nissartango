@@ -163,7 +163,7 @@ nav a { color: var(--ink); text-decoration: none; }
 nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
 
 /* The current page is marked with a rule in the accent, not with coloured
- * text: as a 2px graphic the brand orange only needs 3:1 and has 3.71:1,
+ * text: as a 2px graphic the brand orange only needs 3:1 and has 3.79:1,
  * where as lettering it would need 4.5:1 and fail. The label stays ink. */
 nav a[aria-current="page"] {
   text-decoration: underline;

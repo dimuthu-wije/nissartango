@@ -105,7 +105,10 @@ for this. Values chosen to match the editor's existing dark tokens.
 
 2. **The CTA is an orange fill with an INK label, not a cream one.** Measured:
    cream `#FBFAF8` on `#D85A30` is **3.71:1 — fails**; ink `#171614` on the same
-   fill is **4.67:1 — passes**. Today `[slug].astro` sets `color: #fff` on the
+   fill is **4.67:1 — passes**. Those two figures are against `#D85A30` and are
+   kept as the measurement that decided it; the accent became `#E55039` on
+   2026-10-12 and the pair re-measures at **3.79** and **4.77** — same verdict,
+   different numbers. Today `[slug].astro` sets `color: #fff` on the
    accent-filled button, so this is a real change, not a restatement. The
    reference reaches the same conclusion for its own pill ("it must remain
    #000000").
@@ -301,7 +304,7 @@ two deployments will behave alike for the first time.
 The logo handles this with one file: `design/brand/logo-wordmark.svg` has its
 two ink paths as `currentColor` and keeps the orange literal, so it follows the
 theme while the ART stays orange. The orange is the one thing that does not
-flip, and does not need to — 3.71:1 on paper and 4.67:1 on ink, both above the
+flip, and does not need to — 3.79:1 on paper and 4.77:1 on ink, both above the
 3:1 bar that applies to a graphic.
 
 ---

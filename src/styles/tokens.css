@@ -255,7 +255,7 @@
     --rule:        #332F2A;
     --rule-strong: #4E4842;
 
-    /* The orange already clears AA on ink at 4.67:1, so the darkened variant
+    /* The orange already clears AA on ink at 4.77:1, so the darkened variant
      * is not needed here and would in fact be worse. */
     --accent-text: #E55039;
   }
