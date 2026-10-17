@@ -969,9 +969,35 @@ fake events had never left the laptop.
      the hand-written versions hard-coded October and would have quietly become
      an archive fixture a month later.
 
-     It cannot cover flyers: `image_file` names a file fetch-content downloads
-     into `src/assets/events/`, and a row without the bytes behind it renders
-     nothing. Test images against a real upload.
+     ~~It cannot cover flyers.~~ **It has covered them since 2026-10-12**, by
+     writing drab placeholder JPEGs into `src/assets/events/` under exactly the
+     name fetch-content would give them, so the fixture satisfies the real
+     pipeline instead of going round it. They are PLACEHOLDERS: they prove the
+     layout, the crop and the srcset, and say nothing about how a real flyer --
+     usually portrait, usually dense with type -- survives a square crop. That
+     still needs a real upload. This paragraph claimed the opposite for five
+     days after the feature shipped.
+
+     **It no longer borrows a real event, as of 2026-10-17.** The base row every
+     fake event was spread from used to be `real.events[0]`, and the script
+     threw `the real snapshot has no events to use as a template` without one --
+     so emptying the agenda on 2026-10-15 broke the only tool for designing an
+     agenda, on the day the site had the least content to look at. A fixture
+     that exists to replace real content must not depend on it. The base row is
+     written down in the script, which is also what made `payment_methods`
+     coverable: every event had inherited production's first row's methods, so
+     all seventeen said the same thing and `paymentSummary()`'s "the organizer
+     did not say" branch was never rendered here.
+
+     ORGANIZERS are still borrowed, deliberately -- the real names, slugs and
+     handles are worth having -- but the three the fixture names are topped up
+     with stand-ins when the snapshot holds fewer. Production held exactly three
+     on 2026-10-17, so `org[2]` worked by accident; one deletion would have
+     written `organizer_id: undefined` and failed in `src/content.config.ts`
+     with an error about the SCHEMA rather than about the fixture. Proven by
+     running the script against a snapshot with zero events AND zero
+     organizers: 17 events, 3 stand-ins, 19 pages, all 14 `verify:build`
+     checks.
 
      **Nothing it writes can reach production**, structurally rather than
      carefully: it writes only `snapshot.preview.json` and the pointer and

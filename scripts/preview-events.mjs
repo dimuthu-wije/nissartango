@@ -4,13 +4,22 @@
  *     node scripts/preview-events.mjs          # fake events on
  *     node scripts/preview-events.mjs --off    # back to the real agenda
  *
- * WHY THIS EXISTS. The live database holds two events, one of which is a
- * cancellation, so the listing cannot be judged at all -- a row, a range, a
+ * WHY THIS EXISTS. The live database has never held enough events to judge the
+ * listing by: two for most of its life, and ZERO since 2026-10-15, when the
+ * agenda was emptied at the end of the organizer walkthrough. A row, a range, a
  * section, a filter and a type scale all behave differently at sixteen rows
  * than at one. Twice this fixture was written by hand into gitignored scratch
  * and deleted afterwards, and the second time it immediately exposed a defect
  * nobody had named: a three-day festival filling three byte-identical rows.
  * That is worth keeping rather than retyping.
+ *
+ * IT BORROWS NO EVENT, as of 2026-10-17. Until then the base row every fake
+ * event was spread from was `real.events[0]`, and the script threw without
+ * one -- so emptying the agenda broke the only tool for designing an agenda,
+ * on the day the site had the least content to look at. The base row is
+ * written down below. Only the ORGANIZERS are still borrowed, because their
+ * names, slugs and handles are worth having real; they are topped up with
+ * stand-ins when the snapshot holds fewer than the three this fixture names.
  *
  * NOTHING HERE CAN REACH PRODUCTION, and that is structural rather than
  * careful:
@@ -37,7 +46,8 @@
  *   event cancelled OUTRIGHT, which is a different state and a different
  *   banner · free, full-price, member-price and a price note · a signup link
  *   (the CTA) · named teachers · an event that crosses midnight · one with no
- *   duration at all · rich prose · a past event, so /archives/ is not empty.
+ *   duration at all · rich prose · several payment methods, one, and none at
+ *   all · a past event, so /archives/ is not empty.
  *
  * FLYERS ARE COVERED, as of 2026-10-12, because the card grid is built around
  * them and a grid of empty boxes cannot be judged. `events.image_file` names a
@@ -94,14 +104,30 @@ if (!existsSync(REAL)) {
   throw new Error('data/snapshot.json is missing — run `npm run build` once to fetch it');
 }
 const real = JSON.parse(readFileSync(REAL, 'utf8'));
-if (!real.events?.length) throw new Error('the real snapshot has no events to use as a template');
-if (!real.organizers?.length) throw new Error('the real snapshot has no organizers');
 
 /* Organizer rows are borrowed from the real snapshot rather than invented, so
-   the names, slugs and social handles on the page are the real ones. It is
-   read-only: nothing is written back. */
-const org = real.organizers.map((o) => o.id);
-const TEMPLATE = real.events[0];
+   the names, slugs and social handles on the page are the real ones -- which
+   is also the only way `socialLinks()` renders here what it renders live. It
+   is read-only: nothing is written back.
+
+   THREE ARE NAMED BELOW and the snapshot is not guaranteed to hold three. It
+   held exactly three on 2026-10-17, so org[2] worked by accident: deleting one
+   organizer would have given every event naming it `organizer_id: undefined`,
+   which fails in src/content.config.ts with an error about the SCHEMA rather
+   than about this fixture. So the list is topped up, and the stand-ins go into
+   the snapshot this writes -- an organizer_id absent from `organizers` renders
+   an event whose organizer silently does not exist. */
+const standIn = (n) => ({
+  id: `0f000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
+  name: `Organisateur ${n} (fictif)`, slug: `organisateur-fictif-${n}`,
+  website: null, instagram: null, facebook: null, tiktok: null,
+  created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  contact_email: null, contact_phone: null,
+});
+const ORGANIZERS = [...(real.organizers ?? [])];
+while (ORGANIZERS.length < 3) ORGANIZERS.push(standIn(ORGANIZERS.length + 1));
+const org = ORGANIZERS.map((o) => o.id);
+const borrowed = real.organizers?.length ?? 0;
 
 /** A Paris wall-clock time, `d` days from today, as a real instant. */
 const at = (days, hour, minute = 0) => {
@@ -119,13 +145,27 @@ const day = (days) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const ev = (o) => ({
-  ...TEMPLATE, id: randomUUID(), legacy_slugs: [], extra_dates: [], teachers: [],
-  price_member: null, price_note: null, signup_url: null, image_path: null, image_file: null,
-  body: '', cancelled_at: null, cancellation_note: null, recurrence: 'none',
-  recurrence_end: null, duration_minutes: 180, timezone: TZ,
-  location_address: null, location_postal_code: null, organizer_id: org[0], ...o,
-});
+/* EVERY COLUMN events_public returns, with the value a plain one-off event
+   carries. Written down rather than borrowed, so that a column ADDED to the
+   view shows up here as a key nobody filled in -- a borrowed row answered for
+   those columns with whatever production's first event happened to hold, which
+   is a value nobody chose and, since 2026-10-15, no value at all.
+
+   slug, title and starts_at are deliberately null: every row in EVENTS sets
+   all three, and a row that forgot one should fail loudly in the schema
+   instead of inheriting somebody else's date. */
+const NOW = new Date().toISOString();
+const TEMPLATE = {
+  id: null, slug: null, title: null, starts_at: null,
+  legacy_slugs: [], formats: [], extra_dates: [], teachers: [], payment_methods: [],
+  duration_minutes: 180, timezone: TZ, recurrence: 'none', recurrence_end: null,
+  location_name: null, location_address: null, location_postal_code: null, city: 'Nice',
+  organizer_id: null, price_full: null, price_member: null, price_note: null,
+  signup_url: null, image_path: null, image_file: null, body: '',
+  cancelled_at: null, cancellation_note: null, created_at: NOW, updated_at: NOW,
+};
+
+const ev = (o) => ({ ...TEMPLATE, id: randomUUID(), organizer_id: org[0], ...o });
 
 const BODY = [
   'Deux jours avec **Mauro Caiazza** et **Sol Cerquides**, dans la grande salle.',
@@ -144,6 +184,11 @@ const BODY = [
   'Les places sont limitées à douze couples.',
 ].join('\n');
 
+/* PAYMENT METHODS are set on three events only, and the silence elsewhere is
+   the third case: an empty array means the organizer did not say, and
+   paymentSummary() renders nothing rather than claiming cash. Until 2026-10-17
+   every event here inherited the borrowed row's methods, so all seventeen said
+   the same thing and that branch was never rendered by this fixture. */
 const EVENTS = [
   // --- one-offs, the "news" half of the agenda ---
   ev({ slug: `${day(5)}-stage-mauro-et-sol`, title: 'Stage intensif avec Mauro et Sol',
@@ -151,11 +196,17 @@ const EVENTS = [
        location_address: '12 rue Gubernatis', price_full: 120, price_member: 95,
        price_note: 'tarif étudiant sur présentation de la carte',
        teachers: ['Mauro Caiazza', 'Sol Cerquides'], extra_dates: [day(6)],
+       payment_methods: ['especes', 'cb', 'cheque'],   // three, the longest line
        signup_url: 'https://example.org/inscription', body: BODY, organizer_id: org[1] }),
   ev({ slug: `${day(6)}-bal-bachata-kizomba`, title: 'Bal bachata & kizomba',
        starts_at: at(6, 21), formats: ['soiree'], city: 'Antibes',
        location_name: 'Salle des Associations', price_full: 12, organizer_id: org[2] }),
-  ev({ slug: `${day(9)}-demonstration-theatre-de-verdure`,
+  // The slug said `demonstration` until 2026-10-17, left over from when this
+  // row was a `demo` -- a format dropped from the CHECK on 2026-10-13. The
+  // placeholder selector below keys on `encuentro`, so it silently matched
+  // nothing and this card was judged without the flyer it was meant to carry:
+  // three placeholders where the comment promised four.
+  ev({ slug: `${day(9)}-encuentro-theatre-de-verdure`,
        title: 'Encuentro de la Baie des Anges', starts_at: at(9, 19),
        formats: ['encuentro'], city: 'Nice', location_name: 'Théâtre de Verdure',
        price_full: 0, duration_minutes: 60 }),
@@ -171,6 +222,7 @@ const EVENTS = [
        title: 'Festival Tango Côte d’Azur — troisième édition', starts_at: at(26, 16),
        formats: ['festival', 'milonga'], city: 'Cannes', location_name: 'Palais des Festivals',
        price_full: 90, price_member: 70, extra_dates: [day(27), day(28)],
+       payment_methods: ['cb', 'virement'],
        signup_url: 'https://example.org/festival', organizer_id: org[1] }),
   ev({ slug: `${day(40)}-milonga-des-lumieres`, title: 'Milonga des Lumières',
        starts_at: at(40, 20, 30), formats: ['milonga'], city: 'Menton',
@@ -192,7 +244,8 @@ const EVENTS = [
        title: 'MILONGA précédée d’une Pràctica "Jeudi c’est permis !" à la Casita',
        starts_at: at(4, 20), formats: ['milonga', 'practica'], city: 'Nice',
        recurrence: 'weekly', recurrence_end: day(240),
-       location_name: 'La Casita del Tango', price_full: 10, organizer_id: org[2] }),
+       location_name: 'La Casita del Tango', price_full: 10,
+       payment_methods: ['especes'], organizer_id: org[2] }),   // one, no comma
   ev({ slug: `${day(8)}-bicilonga`, title: 'Bicilonga — la milonga à vélo',
        starts_at: at(8, 18), formats: ['milonga'], city: 'Nice', recurrence: 'biweekly',
        recurrence_end: day(200), location_name: 'Promenade du Paillon', price_full: 0 }),
@@ -240,6 +293,14 @@ const EVENTS = [
 // invented image would flatter a layout that has never met a real poster.
 // Portrait source, square crop -- which is what a real flyer will do.
 mkdirSync(ASSETS, { recursive: true });
+// Last run's placeholders go first. Every run invents new event ids, so the
+// filename changes while the old file stays -- and fetch-content's prune is
+// deliberately OFF under --from-snapshot, which is the only mode that reads
+// this fixture. Seven files for four flyers was the state on 2026-10-17, and
+// Astro optimised every one of them into dist/. This only ever removes
+// `preview-*`, so a real flyer downloaded by fetch-content survives.
+const stale = dropPlaceholders();
+if (stale) console.log(`  removed ${stale} placeholder image(s) from the previous run`);
 const TONES = ['#CFC8BE', '#C3BDB4', '#D6CFC5', '#BDB6AC'];
 let toned = 0;
 for (const e of EVENTS) {
@@ -276,15 +337,17 @@ writeFileSync(FAKE, JSON.stringify({
   ...real,
   fetched_at: new Date().toISOString(),
   checksum: createHash('md5').update('preview-fixture').digest('hex'),
-  counts: { events: EVENTS.length, organizers: real.organizers.length,
+  counts: { events: EVENTS.length, organizers: ORGANIZERS.length,
             exceptions: EXCEPTIONS.length },
-  events: EVENTS, exceptions: EXCEPTIONS,
+  events: EVENTS, organizers: ORGANIZERS, exceptions: EXCEPTIONS,
 }, null, 2));
 writeFileSync(POINTER, 'snapshot.preview.json\n');
 
 if (md5(REAL) !== realBefore) throw new Error('the real snapshot changed — it must not');
 
 console.log(`preview ON — ${EVENTS.length} events, ${EXCEPTIONS.length} exceptions, ${toned} placeholder flyer(s)`);
+console.log(`  organizers: ${borrowed} real${
+  ORGANIZERS.length > borrowed ? `, ${ORGANIZERS.length - borrowed} stand-in(s) — fill the real ones in` : ''}`);
 console.log(`  real snapshot untouched (md5 ${realBefore.slice(0, 12)}…)`);
 console.log('  run: npm run build:snapshot && npm run preview');
 console.log('  off: node scripts/preview-events.mjs --off');
