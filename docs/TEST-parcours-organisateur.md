@@ -58,6 +58,24 @@ derrière un champ e-mail sur une page que n'importe qui peut ouvrir.
 Resend qu'il faut regarder — son quota gratuit est désormais partagé entre les
 liens magiques et vos réponses depuis `contact@`.
 
+**L'ORDRE RÉEL N'EST PLUS CELUI-CI, depuis le 2026-10-18.** En vrai, créez la
+fiche d'abord et le compte SANS envoyer l'invitation : `GUIDE-admin.md` étape 3
+dit pourquoi et ce qu'il faut vérifier dans le tableau de bord. Ici, pour le
+test, on invite quand même — parce que c'est précisément le chemin qui dépose
+quelqu'un en avance, et qu'on veut le voir une fois.
+
+**Cliquez le lien d'invitation AVANT l'étape 2, exprès.** C'est la fenêtre que
+tout ce dispositif existe pour couvrir, et elle ne se présente qu'ici.
+
+**À vérifier** : la page dit « Votre accès est en préparation. », en bleu, et
+dit de ne rien réessayer. Elle ne doit PAS afficher le panneau `user id (sub)` /
+`issued` / `expires`, qui est l'instrument d'un mainteneur, ni la boîte rouge
+« Vous n'êtes membre d'aucun organisateur » avec son explication de
+`is_member()`. Les deux sont corrects et aucun des deux ne s'adresse à lui.
+
+Cet état n'est stocké nulle part : c'est `myOrganizers()` qui ne renvoie rien.
+Il se résorbe donc tout seul à l'étape 2, sans rien rebasculer.
+
 ---
 
 ## 2. Le rattacher à un organisateur
@@ -73,6 +91,11 @@ organisateur extérieur, inutile ici.
 **Si vous le faites avant l'étape 1**, le formulaire répond `NT006` et vous dit
 nommément qu'il n'y a pas de compte pour cette adresse, au lieu d'échouer
 vaguement. C'est un cas qui mérite d'être vu une fois : faites-le exprès.
+
+**À vérifier, dans sa fenêtre à lui** : rechargez la page d'attente. Elle doit
+céder la place à l'espace éditeur sans qu'il se reconnecte et sans que vous
+touchiez à quoi que ce soit d'autre. Si elle persiste, l'appartenance n'a pas
+été écrite — regardez l'étape 5 du guide plutôt que la page.
 
 ---
 
@@ -91,6 +114,18 @@ et il doit être ouvert **dans le navigateur qui l'a demandé**.
 
 **À vérifier** : la page affiche l'espace éditeur, et **pas** le lien vers la
 file d'attente. La file est masquée pour tout le monde sauf l'admin.
+
+**CETTE VÉRIFICATION A DÉJÀ ATTRAPÉ QUELQUE CHOSE, le 2026-10-18**, ce qui est
+la seule raison de ne pas la survoler. `admin-only.js` masque le lien en posant
+`node.hidden = true`, et `a.btn { display: inline-block }` l'emportait
+silencieusement sur la règle `[hidden]` du navigateur : le bouton « Ouvrir la
+file d'attente » restait donc affiché pour tout le monde. Le lien du pied de
+page, lui, disparaissait bien — c'est un `<span>` que rien ne style — ce qui
+rendait le défaut invisible à qui ne regardait qu'un des deux. Mesuré sur la
+feuille déployée : `a.btn[hidden]` rendait `display: inline-block`, hauteur
+51.6px. Corrigé par `[hidden] { display: none !important; }`.
+
+Regardez les DEUX : le bouton du panneau et le lien du pied de page.
 
 ---
 

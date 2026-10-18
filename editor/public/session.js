@@ -21,6 +21,7 @@ import {
 } from '/auth.js';
 import '/banner.js';
 import { adminOnly } from '/admin-only.js';   // also, on import: the footer link
+import { isPending, pendingBox } from '/pending.js';
 import '/signout-button.js';   // side effect: names the project when it is not production
 
 const $ = (s) => document.querySelector(s);
@@ -71,10 +72,25 @@ const LANDING = '/event/';
 
 // --- views -----------------------------------------------------------------
 
-function showSession(session, how) {
+async function showSession(session, how) {
   let claims;
   try { claims = claimsOf(session.access_token); }
   catch (e) { return showError('Un jeton est arrivé mais n\'a pas pu être lu.', String(e.message)); }
+
+  // THE INVITE LINK LANDS HERE, and nowhere else does. A dashboard invitation
+  // is the implicit flow, so it arrives as #access_token and stops on this
+  // panel; a sign-in from the form is PKCE and redirects straight to LANDING.
+  // So the one person most likely to be waiting on a membership is also the
+  // one person guaranteed to see this page -- which is why the check belongs
+  // here rather than only on the form.
+  //
+  // AWAITED BEFORE ANYTHING IS DRAWN. Rendering the claims panel and then
+  // replacing it would flash a maintainer's instrument at somebody who is not
+  // one, which is the failure admin-only.js's header already names.
+  box('idle', 'Vérification de votre accès…');
+  if (await isPending()) {
+    return out().replaceChildren(pendingBox(claims.email));
+  }
 
   const b = box('good', 'Connecté.');
   rows(b, [
@@ -303,7 +319,11 @@ async function boot() {
   if (hasSession()) {
     try {
       // Refreshes a spent access token rather than asking for another link.
-      return showSession(await getSession(), 'stored');
+      // `return await`, not `return`: showSession is async since 2026-10-18,
+      // and a bare return would hand the promise out of this try and take the
+      // catch below with it -- the catch whose whole job is the refresh token
+      // being gone.
+      return await showSession(await getSession(), 'stored');
     } catch {
       // The refresh token is gone or refused; the form is the honest answer.
     }

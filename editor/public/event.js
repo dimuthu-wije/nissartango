@@ -32,6 +32,7 @@ import { FORMATS, formatsOf } from '/format.js';
 import { validate, mayDelete } from '/validate.js';
 import '/banner.js';
 import { adminOnly } from '/admin-only.js';   // also, on import: the footer link
+import { isPending, pendingBox } from '/pending.js';
 import '/signout-button.js';   // side effect: names the project when it is not production
 
 // {value, label}: the VALUE is the slug the database stores and constrains and
@@ -1060,6 +1061,13 @@ async function boot() {
       // Signed in and a member of nothing. Say exactly that: it is a
       // membership problem, and signing in again cannot fix it.
       const claims = claimsOf(session.access_token);
+      // ...unless this is somebody being onboarded, for whom the same state
+      // means "the admin has not finished yet" rather than "is_member()
+      // answered false". The technical box stays for the admin, who is the
+      // only person it was ever written for. See pending.js.
+      if (await isPending()) {
+        return out().replaceChildren(pendingBox(claims.email));
+      }
       const b = box('bad', 'Vous n\'êtes membre d\'aucun organisateur.',
         'Créer un événement exige is_member(organizer_id), et être administrateur ' +
         'ne remplace pas cela : il n\'existe pas de politique d\'insertion pour l\'admin.');

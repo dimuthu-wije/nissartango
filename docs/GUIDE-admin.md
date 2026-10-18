@@ -129,22 +129,7 @@ en traits d'union : `El Gato Tanguero` → `el-gato-tanguero`.
 Il est aussi `UNIQUE` : un second organisateur du même slug est refusé par la
 base, pas par vous.
 
-### 2. Créer le compte de la personne, si elle n'en a pas
-
-**Tableau de bord → Authentication → Users → Invite user.**
-
-Impossible depuis l'éditeur, et c'est voulu : `requestLink()` envoie
-`create_user: false`, donc une adresse inconnue qui demande un lien reçoit
-« Signups not allowed for otp ».
-
-**Lisez la RÉFÉRENCE du projet, jamais son nom.** `eqcgeqzzuzcwrflwasjo` est la
-production ; `hjsekipqryfuwdkhxuks` s'appelle « nissartango-dev » et ne l'est
-pas. Le 2026-10-15 une invitation est partie sur dev : le lien a ouvert
-`localhost:3000`, le `site_url` de dev, sur une page blanche — et l'éditeur en
-ligne, qui est la production, continuait à répondre « Signups not allowed for
-otp » pour un compte qui existait ailleurs.
-
-### 3. Créer la fiche
+### 2. Créer la fiche
 
 Tableau de bord → **SQL Editor** (il s'agit de données, pas de schéma ; la règle
 « la CLI, jamais le tableau de bord » d'`AGENTS.md` concerne les migrations) :
@@ -169,6 +154,48 @@ Si vous remplissez les champs optionnels ici, la base impose leur forme :
 
 Ce dernier point est le garde-fou du consentement : un formulaire qui oublie la
 case « publié publiquement, définitivement » ne peut pas écrire la colonne.
+
+### 3. Créer le compte — SANS envoyer l'invitation tout de suite
+
+**L'ordre a changé le 2026-10-18, et c'est le seul changement qui compte dans
+cette section.** La fiche passe devant parce qu'elle n'a besoin d'aucun compte,
+tandis que l'appartenance a besoin des deux : `organizer_members.user_id`
+référence `auth.users`. Inviter d'abord ouvrait donc une fenêtre, par
+construction, entre « cette personne reçoit un lien » et « cette personne peut
+faire quelque chose » — et elle la traversait en ne sachant pas qu'elle était en
+avance.
+
+**Le problème n'est pas la fenêtre, c'est l'e-mail parti trop tôt.** « Invite
+user » crée le compte ET envoie le lien dans le même geste. Si le tableau de
+bord propose de créer un compte sans rien envoyer — **Add user → Create new
+user**, avec la confirmation automatique cochée — préférez-le : vous finissez
+tout, puis vous prévenez la personne, et le seul lien qu'elle reçoive est déjà
+un lien qui marche.
+
+**CECI EST UNE AFFIRMATION À VÉRIFIER, pas un fait mesuré sur ce projet.**
+Personne n'a encore regardé ce que ce bouton propose réellement. Le menu « ⋯ »
+d'un utilisateur, lui, a été regardé le 2026-09-19 : il offre *Remove MFA
+factors*, *Ban user* et *Delete user*, et rien pour renvoyer un lien. Si « Create
+new user » n'existe pas, invitez comme avant et enchaînez les étapes 4 et 5 tout
+de suite : la fenêtre se mesure alors en minutes, et la page d'attente de
+l'étape 6 la couvre.
+
+Cocher la confirmation automatique si elle est là. Un compte non confirmé peut
+se voir refuser un lien magique, ce qui recréerait le problème un cran plus loin.
+
+
+**Tableau de bord → Authentication → Users → Invite user.**
+
+Impossible depuis l'éditeur, et c'est voulu : `requestLink()` envoie
+`create_user: false`, donc une adresse inconnue qui demande un lien reçoit
+« Signups not allowed for otp ».
+
+**Lisez la RÉFÉRENCE du projet, jamais son nom.** `eqcgeqzzuzcwrflwasjo` est la
+production ; `hjsekipqryfuwdkhxuks` s'appelle « nissartango-dev » et ne l'est
+pas. Le 2026-10-15 une invitation est partie sur dev : le lien a ouvert
+`localhost:3000`, le `site_url` de dev, sur une page blanche — et l'éditeur en
+ligne, qui est la production, continuait à répondre « Signups not allowed for
+otp » pour un compte qui existait ailleurs.
 
 ### 4. Rattacher la personne, en propriétaire
 
@@ -204,10 +231,34 @@ where o.slug = 'el-gato-tanguero';
 
 Une ligne, le bon rôle, la bonne adresse.
 
-### 6. Ce qu'il fait ensuite, sans vous
+### 6. Le prévenir — c'est vous, la notification
 
-Il se connecte sur **editor.nissartango.fr**, demande un lien, l'ouvre dans le
-même navigateur, et trouve sa fiche sous **Organisateur**.
+**Il n'a aucun moyen de voir que vous avez fini.** Rien ici n'envoie de message
+à un organisateur : la seule sortie e-mail du projet est le lien de connexion de
+GoTrue, et l'alerte de build qui vous est adressée à vous. Donc s'il n'est pas
+prévenu, la seule action qui lui reste est de redemander un lien et de retomber
+sur la même page — c'est-à-dire d'attendre sans horloge.
+
+Écrivez-lui, vous. Une ligne suffit : *« c'est en place, allez sur
+editor.nissartango.fr, saisissez votre adresse et ouvrez le lien. »* Vous
+alliez le faire de toute façon ; c'est la notification, et elle part au moment
+où elle est vraie.
+
+**Il demande son propre lien**, et c'est la bonne voie plutôt qu'un pis-aller :
+`create_user: false` ne refuse que les adresses INCONNUES, la sienne existe
+désormais, et ce chemin-là est du PKCE — il arrive donc directement sur le
+formulaire d'événement, sans passer par le panneau de revendications où une
+invitation le dépose.
+
+**S'il arrive quand même en avance**, parce que vous avez été interrompu ou
+qu'il avait gardé l'onglet, il voit « Votre accès est en préparation » et non
+une erreur rouge sur `is_member()`. Voir `editor/public/pending.js` : l'état
+déclencheur est `myOrganizers()` qui ne renvoie rien, donc il se résorbe tout
+seul dès que l'étape 4 est faite — il n'y a aucun drapeau à rebasculer. Vous,
+administrateur, continuez à voir la boîte technique : c'est le même état et
+deux significations.
+
+Il trouve ensuite sa fiche sous **Organisateur**.
 
 `/organizer/` liste les fiches auxquelles il appartient ; `/organizer/?id=<uuid>`
 en ouvre une. **Un administrateur qui n'est membre de rien ne voit rien dans

@@ -34,8 +34,15 @@ import { hasSession } from '/auth.js';
 
 let answer = null;
 
-/** One call per page, whatever asks. */
-function amAdmin() {
+/**
+ * One call per page, whatever asks.
+ *
+ * EXPORTED since 2026-10-18 so pending.js asks the same question through the
+ * same cache. A second `isAdmin()` from another module would be a second round
+ * trip for an answer this one already has, and the two could disagree across a
+ * role change mid-page.
+ */
+export function amAdmin() {
   if (!answer) {
     answer = hasSession()
       ? isAdmin().catch(() => false)   // a refusal is an answer: not an admin
