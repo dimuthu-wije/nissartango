@@ -282,6 +282,26 @@ a { color: inherit; }
 
 a.btn { text-decoration: none; display: inline-block; }
 
+/* THE hidden ATTRIBUTE HAS TO WIN, and without this rule it loses.
+
+   `admin-only.js` hides the queue link by setting `node.hidden = true`, which
+   relies on the UA stylesheet's `[hidden] { display: none }`. Any author rule
+   that sets `display` beats a UA rule whatever its specificity -- so the line
+   directly above silently cancelled it for every `<a class="btn">`, and the
+   landing panel offered "Ouvrir la file d'attente" to everyone who signed in.
+   The footer link hid correctly, because it is a <span> nothing styles, which
+   is exactly what made the bug look like it could not exist.
+
+   Measured against the deployed stylesheet on 2026-10-18:
+
+       a.btn[hidden]   display: inline-block   height 51.6px   <- visible
+       span[hidden]    display: none           height 0
+
+   `!important` rather than a more specific selector: the next rule to set
+   `display` on something hidden would reopen this, and there is no reading of
+   `hidden` under which the element should still be shown. */
+[hidden] { display: none !important; }
+
 .decided { list-style: none; padding: 0; margin: 0.9rem 0 0; }
 .decided li { padding: 0.25rem 0; font-size: var(--t-body); }
 .muted { color: var(--muted); }
