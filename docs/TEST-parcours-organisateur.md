@@ -11,13 +11,29 @@ supprimé à l'étape 10, et l'état d'avant est sauvegardé à l'étape 0.
 
 ## Ce qui est déjà vrai avant de commencer
 
-Mesuré le 2026-10-15 sur `eqcgeqzzuzcwrflwasjo` :
+**RE-MESUREZ AVANT DE COMMENCER.** Ce tableau a dit « 2 événements, tous deux
+`approved` » pendant six jours après qu'ils ont été supprimés, et l'étape 6
+demandait de voir `counts.events` passer « de 2 à 3 » alors qu'il partait de 0.
+Des nombres écrits dans un document de test périment sans prévenir, et personne
+ne les relit avant de s'en servir — ce sont eux qu'on relit APRÈS, quand le
+résultat ne correspond pas.
+
+```bash
+node scripts/fetch-content.mjs && python3 -c "
+import json; d=json.load(open('data/snapshot.json'))
+print(d['project_ref'], d['counts'])"
+```
+
+Ça lit la production directement et ne dépend d'aucun onglet ouvert au bon
+endroit. Notez les nombres de départ : l'étape 6 et l'étape 11 s'y réfèrent.
+
+État le 2026-10-21 sur `eqcgeqzzuzcwrflwasjo`, à titre indicatif seulement :
 
 | | |
 |---|---|
-| événements | 2, tous deux `approved` |
+| événements | **0** |
 | organisateurs | Rosa Gervasi, El Gato Tanguero, Nissartango |
-| comptes | `dimuthu.wije@outlook.com` (admin, membre des trois), `d.wijegun@gmail.com` (propriétaire d'El Gato Tanguero) |
+| comptes | `dimuthu.wije@outlook.com` (admin ; propriétaire de Nissartango, éditeur des deux autres), `d.wijegun@gmail.com` (propriétaire d'El Gato Tanguero) |
 
 **Vous avez donc déjà un second compte qui joue un organisateur.** Il date du
 test de lien magique du 2026-09-21. Deux options :
@@ -34,12 +50,16 @@ complète. Si vous réutilisez le gmail, passez à l'étape 3.
 
 ## 0. Enregistrer l'état d'avant
 
-Déjà fait : `Claude outputs/prod-backup-<horodatage>.json` contient les
-événements, exceptions, organisateurs, membres, rôles et comptes. `Claude
-outputs/` est gitignoré, donc rien n'en part dans git.
+**Faites-la maintenant, à chaque passe.** Ce paragraphe a dit « déjà fait »
+jusqu'au 2026-10-21, ce qui n'était vrai que de la passe du 2026-10-15 : qui
+rejouait la procédure lisait qu'il avait une sauvegarde qu'il n'avait pas, sur
+un document dont l'étape 10 est irréversible.
 
-Sans cette sauvegarde, l'étape 10 n'a pas de retour en arrière. Ne la sautez pas
-si vous rejouez cette procédure plus tard.
+Le fichier va dans `Claude outputs/prod-backup-<horodatage>.json` — événements,
+exceptions, organisateurs, membres, rôles et comptes. `Claude outputs/` est
+gitignoré, donc rien n'en part dans git.
+
+Sans cette sauvegarde, l'étape 10 n'a pas de retour en arrière.
 
 ---
 
@@ -149,9 +169,13 @@ champ statut dans le formulaire, et la politique d'insertion exige `pending` —
 c'est la file d'attente qui publie, jamais le formulaire.
 
 ```bash
-./scripts/check-db.sh   # ou, directement :
 psql "$PROD_DB_URL" -At -c "select status, slug from public.events order by created_at desc limit 3;"
 ```
+
+**Pas `./scripts/check-db.sh`**, que ce passage proposait jusqu'au 2026-10-21
+comme s'il répondait à la question. Il ne regarde jamais `public.events` : c'est
+un audit en lecture seule des droits et du RLS (`supabase/tests/grants_check.sql`).
+Utile, et sans rapport avec le statut d'un événement.
 
 ---
 
@@ -192,7 +216,10 @@ Toute la valeur du test tient dans l'asymétrie : un cache périmé ne peut rend
 qu'un horodatage **plus ancien**, jamais plus récent. Un déplacement prouve ;
 une absence de déplacement ne prouve rien.
 
-Regardez aussi `counts.events` : il doit être passé de 2 à 3.
+Regardez aussi `counts.events` : il doit avoir augmenté de un par rapport au
+nombre relevé en tête de ce document. Pas « de 2 à 3 » — c'est ce que cette
+ligne disait, et elle a survécu de six jours aux deux événements qu'elle
+comptait.
 
 **À vérifier sur la page** : l'événement est dans « Les 7 prochains jours »,
 avec sa date, son ou ses formats, le lieu, et l'organisateur. Ouvrez sa page :
@@ -230,15 +257,41 @@ fois où cet événement apparaît chronologiquement.
 
 ## 9. Les cas d'erreur, pendant que c'est sûr
 
-Trois à provoquer exprès, parce qu'ils sont dans l'aide et qu'un organisateur
-les rencontrera :
+Quatre à provoquer exprès, parce qu'ils sont dans l'aide et qu'un organisateur
+les rencontrera. (Ce paragraphe a annoncé « trois » au-dessus d'un tableau de
+quatre lignes jusqu'au 2026-10-21.)
 
 | provoquer | message attendu |
 |---|---|
 | demander un lien avec une adresse jamais invitée | `Signups not allowed for otp` |
 | ajouter un membre par une adresse sans compte | `NT006`, nommément |
-| se connecter avec un compte rattaché à rien | « Vous n'êtes membre d'aucun organisateur » |
+| se connecter avec un compte rattaché à rien | **ça dépend de qui vous êtes**, voir ci-dessous |
 | rouvrir un lien magique déjà utilisé | « Ce lien n'a pas fonctionné » |
+
+**Le troisième cas a deux réponses depuis le 2026-10-18, et c'est voulu.** Le
+même état — une session valide, aucune appartenance — veut dire deux choses
+différentes selon la personne :
+
+| qui se connecte | ce qu'il voit |
+|---|---|
+| quelqu'un qu'on est en train d'intégrer | « Votre accès est en préparation. », en bleu |
+| **un administrateur** | « Vous n'êtes membre d'aucun organisateur », en rouge, avec l'explication de `is_member()` |
+
+La boîte rouge n'a jamais été écrite pour un organisateur : c'est un diagnostic
+RLS, et pour la personne qu'elle décrit elle se lit comme un refus qu'elle
+aurait provoqué. Elle reste pour vous, qui êtes la seule personne à qui elle
+s'adresse. Voir `editor/public/pending.js`.
+
+**Ce tableau a décrit l'ancien comportement pendant trois jours** après que la
+page d'attente a été déployée, alors que les étapes 1 et 2 du même document
+décrivaient déjà le nouveau. Une correction qui atterrit à un endroit et déclare
+le fichier terminé est l'échec récurrent de ce dépôt ; relisez le document
+entier quand vous changez un message.
+
+**Pour provoquer le premier cas en tant qu'admin**, il faut un compte membre de
+rien : le vôtre est membre des trois organisateurs. Le compte de test, entre
+l'étape 1 et l'étape 2, est exactement ça — c'est la fenêtre de l'étape 1, et
+c'est là qu'il faut regarder.
 
 L'aide les explique tous, et donne `contact@nissartango.fr` comme recours —
 c'est le texte que vous venez de déployer, et le voir en situation est la
@@ -268,8 +321,24 @@ parce que son lien permanent a pu être partagé :
 
 ```sql
 -- les exceptions partent en cascade
-delete from public.events;
-select count(*) as events from public.events;            -- 0
+with partis as (delete from public.events returning slug)
+select count(*) as supprimes from partis;
+```
+
+**La forme `with … returning` n'est pas une coquetterie**, et c'est l'étape la
+plus irréversible du document. L'éditeur SQL de Supabase affiche « Success. No
+rows returned » qu'un `DELETE` ait emporté une ligne ou zéro : les deux issues
+sont indiscernables à l'écran. Le 2026-10-19, une suppression d'organisateur a
+été relancée quatre fois sur cette ambiguïté, sur une ligne qui était visible,
+sans déclencheur ni RLS pour l'expliquer. Compter dans un CTE force un nombre à
+apparaître, donc « aucune sortie » devient impossible.
+
+Même piège, deuxième moitié : **l'éditeur n'affiche que le résultat de la
+DERNIÈRE requête** quand on en lance plusieurs d'un coup. Lancez-les une par
+une, et vérifiez ensuite :
+
+```sql
+select count(*) as events from public.events;                -- 0
 select count(*) as exceptions from public.event_exceptions;  -- 0
 ```
 
