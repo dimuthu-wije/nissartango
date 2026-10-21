@@ -9,6 +9,7 @@ import {
   fmtFull, fmtDay, isoWithOffset, toRow,
 } from '../../lib/content';
 import { expand, nextDate, RECURRENCE_LABELS } from '../../lib/occurrences.js';
+import { mapsUrl, mapsQuery } from '../../lib/map.js';
 
 // ONE page per series, never one per occurrence. A weekly practica is a single
 // thing with a single URL; thin per-date duplicates would compete with each
@@ -21,6 +22,34 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const e = toRow(entry);
 const { Content } = await render(entry);
+
+// WHERE IT IS, ON A MAP. A plain <a>, because this site ships no client-side
+// JavaScript at all (verify-build check 3 fails the build on any <script> tag
+// that is not ld+json) -- so an onclick was never an option, and is not needed.
+//
+// A CAPITALISED VARIABLE AS THE TAG is Astro's way of choosing an element at
+// build time: <Place> renders as <a> when there is somewhere to point and as
+// <span> when there is not, so the three address lines are written once rather
+// than once per branch. A lowercase name would be emitted as a literal
+// <place> element.
+//
+// rel="noopener noreferrer": noopener because target=_blank hands the opened
+// page a handle on this one, and noreferrer because Google does not need to be
+// told which event page sent the visitor. Neither costs anything here.
+const mapHref = mapsUrl(e);
+const Place = mapHref ? 'a' : 'span';
+const placeAttrs = mapHref
+  ? {
+      href: mapHref,
+      class: 'map',
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      // Said out loud, because a new tab that opens unannounced is
+      // disorienting for a screen-reader user and the underline alone does
+      // not say where the link goes.
+      'aria-label': `Ouvrir ${mapsQuery(e)} dans Google Maps — nouvel onglet`,
+    }
+  : {};
 
 const { organizers, exceptionsByEvent } = await loadAgenda();
 const organizer = organizers.get(e.organizer_id);
@@ -270,9 +299,24 @@ const jsonLd = nodes.length === 1
 
     <dt>Lieu</dt>
     <dd>
-      {e.location_name}{e.location_name && <br />}
-      {e.location_address}{e.location_address && <br />}
-      {e.location_postal_code} {e.city}
+      {/* A LINK ONLY WHEN IT WOULD LAND SOMEWHERE. mapsUrl() returns null for
+          an event naming no venue and no street: `city` defaults to 'Nice' in
+          the schema, so a query built from it alone resolves to the middle of
+          town -- a link that looks helpful and is not. The lines render
+          identically either way; only the wrapper changes. */}
+      <Place {...placeAttrs}>
+        {e.location_name}{e.location_name && <br />}
+        {e.location_address}{e.location_address && <br />}
+        {/* ONE expression, with the space INSIDE it. Written as
+            `{postcode} {city}`, the separating space is its own text node
+            between two expressions, and the build's HTML compression drops it:
+            every event carrying a postcode rendered "06300Nice". Found
+            2026-10-21 by reading the built markup of the fixture; it had been
+            true of every event page with a postcode. Joining first puts the
+            space inside a single text node, where nothing can collapse it --
+            and it also drops the leading space when there is no postcode. */}
+        {[e.location_postal_code, e.city].filter(Boolean).join(' ')}
+      </Place>
     </dd>
 
     {e.teachers.length > 0 && (<><dt>Avec</dt><dd>{e.teachers.join(', ')}</dd></>)}
@@ -436,6 +480,28 @@ const jsonLd = nodes.length === 1
     font-family: var(--font-display); font-weight: var(--weight-medium);
     font-size: var(--t-h2); line-height: var(--lh-h2); letter-spacing: var(--tr-h2);
   }
+  /* THE ADDRESS KEEPS ITS INK. It is set at --t-h2 in the display face, so the
+     site's default link colour -- accent, full underline -- would turn the
+     loudest block on the page into the loudest link on the page, and it is an
+     address, not a call to action. What it gets instead is an affordance: a
+     hairline underline at the rule colour, offset enough not to collide with
+     the descenders of a street name. Hover and keyboard focus bring the accent
+     in, which is where a link may say what it is.
+
+     :focus-visible and not :focus, so a mouse click does not leave the ring
+     behind on a block this large. */
+  .map {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 4px;
+  }
+  .map:hover, .map:focus-visible {
+    color: var(--accent-text);
+    text-decoration-color: currentColor;
+  }
+
   /* Secondary lines INSIDE a value stay body type, or the whole block arrives
      at one size and the hierarchy the step up was meant to create disappears. */
   .recur, .note, .social, .contact {

@@ -271,6 +271,17 @@ const EVENTS = [
        location_name: null, location_address: '7 place Garibaldi',
        location_postal_code: '06300', price_full: 0, organizer_id: org[1] }),
 
+  // NEITHER a venue name NOR a street: the lieu is not settled yet, which is a
+  // real state for an event announced before the room is booked. It is also
+  // the ONLY row that renders the address as plain text rather than a link to
+  // Google Maps -- mapsUrl() refuses to build a query from `city` alone,
+  // because city defaults to 'Nice' and the answer would be the middle of
+  // town. Until this row existed that branch could not be looked at.
+  ev({ slug: `${day(15)}-milonga-lieu-a-confirmer`,
+       title: 'Milonga de printemps — lieu à confirmer', starts_at: at(15, 21),
+       formats: ['milonga'], city: 'Nice', location_name: null,
+       location_address: null, price_full: 12, organizer_id: org[1] }),
+
   // A series that has been running for MONTHS, not one starting next week.
   // Every other recurrence here begins in the future because the dates are
   // relative to today, so until this row existed the fixture could not tell a
