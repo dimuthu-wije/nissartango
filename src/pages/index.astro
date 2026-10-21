@@ -7,6 +7,7 @@ import {
 } from '../lib/content';
 import { runs } from '../lib/occurrences.js';
 import { dateRangeLabel } from '../lib/span.js';
+import { mapsUrl, mapsQuery } from '../lib/map.js';
 
 /**
  * A ROLLING WINDOW, THEN EVERYTHING ELSE.
@@ -64,6 +65,14 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
             const o = row.first;
             const organizer = organizers.get(e.organizer_id);
             const price = priceSummary(e);
+            // Same refusal as the event page: no link when the query would be
+            // a bare city. See src/lib/map.js.
+            const mapHref = mapsUrl(e);
+            const Place = mapHref ? 'a' : 'span';
+            const placeAttrs = mapHref
+              ? { href: mapHref, class: 'map', target: '_blank', rel: 'noopener noreferrer',
+                  'aria-label': `Ouvrir ${mapsQuery(e)} dans Google Maps — nouvel onglet` }
+              : { class: 'map-off' };
             // ONE ROW PER EVENT, not per date. data-date carries the FIRST
             // date only; verify-build check 9 requires every agenda date to
             // exist on the event's own page and explicitly allows that page
@@ -116,11 +125,19 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
                       street it is on -- and the address is only worth the room
                       when there is no name to recognise. */}
                   <div class="where">
-                    {e.location_name
-                      ? <span class="venue">{e.location_name}</span>
-                      : [e.location_address, e.location_postal_code, e.city]
-                          .filter(Boolean)
-                          .map((part, i) => <span class="venue">{i > 0 && ' '}{part}</span>)}
+                    {/* THE WRAPPER TAKES THE LAYOUT, not .where, because it is
+                        now sometimes an <a> and sometimes a <span> and the
+                        .venue spans must stay its direct children either way.
+                        Above 62rem they are flex items and stack; below, they
+                        are inline text so the address wraps like a sentence.
+                        Both rules therefore name .map AND .map-off. */}
+                    <Place {...placeAttrs}>
+                      {e.location_name
+                        ? <span class="venue">{e.location_name}</span>
+                        : [e.location_address, e.location_postal_code, e.city]
+                            .filter(Boolean)
+                            .map((part, i) => <span class="venue">{i > 0 && ' '}{part}</span>)}
+                    </Place>
                   </div>
               </li>
             );
@@ -145,13 +162,23 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
             ? images[`../assets/events/${e.image_file}`]?.default
             : undefined;
           const run = !rhythm && occurrences.length > 1;
+          const cardHref = mapsUrl(e);
           return (
             <li class={flyer ? 'card has-flyer' : 'card'}
                 data-event={e.slug} data-date={shown.dateKey}>
               <div class="card-text">
               <span class="type">{formatSummary(e)}</span>
               <h3><a href={`/evenements/${e.slug}/`}>{e.title}</a></h3>
-              <p class="card-where">{e.location_name}{e.location_name && ', '}{e.city}</p>
+              {/* The card says name + city, never the street: it is a
+                  thumbnail, not an itinerary. The LINK still carries the full
+                  address, because mapsQuery() builds from the row and not from
+                  what this line happens to show -- a visitor who taps it gets
+                  the street even though the card never printed it. */}
+              <p class="card-where">{cardHref
+                ? <a href={cardHref} class="map" target="_blank" rel="noopener noreferrer"
+                     aria-label={`Ouvrir ${mapsQuery(e)} dans Google Maps — nouvel onglet`}
+                  >{[e.location_name, e.city].filter(Boolean).join(', ')}</a>
+                : [e.location_name, e.city].filter(Boolean).join(', ')}</p>
               <p class="card-when">
                 {run
                   ? dateRangeLabel(occurrences[0].start,
@@ -281,6 +308,39 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
     letter-spacing: var(--tr-h2); font-family: var(--font-display);
     font-weight: var(--weight-medium);
   }
+  /* The wrapper around the venue, whether it links or not, so the .venue
+     spans keep stacking as flex items exactly as they did when .where held
+     them directly. .map-off exists only to carry this layout for a row with
+     nowhere to point -- it has no appearance of its own. */
+  .where .map, .where .map-off { display: flex; flex-direction: column; }
+
+  /* An address, with an affordance -- not a call to action. It is set at
+     --t-h2 in the display face, so the site's accent link colour would make
+     the venue the loudest thing in the row and pull the eye off the title,
+     which is the link that matters here. Hairline underline at the rule
+     colour; hover and keyboard focus bring the accent in.
+
+     The decoration is declared on .venue and not on .map because above 62rem
+     .map is a FLEX container, and text-decoration does not reliably reach the
+     text inside flex items. Measured rather than assumed. */
+  /* COLOUR ON THE ANCHOR, decoration on the text. `color: inherit` on .venue
+     inherits from its parent -- which IS the anchor -- so base.css's
+     `a { color: var(--accent-text) }` reached it anyway and the venue came out
+     accent-orange. Measured, not reasoned: the computed colour read
+     rgb(229,80,57) where this comment claimed ink. */
+  .where .map, .card-where .map { color: inherit; }
+  .map .venue, .card-where .map {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 4px;
+  }
+  .map:hover, .map:focus-visible { color: var(--accent-text); }
+  .map:hover .venue, .map:focus-visible .venue,
+  .card-where .map:hover, .card-where .map:focus-visible {
+    text-decoration-color: currentColor;
+  }
+
   .time { color: var(--ink); font-size: var(--t-body); }
   /* The eyebrow is the only repeated colour on the page, and --accent-text
      rather than --accent because it is TEXT: the raw brand orange is 3.79:1
@@ -463,6 +523,9 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
        deliberately; below 40rem the row is full width and the address fits on
        one line either way. */
     .where { grid-column: 2; display: block; }
+    /* ...and so is its wrapper, or the spans stay stacked inside a flex
+       column that .where no longer controls. */
+    .where .map, .where .map-off { display: inline; }
   }
   /* 96px between blocks is a desktop rhythm. On an 812px screen it put 190px
      of nothing between the lede and the first section heading -- most of a

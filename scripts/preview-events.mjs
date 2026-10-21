@@ -272,11 +272,21 @@ const EVENTS = [
        location_postal_code: '06300', price_full: 0, organizer_id: org[1] }),
 
   // NEITHER a venue name NOR a street: the lieu is not settled yet, which is a
-  // real state for an event announced before the room is booked. It is also
-  // the ONLY row that renders the address as plain text rather than a link to
-  // Google Maps -- mapsUrl() refuses to build a query from `city` alone,
+  // real state for an event announced before the room is booked. These are the
+  // only two entries that render the address as plain text rather than a link
+  // to Google Maps -- mapsUrl() refuses to build a query from `city` alone,
   // because city defaults to 'Nice' and the answer would be the middle of
-  // town. Until this row existed that branch could not be looked at.
+  // town. Until they existed that branch could not be looked at.
+  //
+  // THERE ARE TWO BECAUSE THE TWO SECTIONS RENDER IT DIFFERENTLY, and one of
+  // them would otherwise be invisible: a ROW builds the venue from .venue
+  // spans inside a wrapper that carries the flex layout (.map-off when there
+  // is no link), a CARD prints one line of plain text. One fixture event can
+  // only ever be in one of the two sections.
+  ev({ slug: `${day(3)}-practica-lieu-a-confirmer`,
+       title: 'Practica surprise — lieu à confirmer', starts_at: at(3, 19),
+       formats: ['practica'], city: 'Nice', location_name: null,
+       location_address: null, price_full: 0, organizer_id: org[0] }),
   ev({ slug: `${day(15)}-milonga-lieu-a-confirmer`,
        title: 'Milonga de printemps — lieu à confirmer', starts_at: at(15, 21),
        formats: ['milonga'], city: 'Nice', location_name: null,
