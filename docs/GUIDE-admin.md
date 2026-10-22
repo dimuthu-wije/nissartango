@@ -68,29 +68,52 @@ attend. Vous relisez un changement déjà parti, vous ne le bloquez pas.
 
 ---
 
-## Faire entrer quelqu'un
+## Faire entrer quelqu'un — les quatre gestes, dans cet ordre
 
-Deux étapes, et la première n'est pas dans l'éditeur.
+**Confirmé de bout en bout sur la production le 2026-10-22.** L'ordre n'est pas
+une préférence : il est dicté par les dépendances, et c'est lui qui fait que la
+personne ne reçoit rien avant que tout fonctionne.
 
-**1. Créer son compte.** Tableau de bord Supabase → **Authentication → Users →
-Invite user** → son adresse. La personne reçoit une invitation.
+| | geste | où | la personne reçoit |
+|---|---|---|---|
+| 1 | créer la **fiche** | SQL Editor | rien |
+| 2 | créer le **compte**, confirmation auto **décochée** | Authentication → Users → Add user → Create new user | rien |
+| 3 | créer l'**appartenance** | SQL Editor | rien |
+| 4 | **Send confirmation email** | Authentication → Users → sa ligne | son seul courriel, et il marche |
 
-Impossible depuis l'éditeur, et c'est voulu : `requestLink()` dans
-`editor/public/auth.js` envoie `create_user: false`, donc demander un lien avec
-une adresse inconnue est refusé. Son commentaire explique pourquoi — une
-inscription est une décision avec une conséquence de modération, et elle n'a pas
-sa place derrière un champ e-mail sur une page que n'importe qui peut ouvrir.
+**Pourquoi cet ordre et pas un autre.** La fiche n'a besoin de personne.
+L'appartenance a besoin des deux — `organizer_members.user_id` référence
+`auth.users`, `organizer_id` référence `organizers` — donc elle vient
+forcément en troisième. Reste à choisir QUAND partir le courriel : l'envoyer
+plus tôt (c'est ce que fait « Send invitation », qui crée le compte et poste le
+lien d'un seul geste) dépose la personne devant un éditeur où elle n'est membre
+de rien.
 
-**2. La rattacher à un organisateur.** Éditeur → Organisateur → l'organisateur →
-**Membres** → ajouter par e-mail, comme **Éditeur** ou **Propriétaire**.
+Ce guide a recommandé exactement ça jusqu'au 2026-10-22, puis a essayé de
+réparer la fenêtre avec une page d'attente et un message manuscrit. Les deux
+existent toujours et les deux sont des filets : **mettre le courriel en dernier
+supprime la fenêtre au lieu de l'amortir.**
 
-Donnez **Propriétaire** à un véritable organisateur extérieur, sur sa propre
-fiche : il pourra alors modifier son nom, ses liens et ses coordonnées, et
-ajouter ses propres collègues, sans repasser par vous. Gardez **Éditeur** pour
-quelqu'un qui aide sur une fiche qui n'est pas la sienne.
+Les détails, les requêtes et les pièges de chaque geste sont dans la section
+suivante.
 
-Si vous faites l'étape 2 avant la 1, le formulaire vous le dit nommément plutôt
-que d'échouer vaguement.
+**Un collègue sur une fiche qui existe déjà**, lui, ne passe pas par là : le
+propriétaire l'ajoute seul depuis **Organisateur → Membres → ajouter par
+e-mail**. Il faut seulement que son compte existe — sinon `NT006` le dit
+nommément. C'est la raison d'être du rôle `owner` : un organisateur gère ses
+propres gens sans repasser par vous.
+
+**Propriétaire ou Éditeur.** Propriétaire pour un véritable organisateur
+extérieur sur sa propre fiche : il modifie son nom, ses liens, ses coordonnées,
+et ajoute ses collègues. Éditeur pour quelqu'un qui aide sur une fiche qui
+n'est pas la sienne.
+
+**Créer un compte est impossible depuis l'éditeur, et c'est voulu :**
+`requestLink()` dans `editor/public/auth.js` envoie `create_user: false`, donc
+demander un lien avec une adresse inconnue est refusé. Son commentaire explique
+pourquoi — une inscription est une décision avec une conséquence de modération,
+et elle n'a pas sa place derrière un champ e-mail sur une page que n'importe
+qui peut ouvrir.
 
 ---
 
@@ -155,47 +178,37 @@ Si vous remplissez les champs optionnels ici, la base impose leur forme :
 Ce dernier point est le garde-fou du consentement : un formulaire qui oublie la
 case « publié publiquement, définitivement » ne peut pas écrire la colonne.
 
-### 3. Créer le compte — SANS envoyer l'invitation tout de suite
+### 3. Créer le compte — confirmation automatique DÉSACTIVÉE
 
-**L'ordre a changé le 2026-10-18, et c'est le seul changement qui compte dans
-cette section.** La fiche passe devant parce qu'elle n'a besoin d'aucun compte,
-tandis que l'appartenance a besoin des deux : `organizer_members.user_id`
-référence `auth.users`. Inviter d'abord ouvrait donc une fenêtre, par
-construction, entre « cette personne reçoit un lien » et « cette personne peut
-faire quelque chose » — et elle la traversait en ne sachant pas qu'elle était en
-avance.
+**Tableau de bord → Authentication → Users → Add user → « Create new user ».**
+Pas « Send invitation » : celle-là crée le compte ET envoie le lien dans le
+même geste, ce qui rouvre la fenêtre que cet ordre existe pour fermer.
 
-**Le problème n'est pas la fenêtre, c'est l'e-mail parti trop tôt.** « Send
-invitation » crée le compte ET envoie le lien dans le même geste. « Create new
-user » crée le compte et n'envoie rien.
-
-**Tableau de bord → Authentication → Users → Add user**, puis **Create new
-user** — pas « Send invitation ».
-
-La boîte de dialogue demande trois choses, et rien d'autre :
+Vérifiez d'abord que l'URL porte `eqcgeqzzuzcwrflwasjo`. Les noms de projet sont
+inversés.
 
 | champ | quoi mettre |
 |---|---|
 | e-mail | l'adresse de la personne |
-| mot de passe | n'importe quoi de jetable — elle ne le tapera jamais, elle se connecte par lien. Ne réutilisez pas un vrai mot de passe |
-| **Auto Confirm User** | **cocher** |
+| mot de passe | jetable — elle se connecte par lien et ne le tapera jamais. Ne réutilisez pas un vrai mot de passe |
+| **Auto Confirm User** | **LAISSER DÉCOCHÉ** |
 
-**MESURÉ LE 2026-10-22, sur la production, avec `d.wijegun@gmail.com` :**
+**DÉCOCHÉ, et c'est contre-intuitif.** Un compte déjà confirmé n'a plus rien à
+confirmer, donc l'action « Send confirmation email » de l'étape 5 n'existe plus
+pour lui — et c'est elle qui porte le courriel français que vous avez écrit.
+Cocher la case fait gagner une seconde et vous prive de la seule façon de
+prévenir la personne.
 
-- le compte est créé ;
-- **aucun courriel n'est parti** — boîte de réception et indésirables vérifiés ;
-- la liste des utilisateurs affiche « Created at », et **PAS** « Waiting for
-  verification ».
+Ce guide a dit « cocher » du 2026-10-18 au 2026-10-22, parce que la confirmation
+automatique était alors le moyen d'éviter l'étiquette « Waiting for
+verification ». Cette étiquette ne conditionne rien — **rien dans ce projet ne
+lit l'état de confirmation** — et le lien de l'étape 5 confirme le compte en
+passant. La raison de cocher était donc de la cosmétique, et elle coûtait la
+notification.
 
-Ce paragraphe a porté la mention « AFFIRMATION À VÉRIFIER » du 2026-10-18 au
-2026-10-22, parce que personne n'avait encore regardé ce que ce bouton faisait
-vraiment. Maintenant si.
-
-**Cocher « Auto Confirm User » compte.** Sans ça le compte reste non confirmé et
-peut se voir refuser un lien magique, ce qui recréerait le problème un cran plus
-loin. C'est aussi ce qui fait disparaître l'étiquette « Waiting for
-verification » — celle qui a bloqué une matinée le 2026-10-18 alors qu'elle ne
-conditionne rien du tout : rien dans ce projet ne lit l'état de confirmation.
+**MESURÉ LE 2026-10-22 sur la production :** le compte est créé et **aucun
+courriel ne part**. C'est tout l'intérêt : rien n'atteint la personne avant que
+tout soit en place.
 
 **Créer un compte est impossible depuis l'éditeur, et c'est voulu :**
 `requestLink()` envoie `create_user: false`, donc une adresse inconnue qui
@@ -242,72 +255,50 @@ where o.slug = 'el-gato-tanguero';
 
 Une ligne, le bon rôle, la bonne adresse.
 
-### 6. Le prévenir — c'est vous, la notification
+### 6. Envoyer le courriel d'activation — en DERNIER
 
-**Il n'a aucun moyen de voir que vous avez fini.** Rien ici n'envoie de message
-à un organisateur : la seule sortie e-mail du projet est le lien de connexion de
-GoTrue, et l'alerte de build qui vous est adressée à vous. Donc s'il n'est pas
-prévenu, la seule action qui lui reste est de redemander un lien et de retomber
-sur la même page — c'est-à-dire d'attendre sans horloge.
+**Tableau de bord → Authentication → Users → la ligne de la personne → « Send
+confirmation email ».**
 
-Écrivez-lui, vous. Une ligne suffit : *« c'est en place, allez sur
-editor.nissartango.fr, saisissez votre adresse et ouvrez le lien. »* Vous
-alliez le faire de toute façon ; c'est la notification, et elle part au moment
-où elle est vraie.
+C'est maintenant, et seulement maintenant, que quelque chose la rejoint. La
+fiche existe, le compte existe, l'appartenance existe : le lien qu'elle reçoit
+marche du premier coup et la dépose directement sur le formulaire d'événement.
 
-**Il demande son propre lien**, et c'est la bonne voie plutôt qu'un pis-aller :
-`create_user: false` ne refuse que les adresses INCONNUES, la sienne existe
-désormais, et ce chemin-là est du PKCE — il arrive donc directement sur le
-formulaire d'événement, sans passer par le panneau de revendications où une
-invitation le dépose.
+Elle reçoit le modèle **Confirm signup**, en français, écrit le 2026-10-22 et
+recopié dans `supabase/PROJECT_SETUP.md` §2 — le tableau de bord étant le seul
+endroit où il vit vraiment. Il lui dit ce qu'est nissARTango, que le lien ne
+sert qu'une fois, où se trouve l'éditeur, et de commencer par remplir sa fiche.
 
-**S'il arrive quand même en avance**, parce que vous avez été interrompu ou
-qu'il avait gardé l'onglet, il voit « Votre accès est en préparation » et non
-une erreur rouge sur `is_member()`. Voir `editor/public/pending.js` : l'état
-déclencheur est `myOrganizers()` qui ne renvoie rien, donc il se résorbe tout
-seul dès que l'étape 4 est faite — il n'y a aucun drapeau à rebasculer. Vous,
-administrateur, continuez à voir la boîte technique : c'est le même état et
-deux significations.
+**CETTE ÉTAPE A DIT LE CONTRAIRE JUSQU'AU 2026-10-22.** Elle s'intitulait
+« Le prévenir — c'est vous, la notification » et affirmait que rien ici
+n'envoie quoi que ce soit à un organisateur, donc qu'il fallait lui écrire à la
+main. C'était vrai de l'ÉDITEUR et faux du projet : le tableau de bord envoie
+du courrier, et cette action-là est exactement la notification qu'on disait
+inexistante. Un message manuscrit reste utile si vous voulez ajouter un mot,
+mais il n'est plus nécessaire.
 
-Il trouve ensuite sa fiche sous **Organisateur**.
+**Ce qu'elle doit voir en cliquant** : le formulaire d'événement, avec sa fiche
+déjà sélectionnable — et une bannière rouge disant que sa fiche est vide, parce
+que l'étape 2 n'a rempli que `name` et `slug`. C'est voulu : elle la remplit
+elle-même depuis **Organisateur**.
 
-`/organizer/` liste les fiches auxquelles il appartient ; `/organizer/?id=<uuid>`
-en ouvre une. **Un administrateur qui n'est membre de rien ne voit rien dans
-cette liste** et doit passer par l'URL — `myOrganizers()` répond à « les
-organisateurs pour lesquels je peux créer des ÉVÉNEMENTS », pas « ceux que je
-peux administrer ». C'est délibéré et documenté dans `AGENTS.md` item 7.
+**Si elle tombe sur « Votre accès est en préparation »**, l'appartenance de
+l'étape 4 n'a pas été écrite — l'étape 5 le dit en une requête. Cette page est
+un filet pour cet ordre-ci mal exécuté, pas une étape du parcours.
+
+### 7. Ce qu'il fait ensuite, sans vous
+
+Il trouve sa fiche sous **Organisateur**. `/organizer/` liste les fiches
+auxquelles il appartient ; `/organizer/?id=<uuid>` en ouvre une. **Un
+administrateur qui n'est membre de rien ne voit rien dans cette liste** et doit
+passer par l'URL — `myOrganizers()` répond à « les organisateurs pour lesquels
+je peux créer des ÉVÉNEMENTS », pas « ceux que je peux administrer ». C'est
+délibéré et documenté dans `AGENTS.md` item 7.
 
 Ses événements partent en `pending` dans votre file. C'est la file qui publie,
 jamais le formulaire.
 
 ---
-
-## Les deux projets
-
-```
-eqcgeqzzuzcwrflwasjo   « dimuthu-wije's Project »   = PRODUCTION
-hjsekipqryfuwdkhxuks   « nissartango-dev »          = dev
-```
-
-**Les noms sont inversés.** Lisez la référence, jamais le nom. Chaque script de
-ce dépôt affiche la référence qu'il s'apprête à toucher, avant de la toucher,
-pour cette raison précise.
-
----
-
-## Modifier quelque chose
-
-| Quoi | Comment |
-|---|---|
-| Le code du site | `git push` — Cloudflare construit et déploie à chaque poussée sur `main` |
-| Le contenu du site | rien : le poller le remarque en moins de dix minutes et reconstruit |
-| L'éditeur | `npm run deploy:editor` |
-| La base de données | `./scripts/db-push.sh prod --yes` |
-
-**L'ordre compte quand une migration et l'éditeur changent ensemble.** Appliquez
-d'abord la migration, déployez l'éditeur ensuite : l'ancien éditeur n'utilise
-pas la nouvelle colonne, alors qu'un nouvel éditeur qui envoie une colonne
-absente de la production échoue avec une erreur 400.
 
 ### Le piège qui a déjà coûté deux fois
 

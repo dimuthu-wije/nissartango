@@ -5,14 +5,14 @@ pour la même raison : c'est un document d'exploitation, pas une passation.
 
 **Cette passe se fait en PRODUCTION**, parce que c'est le seul endroit où le
 site se reconstruit et où la file d'attente est réelle. Tout ce qu'elle crée est
-supprimé à l'étape 12, et l'état d'avant est sauvegardé à l'étape 0.
+supprimé à l'étape 11, et l'état d'avant est sauvegardé à l'étape 0.
 
 ---
 
 ## Ce qui est déjà vrai avant de commencer
 
 **RE-MESUREZ AVANT DE COMMENCER.** Ce tableau a dit « 2 événements, tous deux
-`approved` » pendant six jours après qu'ils ont été supprimés, et l'étape 8
+`approved` » pendant six jours après qu'ils ont été supprimés, et l'étape 7
 demandait de voir `counts.events` passer « de 2 à 3 » alors qu'il partait de 0.
 Des nombres écrits dans un document de test périment sans prévenir, et personne
 ne les relit avant de s'en servir — ce sont eux qu'on relit APRÈS, quand le
@@ -25,7 +25,7 @@ print(d['project_ref'], d['counts'])"
 ```
 
 Ça lit la production directement et ne dépend d'aucun onglet ouvert au bon
-endroit. Notez les nombres de départ : l'étape 8 et l'étape 13 s'y réfèrent.
+endroit. Notez les nombres de départ : l'étape 7 et l'étape 12 s'y réfèrent.
 
 État le 2026-10-22 sur `eqcgeqzzuzcwrflwasjo`, à titre d'exemple de ce que la
 commande rend — pas de valeur à réutiliser :
@@ -50,13 +50,13 @@ organisateur rencontre en premier.
 **Faites-la maintenant, à chaque passe.** Ce paragraphe a dit « déjà fait »
 jusqu'au 2026-10-21, ce qui n'était vrai que de la passe du 2026-10-15 : qui
 rejouait la procédure lisait qu'il avait une sauvegarde qu'il n'avait pas, sur
-un document dont l'étape 12 est irréversible.
+un document dont l'étape 11 est irréversible.
 
 Le fichier va dans `Claude outputs/prod-backup-<horodatage>.json` — événements,
 exceptions, organisateurs, membres, rôles et comptes. `Claude outputs/` est
 gitignoré, donc rien n'en part dans git.
 
-Sans cette sauvegarde, l'étape 12 n'a pas de retour en arrière.
+Sans cette sauvegarde, l'étape 11 n'a pas de retour en arrière.
 
 ---
 
@@ -72,11 +72,14 @@ returning id, name, slug;
 ```
 
 **Un `INSERT … RETURNING` montre toujours sa ligne**, contrairement au `DELETE`
-de l'étape 12 : ici, « aucune sortie » serait un vrai échec et non une
-ambiguïté. Notez l'`id`, l'étape 4 en a besoin.
+de l'étape 11 : ici, « aucune sortie » serait un vrai échec et non une
+ambiguïté. Notez l'`id` : l'étape 3 travaille par le slug et n'en a pas
+besoin, mais c'est lui qui ouvre la fiche par URL,
+`/organizer/?id=<uuid>`, et vous en aurez besoin le jour où vous devrez
+l'administrer sans en être membre.
 
 `name` et `slug` suffisent, et **laissez tout le reste vide EXPRÈS** : c'est ce
-qui rend l'étape 6 utile. Une fiche vide déclenche une bannière rouge sur le
+qui rend l'étape 5 utile. Une fiche vide déclenche une bannière rouge sur le
 formulaire d'événement, et le but est de voir l'organisateur la rencontrer et la
 remplir lui-même.
 
@@ -99,148 +102,124 @@ endroit. C'est ainsi qu'on a vu, le 2026-10-22, que le nom saisi était
 
 ---
 
-## 2. Créer le compte, SANS envoyer d'invitation
+## 2. Créer le compte — confirmation automatique DÉCOCHÉE
 
 **Tableau de bord → Authentication → Users → Add user → « Create new user ».**
-Pas « Send invitation » : c'est l'autre entrée du même menu, et c'est elle qui
-ouvre la fenêtre que tout le reste cherche à fermer.
+Pas « Send invitation ».
 
-Vérifiez d'abord que l'URL porte `eqcgeqzzuzcwrflwasjo`. Les noms de projet sont
-inversés.
+Vérifiez d'abord que l'URL porte `eqcgeqzzuzcwrflwasjo`.
 
 | champ | quoi mettre |
 |---|---|
 | e-mail | l'adresse de la personne |
-| mot de passe | jetable — elle se connecte par lien et ne le tapera jamais |
-| **Auto Confirm User** | **cocher** |
+| mot de passe | jetable — elle se connecte par lien |
+| **Auto Confirm User** | **laisser décoché** |
 
-**MESURÉ LE 2026-10-22 sur la production :** le compte est créé, **aucun
-courriel ne part** — réception et indésirables vérifiés — et la liste affiche
-« Created at » sans « Waiting for verification ». Cette procédure a porté la
-mention « à vérifier » du 2026-10-18 au 2026-10-22.
+**Décoché, et c'est contre-intuitif** : un compte déjà confirmé n'a plus rien à
+confirmer, donc « Send confirmation email » n'apparaît plus pour lui — et c'est
+cette action qui porte le courriel français de l'étape 4. La case fait gagner
+une seconde et coûte la notification.
 
-**N'AJOUTEZ PAS ENCORE L'APPARTENANCE.** L'étape 3 a besoin que la personne
-arrive en ne faisant partie de rien, et cette fenêtre n'existe qu'entre
-l'étape 2 et l'étape 4.
-
----
-
-## 3. Lui dire que l'éditeur existe — puis arriver trop tôt, exprès
-
-**IL N'A RIEN REÇU.** C'est le but de l'étape 2 : aucun courriel ne part. Donc à
-cet instant la personne ne sait pas que `editor.nissartango.fr` existe, ne sait
-pas qu'un compte l'y attend, et n'a aucun moyen de l'apprendre. **Rien dans ce
-projet n'envoie quoi que ce soit à un organisateur** — la seule sortie
-automatique est le lien de connexion de GoTrue, qu'il faut avoir demandé, et
-l'alerte de construction qui vous est adressée à vous.
-
-Le message est donc à écrire à la main, et il est porteur :
-
-> Bonjour, votre accès à l'agenda est prêt.
-> Allez sur **editor.nissartango.fr**, saisissez cette adresse e-mail, et
-> ouvrez le lien que vous recevrez — dans le même navigateur.
-> Le lien ne sert qu'une fois et vaut une heure.
-
-**ICI ON L'ENVOIE TROP TÔT, ET C'EST ARTIFICIEL.** En exploitation ce message
-part APRÈS l'étape 4, quand tout est en place, et la personne ne voit jamais la
-page d'attente (`GUIDE-admin.md` étape 6). On l'envoie avant uniquement pour
-provoquer une fenêtre qui, en vrai, n'arrive que par accident : vous êtes
-interrompu entre l'étape 2 et l'étape 4, ou il avait gardé l'onglet d'une fois
-précédente.
-
-Dans un AUTRE navigateur, ou une fenêtre privée. Pas un autre onglet : votre
-session d'administrateur ne doit pas être dedans, sinon vous testez vos propres
-droits sans le savoir.
-
-`editor.nissartango.fr` → l'adresse du compte → **Envoyez-moi un lien** →
-ouvrir le lien **dans la même fenêtre**, tout de suite.
-
-Le compte existe, donc `create_user: false` ne le refuse pas — ce réglage ne
-bloque que les adresses INCONNUES. Et ce chemin-là est du PKCE, pas du flux
-implicite : il arrive directement sur le formulaire.
-
-**À vérifier** : la page dit « Votre accès est en préparation. », en bleu, et
-dit de ne rien réessayer. Elle ne doit PAS afficher le panneau `user id (sub)` /
-`issued` / `expires`, qui est l'instrument d'un mainteneur, ni la boîte rouge
-« Vous n'êtes membre d'aucun organisateur » avec son explication de
-`is_member()`. Les deux sont corrects et aucun des deux ne s'adresse à lui.
-
-Cet état n'est stocké nulle part : c'est `myOrganizers()` qui ne renvoie rien.
-Il se résorbe donc tout seul à l'étape 4, sans rien rebasculer.
+**À vérifier** : le compte apparaît dans la liste, et **aucun courriel ne
+part**. Réception ET indésirables.
 
 ---
 
-## 4. Le rattacher à un organisateur
+## 3. Rattacher la personne, en propriétaire
 
-**editor.nissartango.fr/organizer/?id=<l'id de l'étape 1> → Membres → ajouter
-par e-mail**, en **Propriétaire**.
+En SQL. L'éditeur sait le faire aussi — `add_organizer_member` autorise
+`is_owner OR is_admin` — mais sa fiche n'apparaîtra pas dans votre liste
+« Organisateur », il faudrait passer par `/organizer/?id=<uuid>`, et en SQL on
+voit la ligne écrite.
 
-**PAR L'URL, PAS PAR LA LISTE.** La fiche n'apparaîtra pas dans votre liste
-« Organisateur » : `myOrganizers()` répond à « les organisateurs pour lesquels
-je peux créer des ÉVÉNEMENTS », et vous n'êtes pas membre de celle-ci. Ce n'est
-pas une panne, c'est documenté dans `AGENTS.md` item 7. Vous pouvez quand même
-l'administrer : `add_organizer_member` autorise `is_owner(organizer) OR
-is_admin()`, et la page vérifie `mayWrite = owner || admin`.
+```sql
+insert into public.organizer_members (organizer_id, user_id, role)
+select o.id, u.id, 'owner'
+from public.organizers o, auth.users u
+where o.slug = 'ka-et-jeff'
+  and u.email = 'adresse@exemple.fr'
+returning organizer_id, user_id, role;
+```
 
-**Propriétaire, pas Éditeur.** Cette ligne disait l'inverse jusqu'au
-2026-10-22, et c'était une recommandation faite pour un test où l'organisateur
-était simulé sur une fiche qui n'était pas la sienne. Pour la personne qui TIENT
-la fiche, propriétaire est le bon rôle : elle modifie son nom, ses liens et ses
-coordonnées, et ajoute ses collègues, sans repasser par vous. Gardez éditeur
-pour quelqu'un qui aide sur la fiche d'un autre.
+**`owner`, pas `editor`** : la personne TIENT cette fiche. Elle modifiera ses
+liens et ajoutera ses collègues sans repasser par vous.
 
-Le menu déroulant propose Éditeur par défaut, donc c'est un clic délibéré.
+**ZÉRO LIGNE VEUT DIRE QUE LE `select` N'A RIEN TROUVÉ** — un slug ou une
+adresse qui ne correspond pas — et non que l'insertion a échoué. C'est la seule
+façon dont cette requête échoue en silence.
 
-**Si vous le faites avant l'étape 2**, le formulaire répond `NT006` et vous dit
-nommément qu'il n'y a pas de compte pour cette adresse, au lieu d'échouer
-vaguement. C'est un cas qui mérite d'être vu une fois : faites-le exprès.
+Le compte est encore NON confirmé à cet instant, et ça n'a aucune importance :
+`add_organizer_member` et cette requête cherchent l'adresse dans `auth.users` et
+ne regardent jamais l'état de confirmation.
 
-**À vérifier, dans sa fenêtre à lui** : rechargez la page d'attente. Elle doit
-céder la place à l'espace éditeur sans qu'il se reconnecte et sans que vous
-touchiez à quoi que ce soit d'autre. Si elle persiste, l'appartenance n'a pas
-été écrite — regardez l'étape 5 du guide plutôt que la page.
+**À vérifier :**
 
----
+```sql
+select o.name, o.slug, u.email, m.role
+from public.organizer_members m
+join public.organizers o on o.id = m.organizer_id
+join auth.users u on u.id = m.user_id
+where o.slug = 'ka-et-jeff';
+```
 
-## 5. Se connecter en tant que lui
-
-**Dans une fenêtre de navigation privée**, ou un autre navigateur. Pas le vôtre
-avec votre session admin dessus : vous testeriez vos propres droits sans le
-savoir, et c'est l'erreur qui rend ce genre de test inutile.
-
-1. `editor.nissartango.fr` → l'adresse du compte → **Envoyez-moi un lien**
-2. ouvrir le lien **dans la même fenêtre**, tout de suite
-
-C'est la deuxième fois qu'il fait ça : la première, à l'étape 3, il est tombé
-sur la page d'attente. Cette fois l'appartenance existe, donc il passe.
-
-Trois choses à savoir, elles sont dans l'aide et elles expliquent presque toutes
-les pannes de connexion : le lien ne sert **qu'une fois**, il vaut **une heure**,
-et il doit être ouvert **dans le navigateur qui l'a demandé**.
-
-**À vérifier** : la page affiche l'espace éditeur, et **pas** le lien vers la
-file d'attente. La file est masquée pour tout le monde sauf l'admin.
-
-**CETTE VÉRIFICATION A DÉJÀ ATTRAPÉ QUELQUE CHOSE, le 2026-10-18**, ce qui est
-la seule raison de ne pas la survoler. `admin-only.js` masque le lien en posant
-`node.hidden = true`, et `a.btn { display: inline-block }` l'emportait
-silencieusement sur la règle `[hidden]` du navigateur : le bouton « Ouvrir la
-file d'attente » restait donc affiché pour tout le monde. Le lien du pied de
-page, lui, disparaissait bien — c'est un `<span>` que rien ne style — ce qui
-rendait le défaut invisible à qui ne regardait qu'un des deux. Mesuré sur la
-feuille déployée : `a.btn[hidden]` rendait `display: inline-block`, hauteur
-51.6px. Corrigé par `[hidden] { display: none !important; }`.
-
-Regardez les DEUX : le bouton du panneau et le lien du pied de page.
+Une ligne, `owner`, la bonne adresse.
 
 ---
 
-## 6. Créer un événement
+## 4. Envoyer le courriel d'activation, et arriver
+
+**Tableau de bord → Authentication → Users → sa ligne → « Send confirmation
+email ».**
+
+C'est le seul courriel que la personne reçoit, et c'est le dernier geste :
+fiche, compte et appartenance existent déjà, donc le lien marche du premier
+coup.
+
+**À vérifier dans sa boîte** : le message est **en français** — modèle *Confirm
+signup*, `PROJECT_SETUP.md` §2 — et **le lien est visible sans déplier**. Les
+deux ont échoué le 2026-10-22 : le modèle était encore le défaut anglais de
+Supabase, et Gmail repliait le corps dans « Contenu abrégé » parce que chaque
+envoi produisait exactement les mêmes octets. L'adresse brute imprimée sous le
+bouton porte un jeton unique, donc elle suffit à rendre chaque message
+différent.
+
+Puis, **dans un AUTRE navigateur** ou une fenêtre privée — pas un autre onglet,
+votre session d'administrateur ne doit pas être dedans —, cliquer le lien.
+
+**À vérifier** : il arrive directement sur le **formulaire d'événement**, sa
+fiche déjà sélectionnable, et une **bannière rouge** disant que sa fiche est
+vide. Pas sur le panneau `user id (sub)` / `issued` / `expires`, qui est
+l'instrument d'un mainteneur.
+
+**CES DEUX-LÀ ONT ÉTÉ CASSÉS LE 2026-10-22**, et c'est la raison de ne pas
+survoler cette vérification :
+
+- une arrivée par lien ne s'enregistrait nulle part. `store()` était privé dans
+  `auth.js` et seul l'échange PKCE l'atteignait, donc la page peignait
+  l'identité DU LIEN pendant que chaque requête partait au nom de ce que
+  `localStorage` contenait encore — une session d'un tour précédent. Le panneau
+  masquait parfaitement le défaut : il décode le jeton qu'on lui donne, donc il
+  affichait toujours la bonne adresse ;
+- et une arrivée par lien s'arrêtait sur ce panneau au lieu de filer sur
+  `/event/`, alors qu'une connexion par le formulaire y allait.
+
+**S'il tombe sur « Votre accès est en préparation »**, l'appartenance de
+l'étape 3 n'a pas été écrite. Cette page est un filet, pas une étape.
+
+### Facultatif : voir le filet
+
+Pour regarder la page d'attente, refaites une passe en envoyant le courriel de
+l'étape 4 AVANT l'étape 3. C'est la fenêtre que cette page couvre, et dans
+l'ordre correct elle ne se présente jamais.
+
+---
+
+## 5. Créer un événement
 
 En tant que l'organisateur simulé, remplir le formulaire. Prenez une date
 **dans les 7 prochains jours** : c'est ce qui le fera apparaître dans la
 première section du site plutôt que dans les cartes, et c'est la section que
-vous regarderez à l'étape 8.
+vous regarderez à l'étape 7.
 
 Mettez-y de quoi exercer les cas qui ont déjà cassé :
 
@@ -265,7 +244,7 @@ Utile, et sans rapport avec le statut d'un événement.
 
 ---
 
-## 7. La file d'attente
+## 6. La file d'attente
 
 Revenez dans **votre** navigateur, en admin : `editor.nissartango.fr/queue/`.
 
@@ -283,7 +262,7 @@ approuvé à nouveau.
 
 ---
 
-## 8. Approuver, puis regarder le site
+## 7. Approuver, puis regarder le site
 
 Approuvez. Puis attendez la reconstruction.
 
@@ -314,7 +293,7 @@ gros, et le visuel — s'il y en a un — tient dans la hauteur de la fenêtre.
 
 ---
 
-## 9. Modifier, et le drapeau
+## 8. Modifier, et le drapeau
 
 En tant qu'organisateur, corrigez quelque chose — le titre, l'heure.
 
@@ -328,7 +307,7 @@ qui coûte cher, et c'est pour la rencontrer une fois en sécurité que cette
 
 ---
 
-## 10. Annuler une date
+## 9. Annuler une date
 
 Toujours en organisateur, annulez **une occurrence** si l'événement se répète,
 ou l'événement entier sinon, avec un motif.
@@ -341,7 +320,7 @@ fois où cet événement apparaît chronologiquement.
 
 ---
 
-## 11. Les cas d'erreur, pendant que c'est sûr
+## 10. Les cas d'erreur, pendant que c'est sûr
 
 Quatre à provoquer exprès, parce qu'ils sont dans l'aide et qu'un organisateur
 les rencontrera. (Ce paragraphe a annoncé « trois » au-dessus d'un tableau de
@@ -375,9 +354,10 @@ le fichier terminé est l'échec récurrent de ce dépôt ; relisez le document
 entier quand vous changez un message.
 
 **Pour provoquer le premier cas en tant qu'admin**, il faut un compte membre de
-rien : le vôtre est membre des trois organisateurs. Le compte de test, entre
-l'étape 2 et l'étape 4, est exactement ça — c'est la fenêtre de l'étape 3, et
-c'est là qu'il faut regarder.
+rien : le vôtre est membre d'au moins une fiche. Le compte de test, entre l'étape 2
+et l'étape 3, est exactement ça — mais dans l'ordre correct cette fenêtre ne
+dure que le temps d'écrire une requête et personne n'y entre. Pour la voir,
+il faut la provoquer : c'est le paragraphe facultatif de l'étape 4.
 
 L'aide les explique tous, et donne `contact@nissartango.fr` comme recours —
 c'est le texte que vous venez de déployer, et le voir en situation est la
@@ -385,7 +365,7 @@ meilleure relecture possible.
 
 ---
 
-## 12. Tout supprimer
+## 11. Tout supprimer
 
 **Irréversible.** La sauvegarde de l'étape 0 est le seul retour en arrière.
 
@@ -448,7 +428,7 @@ union all select 'auth users', count(*) from auth.users;"
 
 ---
 
-## 13. Le déploiement final
+## 12. Le déploiement final
 
 La suppression fait bouger l'empreinte du contenu, donc le poller reconstruira
 tout seul dans les dix minutes. Vous pouvez attendre, ou forcer.
