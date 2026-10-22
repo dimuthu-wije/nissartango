@@ -302,12 +302,22 @@ opposite and was wrong.
 Dashboard → **Authentication → Emails → Templates**, per project, not in this
 repo. Recorded here because nothing else records them.
 
-**Only TWO of the six matter**, and that follows from the code rather than from
-preference. `editor/public/auth.js` calls `signInWithOtp` with
-`create_user: false` and nothing else: there is no password anywhere in this
-project, so *Reset Password* and *Confirm signup* can never fire, and
-*Reauthentication* has no caller. Leave them at their defaults; editing them
-would be maintaining prose nobody will read.
+**THREE of the six matter.** This said TWO until 2026-10-22, and the reasoning
+was sound about the wrong actor: *"`editor/public/auth.js` calls
+`signInWithOtp` with `create_user: false` and nothing else, so Confirm signup
+can never fire."* True of the EDITOR, and the editor is not the only thing that
+sends mail from this project — the DASHBOARD does too, and the onboarding
+procedure now uses it on purpose.
+
+**Add user → Create new user** with auto-confirm OFF, then **Send confirmation
+email** on that user, fires *Confirm signup*. Measured 2026-10-22 on
+production: what arrived was Supabase's English default, *"Confirm your email
+address — Follow the link below to confirm this email address and finish
+signing up"*, to a French organizer, as the first thing this project had ever
+said to them.
+
+*Reset Password* and *Reauthentication* still have no caller — there is no
+password anywhere in this project. Leave those two at their defaults.
 
 **They do NOT say "ne pas répondre".** `no-reply@nissartango.fr` forwards to the
 maintainer's inbox since 2026-09-26, added precisely because replies to it were
@@ -359,7 +369,62 @@ Body:
 </div>
 ```
 
-#### 2. Magic Link
+#### 2. Confirm signup — the organizer's FIRST contact
+
+Fired by **Send confirmation email** on a user created with auto-confirm off.
+That is now the last step of onboarding (`docs/GUIDE-admin.md`), so this is the
+first thing a new organizer ever receives from this project. It was Supabase's
+English default until 2026-10-22.
+
+Subject:
+
+    Activez votre accès — nissARTango
+
+Body:
+
+```html
+<div style="font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#171614;max-width:34rem">
+  <p>Bonjour,</p>
+
+  <p>Votre accès à <strong>niss<span style="color:#E55039">ART</span>ango</strong>
+    est prêt. C'est l'agenda du tango et des danses sociales à Nice et sur la
+    Côte d'Azur, et vous pouvez désormais y publier vos événements.</p>
+
+  <p style="margin:28px 0">
+    <a href="{{ .ConfirmationURL }}"
+       style="background:#E55039;color:#171614;text-decoration:none;padding:12px 24px;border-radius:999px;display:inline-block;font-weight:600">Activer
+       mon accès</a>
+  </p>
+
+  <p>Ce lien confirme votre adresse et vous connecte. <strong>Il ne sert qu'une
+    fois</strong>, et il doit être ouvert <strong>dans ce navigateur-ci</strong>
+    si vous lisez ce message sur l'ordinateur où vous travaillerez.</p>
+
+  <p>Ensuite, tout se passe sur <strong>editor.nissartango.fr</strong>. Il n'y a
+    pas de mot de passe : vous demandez un lien de connexion, vous l'ouvrez,
+    vous êtes connecté.</p>
+
+  <p>Commencez par <strong>Organisateur</strong> : tant que votre fiche est
+    vide, le formulaire d'événement vous le signalera — personne ne peut vous
+    contacter si elle ne dit rien.</p>
+
+  <p>Si le bouton ne fonctionne pas, copiez cette adresse dans votre
+    navigateur :<br>
+    <span style="color:#6B6660;word-break:break-all">{{ .ConfirmationURL }}</span></p>
+
+  <p style="margin-top:28px;color:#6B6660">Une question ? Répondez simplement à
+    ce message, ou écrivez à contact@nissartango.fr.</p>
+</div>
+```
+
+**It does not say « vous l'avez demandé ».** The Magic Link template below
+does, correctly, because that one answers a request. This one is sent BY the
+administrator to somebody who asked for nothing, so the same sentence would be
+false — and its « vous n'avez pas demandé ce lien ? ignorez ce message » would
+tell a new organizer to bin the only way in. Two templates, two situations, and
+the difference is who started it.
+
+#### 3. Magic Link
 
 Subject:
 
@@ -411,9 +476,21 @@ worse than no logo. The wordmark is therefore set as TEXT with the orange on
 the `ART`, which is the one piece of the identity that survives a text-only
 rendering.
 
-**The raw URL is printed under every button.** Some clients mangle a styled
+**The raw URL is printed under every button**, and it turns out to earn its
+keep twice. The first reason was always that some clients mangle a styled
 anchor, and a magic link that cannot be copied is a dead end for the one person
 least able to work around it.
+
+The second was found on 2026-10-22 and is not about accessibility at all.
+**Gmail collapses a repeated message body into « Contenu abrégé »** — a thread
+of mails sharing a subject and identical text gets everything after the first
+one folded away behind a « … », link included. The English default body is the
+same bytes every single time, so by the third confirmation mail the recipient
+had to unfold the message to find the only thing in it.
+
+The printed `{{ .ConfirmationURL }}` carries a one-time token, so **every
+message differs** and nothing is ever folded. A line put there for a
+screen-reader-ish reason quietly solved a deliverability one.
 
 **Ink on the accent, never cream.** `#171614` on `#E55039` is **4.77:1** and
 passes; white on that orange is **3.79:1** and fails. The same conclusion as
