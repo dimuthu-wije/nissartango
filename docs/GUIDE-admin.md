@@ -165,30 +165,41 @@ construction, entre « cette personne reçoit un lien » et « cette personne pe
 faire quelque chose » — et elle la traversait en ne sachant pas qu'elle était en
 avance.
 
-**Le problème n'est pas la fenêtre, c'est l'e-mail parti trop tôt.** « Invite
-user » crée le compte ET envoie le lien dans le même geste. Si le tableau de
-bord propose de créer un compte sans rien envoyer — **Add user → Create new
-user**, avec la confirmation automatique cochée — préférez-le : vous finissez
-tout, puis vous prévenez la personne, et le seul lien qu'elle reçoive est déjà
-un lien qui marche.
+**Le problème n'est pas la fenêtre, c'est l'e-mail parti trop tôt.** « Send
+invitation » crée le compte ET envoie le lien dans le même geste. « Create new
+user » crée le compte et n'envoie rien.
 
-**CECI EST UNE AFFIRMATION À VÉRIFIER, pas un fait mesuré sur ce projet.**
-Personne n'a encore regardé ce que ce bouton propose réellement. Le menu « ⋯ »
-d'un utilisateur, lui, a été regardé le 2026-09-19 : il offre *Remove MFA
-factors*, *Ban user* et *Delete user*, et rien pour renvoyer un lien. Si « Create
-new user » n'existe pas, invitez comme avant et enchaînez les étapes 4 et 5 tout
-de suite : la fenêtre se mesure alors en minutes, et la page d'attente de
-l'étape 6 la couvre.
+**Tableau de bord → Authentication → Users → Add user**, puis **Create new
+user** — pas « Send invitation ».
 
-Cocher la confirmation automatique si elle est là. Un compte non confirmé peut
-se voir refuser un lien magique, ce qui recréerait le problème un cran plus loin.
+La boîte de dialogue demande trois choses, et rien d'autre :
 
+| champ | quoi mettre |
+|---|---|
+| e-mail | l'adresse de la personne |
+| mot de passe | n'importe quoi de jetable — elle ne le tapera jamais, elle se connecte par lien. Ne réutilisez pas un vrai mot de passe |
+| **Auto Confirm User** | **cocher** |
 
-**Tableau de bord → Authentication → Users → Invite user.**
+**MESURÉ LE 2026-10-22, sur la production, avec `d.wijegun@gmail.com` :**
 
-Impossible depuis l'éditeur, et c'est voulu : `requestLink()` envoie
-`create_user: false`, donc une adresse inconnue qui demande un lien reçoit
-« Signups not allowed for otp ».
+- le compte est créé ;
+- **aucun courriel n'est parti** — boîte de réception et indésirables vérifiés ;
+- la liste des utilisateurs affiche « Created at », et **PAS** « Waiting for
+  verification ».
+
+Ce paragraphe a porté la mention « AFFIRMATION À VÉRIFIER » du 2026-10-18 au
+2026-10-22, parce que personne n'avait encore regardé ce que ce bouton faisait
+vraiment. Maintenant si.
+
+**Cocher « Auto Confirm User » compte.** Sans ça le compte reste non confirmé et
+peut se voir refuser un lien magique, ce qui recréerait le problème un cran plus
+loin. C'est aussi ce qui fait disparaître l'étiquette « Waiting for
+verification » — celle qui a bloqué une matinée le 2026-10-18 alors qu'elle ne
+conditionne rien du tout : rien dans ce projet ne lit l'état de confirmation.
+
+**Créer un compte est impossible depuis l'éditeur, et c'est voulu :**
+`requestLink()` envoie `create_user: false`, donc une adresse inconnue qui
+demande un lien reçoit « Signups not allowed for otp ».
 
 **Lisez la RÉFÉRENCE du projet, jamais son nom.** `eqcgeqzzuzcwrflwasjo` est la
 production ; `hjsekipqryfuwdkhxuks` s'appelle « nissartango-dev » et ne l'est
