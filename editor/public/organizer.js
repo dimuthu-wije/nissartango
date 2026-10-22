@@ -96,11 +96,22 @@ function showErrors(problems) {
 
 // --- reading the form -------------------------------------------------------
 
-/** Read one contact pair out of the form and into column names. */
+/**
+ * Read one contact pair out of the form and into column names.
+ *
+ * THE SECOND ARGUMENT IS NOW ALWAYS TRUE, and consentFor is kept rather than
+ * bypassed. Since 2026-10-22 entering a value IS the consent, so there is no
+ * box to read -- but the three cases that function encodes have not gone
+ * anywhere, and the middle one is still the one that gets written wrong:
+ * re-saving an unchanged row must keep the ORIGINAL stamp, because when
+ * somebody agreed is the entire content of that column. Passing `true` and
+ * letting consentFor decide preserves that; writing `now()` here would look
+ * identical on screen and quietly destroy the record on every save.
+ */
 function contactPair(kind) {
   const { value, consentAt } = consentFor(
     val(`contact_${kind}`),
-    fields.get(`contact_${kind}_consented`).control.checked,
+    true,
     fields.get(`contact_${kind}`).wasConsentAt ?? null,
   );
   return {
@@ -116,8 +127,9 @@ function readForm() {
     instagram: val('instagram') || null,
     facebook: val('facebook') || null,
     tiktok: val('tiktok') || null,
-    email: val('email') || null,
-    phone: val('phone') || null,
+    // `email` and `phone` are NOT sent: the form stopped asking for them on
+    // 2026-10-22, and sending null would erase what production already holds
+    // rather than leave it alone. Omitting a column from a PATCH leaves it.
     ...contactPair('email'),
     ...contactPair('phone'),
   };
@@ -142,8 +154,23 @@ function forValidation(v) {
     ...v,
     contact_email: val('contact_email') || null,
     contact_phone: val('contact_phone') || null,
-    contact_email_consented: fields.get('contact_email_consented').control.checked,
-    contact_phone_consented: fields.get('contact_phone_consented').control.checked,
+    // Consent is implied by there being a value, so these are no longer read
+    // from a control -- they ARE the value's presence.
+    //
+    // NOT a hard `true`, which is what this said first and would have blocked
+    // every organizer who leaves these empty: validateOrganizer's second rule
+    // is `!value && consent` -> "Rien à publier : remplissez ce champ, ou
+    // décochez la case", and with consent always true that fires on every
+    // blank field, pointing at a checkbox that no longer exists. Most
+    // organizers publish neither, so most saves would have been refused.
+    //
+    // Both of that function's consent rules are now unreachable from this
+    // form, which is correct: with no box, neither "typed but not ticked" nor
+    // "ticked but not typed" can occur. They stay in validate.js because it is
+    // a pure function with its own tests, and because the rules still describe
+    // the database's constraint truthfully.
+    contact_email_consented: !!val('contact_email'),
+    contact_phone_consented: !!val('contact_phone'),
     contact_email_was_consented: !!fields.get('contact_email').wasConsentAt,
     contact_phone_was_consented: !!fields.get('contact_phone').wasConsentAt,
   };
@@ -189,35 +216,47 @@ function buildForm(org) {
     form.appendChild(field(k, label, input('text', { value: org[k] ?? '' }), { hint }));
   }
 
-  section('Coordonnées privées — jamais publiées',
-    'Pour que je puisse vous joindre. Elles sont absentes de la vue publique : ' +
-    'elles n\'atteignent donc ni le site publié ni le dépôt, quoi que fasse un gabarit.');
-  form.appendChild(field('email', 'E-mail (privé)', input('email', { value: org.email ?? '' })));
-  form.appendChild(field('phone', 'Téléphone (privé)', input('tel', { value: org.phone ?? '' })));
+  // THE PRIVATE PAIR IS NO LONGER ON THIS FORM, as of 2026-10-22. `email` and
+  // `phone` still exist as columns, `authenticated` still holds a column-level
+  // UPDATE on them, and whatever production already holds is untouched -- they
+  // are simply not asked for any more. The address that reaches an organizer
+  // is the one on their account, which is where it was always going to be
+  // looked up anyway, so the fields duplicated a fact nobody edited.
+  //
+  // They are still absent from organizers_public. THAT is the privacy
+  // boundary, and removing two inputs does not move it.
 
-  section('Coordonnées publiques — publiées sur chacun de vos événements',
+  section('Vos coordonnées — publiées sur chacun de vos événements',
     'Elles apparaissent sur le site sous forme de liens, visibles par tout le monde. ' +
     'Laissez-les vides si vous préférez ne pas publier de moyen de vous contacter.');
 
-  for (const [kind, label, type] of [['email', 'E-mail public', 'email'],
-                                     ['phone', 'Téléphone public', 'tel']]) {
+  for (const [kind, label, type, hint] of [
+    ['email', 'E-mail public', 'email',
+     'Publié tel quel sur la page de chacun de vos événements. Laissez vide pour ne rien publier.'],
+    ['phone', 'Téléphone public', 'tel',
+     'Publié tel quel sur la page de chacun de vos événements. Laissez vide pour ne rien publier.'],
+  ]) {
     const name = `contact_${kind}`;
-    const f = field(name, label, input(type, { value: org[name] ?? '' }));
-    form.appendChild(f);
+    form.appendChild(field(name, label, input(type, { value: org[name] ?? '' }), { hint }));
     // The stamp travels on the field, so readForm can preserve it without a
     // second lookup and without a module-level variable.
     fields.get(name).wasConsentAt = org[`${name}_consent_at`] ?? null;
-
-    const cb = input('checkbox');
-    cb.checked = !!org[`${name}_consent_at`];
-    const cbWrap = field(`${name}_consented`, 'Publier cette information, de façon permanente', cb, {
-      hint: 'La publication n\'est pas réversible comme on l\'imagine : les pages sont ' +
-            'mises en cache, copiées et indexées par d\'autres. La retirer ici la retire ' +
-            'du site, et de nulle part ailleurs où elle a déjà été vue.',
-    });
-    cbWrap.classList.add('field-check', 'consent');
-    form.appendChild(cbWrap);
   }
+
+  // THE TICK BOX IS GONE AND THE STAMP IS NOT. organizers_contact_*_needs_consent
+  // refuses a value without one, so the form must still send a timestamp or the
+  // save fails outright in the database -- removing the checkbox alone would
+  // have broken saving a public e-mail, not simplified it.
+  //
+  // What the stamp MEANS has changed, and that is the honest cost: it recorded
+  // "they ticked a box saying permanently public", and now records "they typed
+  // it into a field whose label says it is published on every event page".
+  // Weaker evidence, still a record, and the label is what carries the warning
+  // the checkbox used to -- which is why both hints above say it twice.
+  //
+  // Withdrawal is unchanged: clearing the field nulls the value and KEEPS the
+  // stamp, so the fact that publication was once agreed to survives. See
+  // consent.js, case 3.
 
   return form;
 }
@@ -249,8 +288,6 @@ async function save(org, status, submit) {
     // stamp may have just been created, and the next save has to preserve it.
     for (const kind of ['email', 'phone']) {
       fields.get(`contact_${kind}`).wasConsentAt = saved[`contact_${kind}_consent_at`] ?? null;
-      fields.get(`contact_${kind}_consented`).control.checked =
-        !!saved[`contact_${kind}_consent_at`];
     }
   } catch (err) {
     if (err instanceof AuthExpired) return renderExpired();
@@ -280,7 +317,8 @@ async function save(org, status, submit) {
  */
 function membersSection(org) {
   const b = box('idle', 'Membres',
-    'Qui peut créer et modifier les événements de cet organisateur.');
+    'Ajoutez les personnes qui peuvent créer et modifier vos événements, '
+    + 'si vous le souhaitez. Vous pouvez très bien rester seul.');
   const list = el('div', null, 'members');
   const status = el('p', null, 'note');
 
@@ -293,6 +331,19 @@ function membersSection(org) {
         const who = el('div', null, 'member-who');
         who.append(el('span', m.email, 'member-email'),
                    el('span', m.role === 'owner' ? 'propriétaire' : 'éditeur', 'tag'));
+
+        // NO « Retirer » ON A PROPRIÉTAIRE, as of 2026-10-22. On the common
+        // shape -- one owner, who is the person reading this -- that button
+        // could only ever fail: t50_members_keep_an_owner refuses to leave an
+        // organizer with no owner, so it offered to do something the database
+        // was always going to refuse, and answered with an error code.
+        //
+        // A co-owner is not stranded by this. Re-adding them below as
+        // « Éditeur » changes the role in place -- add_organizer_member ends
+        // `on conflict (organizer_id, user_id) do update set role` -- and the
+        // button comes back on the next refresh. Demote, then remove.
+        if (m.role === 'owner') { row.append(who); list.appendChild(row); continue; }
+
         const rm = el('button', 'Retirer', 'btn btn-quiet btn-small');
         rm.type = 'button';
         rm.addEventListener('click', async () => {
