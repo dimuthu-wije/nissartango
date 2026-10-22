@@ -85,6 +85,32 @@ function store(s) {
   return saved;
 }
 
+/**
+ * Adopt a session that arrived OUTSIDE the PKCE exchange -- i.e. the implicit
+ * flow, where the tokens come back in the URL fragment.
+ *
+ * WHY THIS HAD TO EXIST. `store()` was private and only exchangeCode() and
+ * refreshSession() reached it, so an implicit arrival was rendered from the
+ * token in the fragment and NEVER WRITTEN DOWN. Harmless while the callback
+ * only decoded that token to paint a panel of claims. It stopped being
+ * harmless on 2026-10-18, when that page gained a membership check: the panel
+ * then showed the identity from the LINK while every query ran as whatever
+ * localStorage still held.
+ *
+ * Measured on 2026-10-22, on production: an organizer clicked a fresh magic
+ * link issued for an account that owned a fiche, and met "votre accès est en
+ * préparation" -- because the browser still carried a session from an earlier
+ * round of testing, and `myOrganizers()` asked on behalf of that older `sub`.
+ * Two identities on one screen, and the newer one was the decoration.
+ *
+ * IT REPLACES WHATEVER WAS THERE, deliberately. A fresh link is a fresh
+ * identity, and keeping the previous one is the whole defect.
+ */
+export function adoptSession(session) {
+  if (!session?.access_token) throw new AuthExpired('aucun jeton à adopter');
+  return store(session);
+}
+
 function readStored() {
   try {
     const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');

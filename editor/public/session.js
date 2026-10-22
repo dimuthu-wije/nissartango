@@ -17,7 +17,7 @@
 // alone cannot be redeemed. That asymmetry is the design, not an oversight.
 
 import {
-  requestLink, exchangeCode, getSession, hasSession, claimsOf,
+  requestLink, exchangeCode, getSession, hasSession, claimsOf, adoptSession,
 } from '/auth.js';
 import '/banner.js';
 import { adminOnly } from '/admin-only.js';   // also, on import: the footer link
@@ -311,9 +311,35 @@ async function boot() {
   }
 
   if (frag.get('access_token')) {
-    const session = { access_token: frag.get('access_token'), refresh_token: frag.get('refresh_token') };
-    cleanUrl();
-    return showSession(session, frag.get('type') || 'implicit');
+    // WRITTEN DOWN BEFORE IT IS USED. Until 2026-10-22 this object went
+    // straight to showSession and was never stored, so the page painted the
+    // identity from the link while every request it made ran as whatever
+    // localStorage still held -- an older session, or none. The claims panel
+    // hid it perfectly: it decodes the token it is handed, so it always
+    // showed the right person.
+    //
+    // adoptSession REPLACES the stored session, which is the point. Clicking
+    // a link for one account must not leave you querying as another.
+    adoptSession({
+      access_token: frag.get('access_token'),
+      refresh_token: frag.get('refresh_token'),
+      expires_in: Number(frag.get('expires_in')) || undefined,
+    });
+    // AND IT LANDS WHERE PKCE LANDS. Until 2026-10-22 an implicit arrival
+    // stopped here on the panel of claims while a sign-in from the form went
+    // straight to LANDING -- so the people most likely to arrive this way, an
+    // invited organizer or anyone sent a link from the dashboard, were the
+    // only ones left on a maintainer's instrument. This file's own header
+    // already said the panel belongs "somewhere you go on purpose, not
+    // somewhere you are left"; it just did not act on it.
+    //
+    // The panel is not gone: visiting / with a stored session still shows it,
+    // which is the branch below.
+    //
+    // replace, NOT assign, for the same reason as the PKCE branch: this
+    // entry's URL carried a credential that is now spent.
+    location.replace(LANDING);
+    return;
   }
 
   if (hasSession()) {
