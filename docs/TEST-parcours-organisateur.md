@@ -125,7 +125,28 @@ l'étape 2 et l'étape 4.
 
 ---
 
-## 3. Arriver trop tôt, exprès
+## 3. Lui dire que l'éditeur existe — puis arriver trop tôt, exprès
+
+**IL N'A RIEN REÇU.** C'est le but de l'étape 2 : aucun courriel ne part. Donc à
+cet instant la personne ne sait pas que `editor.nissartango.fr` existe, ne sait
+pas qu'un compte l'y attend, et n'a aucun moyen de l'apprendre. **Rien dans ce
+projet n'envoie quoi que ce soit à un organisateur** — la seule sortie
+automatique est le lien de connexion de GoTrue, qu'il faut avoir demandé, et
+l'alerte de construction qui vous est adressée à vous.
+
+Le message est donc à écrire à la main, et il est porteur :
+
+> Bonjour, votre accès à l'agenda est prêt.
+> Allez sur **editor.nissartango.fr**, saisissez cette adresse e-mail, et
+> ouvrez le lien que vous recevrez — dans le même navigateur.
+> Le lien ne sert qu'une fois et vaut une heure.
+
+**ICI ON L'ENVOIE TROP TÔT, ET C'EST ARTIFICIEL.** En exploitation ce message
+part APRÈS l'étape 4, quand tout est en place, et la personne ne voit jamais la
+page d'attente (`GUIDE-admin.md` étape 6). On l'envoie avant uniquement pour
+provoquer une fenêtre qui, en vrai, n'arrive que par accident : vous êtes
+interrompu entre l'étape 2 et l'étape 4, ou il avait gardé l'onglet d'une fois
+précédente.
 
 Dans un AUTRE navigateur, ou une fenêtre privée. Pas un autre onglet : votre
 session d'administrateur ne doit pas être dedans, sinon vous testez vos propres
