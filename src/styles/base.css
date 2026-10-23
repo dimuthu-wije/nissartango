@@ -89,7 +89,10 @@ header {
 @media (max-width: 40rem) {
   header {
     flex-direction: column;
-    align-items: flex-start;
+    /* stretch, not flex-start, so nav spans the line and the Menu button can
+       be pushed to its right edge -- see below. The logo is unaffected: its
+       <a> grows but the SVG inside is width:auto and stays at the left. */
+    align-items: stretch;
     gap: var(--space-12);
   }
 }
@@ -113,7 +116,22 @@ header {
  * So if the mark is ever genuinely to be bolder, the answer is the typeface,
  * not the geometry. */
 .logo { display: block; color: var(--ink); }
-.logo svg { display: block; height: 2rem; width: auto; }
+/* 4rem on a wide screen from 2026-10-23, double the 2rem it had been --
+ * asked for directly. Still SIZE ONLY; the drawing is untouched.
+ *
+ * THE PHONE GETS ITS OWN NUMBER, AND THE REASON IS ARITHMETIC. The mark's
+ * aspect is 6.78, so height alone decides width: 4rem is 434px, and the
+ * shell inside the gutters is 343. It would not have wrapped or shrunk --
+ * an SVG with width:auto takes the width its height implies -- it would
+ * have run off the side of the page. 2.75rem is 298px, which fits with
+ * room, and is still a third taller than before.
+ *
+ * max-width is the belt: if the shell ever narrows further, the mark
+ * letterboxes inside its box rather than overflowing the document. */
+.logo svg { display: block; height: 4rem; width: auto; max-width: 100%; }
+@media (max-width: 40rem) {
+  .logo svg { height: 2.75rem; }
+}
 
 /* ---- Touch targets, phones only -------------------------------------------
  * Measured at 375px with the 17-event fixture: the wordmark was 20px tall, nav
@@ -159,6 +177,176 @@ nav ul {
   list-style: none; margin: 0; padding: 0;
   display: flex; flex-wrap: wrap; gap: var(--space-24);
 }
+/* THE MENU COLLAPSES AT 76rem, 2026-10-23. Measured, not chosen: the preview
+ * was set to the width where the inline nav stops working and the layout
+ * viewport read 1211px, which is 75.69rem. Rounded UP to the next whole rem
+ * so the dropdown is active at that width rather than one pixel short of it,
+ * and kept in rem like every other breakpoint here so it still answers to a
+ * reader who has enlarged their browser's text.
+ *
+ * WHAT THIS MEANS IN PRACTICE, because the number is unusual: the shell is
+ * 75rem, so the inline nav now appears only on a viewport WIDER than the
+ * content it sits over. Below that -- which is most laptops -- the menu is a
+ * dropdown. That is a real change of default, not a tweak to an edge case.
+ *
+ * It replaces 62rem, which was where an agenda row drops to two columns. That
+ * tie is gone; the menu now has its own reason.
+ *
+ * A CHECKBOX AND A LABEL, NOT <details>. <details> is the right semantics and
+ * was the first choice: a native disclosure, announced as expandable, no
+ * script. The problem is the other half of the requirement -- above 62rem the
+ * links must show WITHOUT the element being open, which means defeating the
+ * UA's own hiding of the details content. Measured here: in Chrome 152 that
+ * override works (summary display:none, the list given its own display, and
+ * the list still lays out at 953x30 with open=false). One engine is not the
+ * web. Safari and Firefox implement that hiding through ::details-content and
+ * a shadow slot, there is no browser in this session to test them in, and the
+ * failure mode is the worst available -- the navigation invisible AND
+ * unopenable, silently, on an engine I cannot see.
+ *
+ * So the state lives in a checkbox, where `display` on a sibling is plain CSS
+ * with no shadow tree in it and behaves the same in every engine.
+ *
+ * WHAT IT COSTS: a screen reader announces "Menu, checkbox" rather than a
+ * disclosure button. That is comprehensible but it is not what <details>
+ * gives. Revisit if this is ever measured in Safari and Firefox -- the markup
+ * change is small and the semantics are better.
+ *
+ * The checkbox is CLIPPED, never display:none, so it keeps its place in the
+ * tab order; the label carries its focus ring. */
+.nav-toggle, .nav-button { display: none; }
+
+@media (max-width: 76rem) {
+  /* The panel is positioned against the HEADER, not against nav. Against nav
+     it was 202px wide on a phone and the lede showed through on either side
+     of it -- a panel with body text beside it reads as broken layout rather
+     than as a menu. Spanning the header, inset by the gutter, it covers what
+     it overlaps. It also means one rule works for both header shapes: a row
+     above 40rem, a column below. */
+  header { position: relative; }
+
+  .nav-toggle {
+    display: block;
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
+  /* RIGHT, FOR THE WHOLE DROPDOWN RANGE. This lived in the 40rem block at
+     first, on the reasoning that above it the header is a space-between row
+     and the nav is already at the right. That was wrong by a measurement:
+     once the list is in flow, NAV is as wide as its widest link, and the
+     button sat at the left of that box while the links aligned to its right
+     edge -- button right 1031, links right 1172, 141px apart on a menu whose
+     whole job is to point at them. */
+  nav { text-align: right; }
+  .nav-button {
+    display: inline-block; cursor: pointer;
+    color: var(--ink); padding: 10px 0;
+  }
+  .nav-toggle:focus-visible + .nav-button {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  nav ul { display: none; }
+  /* A PANEL, not a push: absolutely positioned so opening the menu does not
+     shove the page down under it. --paper and a rule so it reads as a surface
+     over the agenda rather than as text landing on text. */
+  /* NO RULE AROUND IT -- and the overlay goes with the rule, which is the
+     part worth writing down.
+
+     The panel used to be absolutely positioned, "a panel, not a push", so
+     opening the menu did not shove the page down. That only read as a panel
+     BECAUSE a hairline marked where it ended. Without one it is white on
+     white, and its bottom edge becomes an invisible horizontal cut through
+     whatever it lands on: measured here, it sliced the top off AGENDA. An
+     overlay needs an edge; an edge is the thing being removed; so the panel
+     comes back into flow and the page moves down to make room for it. Nothing
+     is covered, so nothing can be cut.
+
+     ALIGNED RIGHT, under the button that opened it -- measured, all three
+     links and the button share a right edge at 1172px. */
+  .nav-toggle:checked ~ ul {
+    display: flex; flex-direction: column; align-items: flex-end;
+    gap: var(--space-4); text-align: right;
+    padding: var(--space-8) 0 0;
+  }
+  /* The nav grows downward when it opens, so the header stops centring its
+     two items against each other -- otherwise the wordmark drifts to the
+     middle of an open menu. Closed, this changes nothing visible: the logo
+     and the button are within a few pixels of the same height. */
+  header { align-items: flex-start; }
+}
+/* ...except on the stacked header, where flex-start would shrink nav to its
+   content and strand the menu mid-line. Measured before this rule: the button
+   and the links aligned to 184px on a 375px screen, nowhere near the right
+   edge they were supposed to be at. This block must stay AFTER the one above
+   -- same selector, same specificity, source order decides. */
+@media (max-width: 40rem) {
+  header { align-items: stretch; }
+}
+
+/* THE MENU LEAVES THE HEADER RATHER THAN DROPPING A LINE, below 40rem.
+ *
+ * 40rem is where the header stacks, so it is the width at which the button
+ * would otherwise land on its own line under the wordmark. Instead of taking
+ * that line it leaves the flow entirely and parks at the bottom right of the
+ * viewport, which is where a thumb already is.
+ *
+ * THE WHOLE <nav> GOES, not just the label. The list is the label's sibling,
+ * so pinning the button alone would have left a floating button at the bottom
+ * of the screen opening a list of links at the top of the page.
+ *
+ * column-reverse puts the list ABOVE the button. In source order it is
+ * input, label, list; reversed, the list opens upward into the page instead
+ * of downward off the bottom of the screen.
+ *
+ * THE OPEN LIST TAKES THE BUTTON'S COLOURS, which was not asked for and is
+ * not decoration. It floats over the agenda now, and ink links on no
+ * background would be unreadable over the rows underneath. --paper on --ink
+ * is 18.08:1, the same pair the button uses, so the two read as one object.
+ * The public site carries data-theme="light", so this is a black box on every
+ * device whatever the OS says. */
+@media (max-width: 40rem) {
+  nav {
+    position: fixed; right: var(--gutter); bottom: var(--gutter); z-index: 20;
+    display: flex; flex-direction: column-reverse; align-items: flex-end;
+    gap: var(--space-8);
+  }
+  /* `nav .nav-button` rather than `.nav-button`, deliberately: the home page
+     sets the button at a section heading's size through a :global rule, and
+     an element-plus-class selector is what outranks it. A floating button is
+     not a heading. */
+  nav .nav-button {
+    font-size: var(--t-meta); line-height: var(--lh-meta);
+    background: var(--ink); color: var(--paper);
+    padding: var(--space-12) var(--space-24);
+    border-radius: var(--radius-pill);
+    margin: 0;
+  }
+  /* 16px of lettering plus 12 either side is a 48px target, over the 44 the
+     rest of this file is built to. */
+  .nav-toggle:checked ~ ul {
+    background: var(--ink);
+    border-radius: var(--radius-media);
+    padding: var(--space-12) var(--space-24);
+    gap: var(--space-8);
+  }
+  /* ...and the links come down to the button's size with it. They were
+     rendering at 31px inside a 16px button's panel, because the home page
+     sets `nav a` at a section heading's size and that rule does not know the
+     menu has become a floating object. Measured: the panel was 216x142 over
+     the agenda for three short words. */
+  .nav-toggle:checked ~ ul a {
+    color: var(--paper);
+    font-size: var(--t-meta); line-height: var(--lh-meta);
+  }
+  /* The current page keeps its accent rule; on ink it is a graphic at 3:1,
+     not lettering, which is the same reasoning as the header version. */
+  .nav-toggle:checked ~ ul a[aria-current="page"] {
+    text-decoration-color: var(--accent);
+  }
+}
+
 nav a { color: var(--ink); text-decoration: none; }
 nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
 
@@ -194,6 +382,33 @@ footer {
 }
 footer p { margin: 0 0 var(--space-12); max-width: var(--width-prose); }
 footer p:last-child { margin-bottom: 0; }
+
+/* THE CHROME RECEDES ON A PHONE, 2026-10-23.
+ *
+ * The event page collapsed to --t-meta there, and the nav and the footer --
+ * which inherit --t-body from <body> and are declared nowhere -- stayed at
+ * 20px. Chrome set LARGER than the content it frames reads as a mistake
+ * rather than as a hierarchy, and "Agenda / Archives" was the biggest
+ * lettering on the page after the title.
+ *
+ * It applies to every page, not only the event page, which is the point: the
+ * shell is one thing and cannot be two sizes depending on what is inside it.
+ * The agenda and the archive keep their --t-body rows; only the frame moves.
+ *
+ * THE TAP TARGETS SURVIVE EXACTLY. `nav a` and `.back` carry 10px of padding
+ * top and bottom under the same breakpoint, so a 24px line box makes 44 --
+ * the AAA figure, met on the nose rather than by a margin. Measured after the
+ * change, not inferred: anything smaller than --t-meta here would break it,
+ * and that is the floor this rule is standing on.
+ *
+ * The header still stacks. Its arithmetic note above was written when the nav
+ * was 20px and wanted 213px of a 343px shell; at 16px it wants less, but the
+ * wordmark has been 32px tall since 2026-10-15 and needs 217px at its 6.78
+ * aspect, so the two still cannot share a line and the conclusion is
+ * unchanged. The input moved; the answer did not. */
+@media (max-width: 40rem) {
+  nav, footer { font-size: var(--t-meta); line-height: var(--lh-meta); }
+}
 
 /* PROSE -- organizer-written event descriptions today, and the blog and
  * articles that are coming. Built now so the shell is not restyled twice.

@@ -43,8 +43,30 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
 ---
 
 <Layout title="Nissartango — Agenda du tango et des danses à Nice">
-  <h1>Agenda</h1>
   <p class="intro">Cours, practicas, milongas, stages et soirées à Nice et sur la Côte d'Azur — tango, et les autres danses sociales.</p>
+
+  {/* THE TITLE SITS ON THE FIRST SECTION, 2026-10-23. It heads the listing
+      rather than the document: the nav already says Agenda at the top of
+      every page, so a title up there named the page twice in two lines.
+
+      It stays OUTSIDE the <section>. Inside, an h1 would read as the heading
+      of "the next seven days" rather than of the page, and the second
+      section's h2 would then sit under a heading that does not contain it.
+      Outside and immediately before, the outline is h1 Agenda > h2 window >
+      h2 Évènements, which is what the page means. */}
+  <div class="page-title">
+    <h1>Agenda</h1>
+    {/* The window LEAVES the <section> to sit beside the title. Its rank in
+        the document is unchanged -- h1 Agenda, h2 Les 7 prochains jours,
+        then the rows' h3s, then h2 Évènements -- and rank in document order
+        is what a screen reader navigates by. The HTML outline algorithm,
+        which is the only thing <section> containment would have fed, was
+        never implemented by any browser or AT.
+
+        Guarded, because with nothing at all to list there is no window to
+        name and the line would label an empty page. */}
+    {!nothingAtAll && <h2 class="window">Les 7 prochains jours</h2>}
+  </div>
 
   {nothingAtAll && (
     <p class="empty">
@@ -55,7 +77,6 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
 
   {!nothingAtAll && (
     <section class="block">
-      <h2>Les 7 prochains jours</h2>
       {soon.length === 0 ? (
         <p class="empty">Rien dans les sept prochains jours — voir les évènements ci-dessous.</p>
       ) : (
@@ -148,7 +169,7 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
   )}
 
   {later.length > 0 && (
-    <section class="block">
+    <section class="block" id="evenements">
       <h2>Évènements</h2>
       <ul class="cards">
         {later.map(({ event: e, next, occurrences }) => {
@@ -236,13 +257,59 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      together left 84px of dead space above the title on a phone. */
   /* The page title outranks its sections again. They went to 44/700 and the
      h1 was still 34/500, so a section was louder than the page it sat in. */
+  /* VISIBLE AGAIN, and lower down. It was clipped earlier today so the nav
+     could carry the page's name; it is back because it now does a job the
+     nav cannot -- it heads the listing, with the window it covers written
+     under it in plain type.
+
+     --t-masthead and not --t-section: Évènements below is a section at 48px,
+     and the page title has to outrank it or the two read as peers. */
   h1 {
-    font-size: var(--t-masthead); line-height: var(--lh-masthead);
-    letter-spacing: var(--tr-masthead); font-weight: var(--weight-heavy);
+    font-size: var(--t-section); line-height: var(--lh-section);
+    letter-spacing: var(--tr-section); font-weight: var(--weight-heavy);
     text-transform: uppercase;
-    margin: 0 0 var(--space-8);
+    margin: 0;
   }
-  .intro { color: var(--ink); margin: 0 0 var(--space-32); }
+  /* BASELINE, not centre: two type sizes beside each other sit on a shared
+     baseline or they look dropped. flex-wrap is the phone's escape -- AGENDA
+     and the window together need more than 343px, so below that the line
+     breaks and the window lands back underneath, which is where it was
+     yesterday and still reads. The row gap is what it lands on. */
+  .page-title {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: var(--space-4) var(--space-16);
+    margin: 0 0 var(--space-32);
+  }
+  /* The title and the line under it are ONE object, so the section's own
+     96px top margin cannot come between them. Specificity settles it without
+     relying on source order: `h1 + .block` is a class and an element, which
+     beats the plain `.block` in both the base rule and the phone one. */
+  .page-title + .block { margin-top: 0; }
+  /* The lede at a section heading's size, --t-section, with that step's own
+     leading and tracking. The FACE stays the body's: a heading is Space
+     Grotesk here, and setting three lines of running prose in the display
+     face at 48px makes a poster rather than a sentence. Size was what was
+     asked for. */
+  .intro {
+    color: var(--ink); margin: 0 0 var(--space-32);
+    font-size: var(--t-section); line-height: var(--lh-section);
+    letter-spacing: var(--tr-section);
+  }
+
+  /* THE MENU, AT A HEADING'S SIZE. :global because nav lives in
+     Layout.astro and carries that component's scope attribute, not this
+     one's -- a plain `nav a` here would compile to a selector matching
+     nothing. It is safe to leave unscoped: this stylesheet ships only with
+     the page that renders it, so no other page picks the rule up. Verified
+     against the built archive and event pages rather than assumed.
+
+     Deliberately NOT in base.css. Every other page still has a visible h1 --
+     38px on an event -- and a 48px nav above it would outrank the title of
+     the thing you came to read. */
+  :global(nav a), :global(.nav-button) {
+    font-size: var(--t-section); line-height: var(--lh-section);
+    letter-spacing: var(--tr-section);
+  }
   .empty { color: var(--ink); }
   .more {
     margin: var(--space-32) 0 0; padding-top: var(--space-16);
@@ -256,11 +323,34 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      archive's was 1.1rem, so the family was asserted in a comment and nowhere
      else. */
   .block { margin: var(--space-96) 0; }
+  /* Uppercase, to match AGENDA. The two are the page's only section titles
+     and they are now set the same way in every respect. .window is NOT caught
+     by this selector -- it left .block to sit beside the h1 -- which is the
+     one thing to check if it ever reads as a heading again. */
   .block h2 {
     font-size: var(--t-section); line-height: var(--lh-section);
     letter-spacing: var(--tr-section);
     font-weight: var(--weight-heavy); color: var(--ink);
+    text-transform: uppercase;
     margin: 0 0 var(--space-32);
+  }
+  /* "Les 7 prochains jours" in BODY TYPE -- it is no longer the heading of
+     this section, it is the subtitle saying which slice of the agenda the
+     rows below cover. Every heading property is undone explicitly rather
+     than by omission: the family, the weight, the size, the leading and the
+     tracking all come from .block h2 above and all of them would survive a
+     partial override.
+
+     ONLY THE FIRST SECTION. Évènements is still a section heading and keeps
+     --t-section, which is why this is a class and not `.block:first-of-type
+     h2` -- the two sections are now different kinds of thing, and the
+     difference should be stated in the markup rather than inferred from
+     position. */
+  .window {
+    font-family: var(--font-body); font-weight: var(--weight);
+    font-size: var(--t-body); line-height: var(--lh-body);
+    letter-spacing: normal; color: var(--ink);
+    margin: 0;
   }
 
   .events { list-style: none; padding: 0; margin: 0; }
@@ -329,19 +419,51 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      accent-orange. Measured, not reasoned: the computed colour read
      rgb(229,80,57) where this comment claimed ink. */
   .where .map, .card-where .map { color: inherit; }
-  .map .venue, .card-where .map {
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-decoration-color: var(--rule);
-    text-underline-offset: 4px;
+  /* NO UNDERLINE AT REST, from 2026-10-23. The hairline above was there to
+     say "this is a link"; asked for and taken out, so the venue now reads as
+     plain ink until it is pointed at.
+
+     THE DECLARATION IS text-decoration: none AND NOT A DELETION. base.css
+     gives an <a> its colour and nothing else, so the BROWSER's default
+     underline is what was underneath -- removing our rule would have left a
+     full-strength black underline rather than no underline at all.
+
+     What is left: colour and an underline on hover, and the global
+     :focus-visible outline for a keyboard, which is the one affordance that
+     does not depend on this rule. A mouse user now has no resting signal that
+     the venue is clickable; that is the cost of the change, recorded here
+     rather than discovered later. */
+  .where .map, .card-where .map, .map .venue { text-decoration: none; }
+  /* SCOPED TO .where AND .card-where, and that is a FIX rather than tidying.
+     Astro appends its scope attribute to every compound in a selector, so
+     `.where .map` ships as `.where[cid] .map[cid]` -- four in the class
+     column -- while `.map:hover` ships as `.map[cid]:hover`, which is three.
+     The `color: inherit` above therefore beat the hover colour and always
+     had: measured 2026-10-23, the hovered anchor computed rgb(23,22,20),
+     ink, where the comment above claimed the accent. Naming the parent here
+     puts the two at five against four.
+
+     It had been invisible because the resting underline was doing the work.
+     With that gone, hover is the only thing a mouse has. */
+  .where .map:hover, .where .map:focus-visible,
+  .card-where .map:hover, .card-where .map:focus-visible {
+    color: var(--accent-text);
   }
-  .map:hover, .map:focus-visible { color: var(--accent-text); }
   .map:hover .venue, .map:focus-visible .venue,
   .card-where .map:hover, .card-where .map:focus-visible {
-    text-decoration-color: currentColor;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
   }
 
-  .time { color: var(--ink); font-size: var(--t-body); }
+  /* THE ROW IS ONE SIZE AT EVERY WIDTH from 2026-10-23, bar the eyebrow.
+     The time, the organizer and the cancellation stamp were the three
+     fields still set at --t-body while the date, the title and the place
+     were at --t-h2 -- a split that made sense when the date and the place
+     were the only two promoted, and stopped making sense once the answer
+     was 'all of it'. --type is the one thing that steps down now, which is
+     what marks where a row begins. */
+  .time { color: var(--ink); font-size: var(--t-h2); line-height: var(--lh-h2); }
   /* The eyebrow is the only repeated colour on the page, and --accent-text
      rather than --accent because it is TEXT: the raw brand orange is 3.79:1
      on paper and fails AA. */
@@ -353,7 +475,7 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
   h3 { font-size: var(--t-h2); line-height: var(--lh-h2); margin: var(--space-4) 0 var(--space-4); }
   h3 a { color: inherit; text-decoration: none; }
   h3 a:hover { text-decoration: underline; }
-  .meta { margin: 0; color: var(--ink); font-size: var(--t-body); }
+  .meta { margin: 0; color: var(--ink); font-size: var(--t-h2); line-height: var(--lh-h2); }
   /* Cancellation is structural, not chromatic: the strikethrough, the dimming
      and the stamp carry it. The red this used to be sits one hue from the
      brand orange and the two muddied each other, and the accent is already
@@ -362,7 +484,10 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      So the status is marked by CASE AND TRACKING, in ink, which is the same
      typographic register as the eyebrow without taking a second colour. The
      note after it stays muted: the stamp is the message, the note is detail. */
-  .status { margin: var(--space-4) 0 0; font-size: var(--t-body); color: var(--ink); }
+  .status {
+    margin: var(--space-4) 0 0; color: var(--ink);
+    font-size: var(--t-h2); line-height: var(--lh-h2);
+  }
   .tag {
     text-transform: uppercase;
     letter-spacing: var(--tr-kicker);
@@ -401,13 +526,29 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
   .card h3 {
     font-size: var(--t-card); line-height: var(--lh-card);
     letter-spacing: var(--tr-card);
-    margin: var(--space-4) 0 var(--space-12);
+    margin: var(--space-4) 0;
   }
   .card h3 a { color: inherit; text-decoration: none; }
   .card h3 a:hover { text-decoration: underline; }
-  .card-where { margin: 0; font-size: var(--t-body); }
+  /* --lh-h2 (1.25) AND NOT --lh-meta (1.5), at every width. 1.5 is the floor
+     WCAG 1.4.8 sets for line spacing inside a BLOCK OF TEXT, and that is what
+     stopped the body leading there earlier today. These are not blocks of
+     text: a venue, a date, a rhythm -- one short line each, which wrap only
+     on the longest venue name in the fixture. The criterion is about keeping
+     a reader's eye on the right line through a paragraph, and a paragraph is
+     the thing this is not.
+
+     The title keeps --lh-card, which was always tighter than either.
+
+     ...AND THE 12px UNDER THE TITLE GOES WITH IT. Leading is only half of
+     what reads as space between lines; the other half was three margins, and
+     on a phone they went to zero on 2026-10-23 while desktop kept 4/12/4.
+     Same section, two spacings, for no reason other than which rule was
+     edited. */
+  .card-where { margin: 0; font-size: var(--t-body); line-height: var(--lh-h2); }
   .card-when, .card-who {
-    margin: var(--space-4) 0 0; font-size: var(--t-body); color: var(--ink);
+    margin: 0; font-size: var(--t-body); line-height: var(--lh-h2);
+    color: var(--ink);
   }
 
   /* A LINE, not a section. These are established regulars with no date inside
@@ -481,6 +622,20 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
     .card.has-flyer .card-where { order: 4; }
     .card.has-flyer .card-when  { order: 5; margin-top: 0; }
 
+    /* ONE GAP WAS DOING TWO JOBS. The 12px above separates the flyer from the
+       words AND every line of text from the next, because `order` interleaves
+       them as siblings of one grid. Tightening the lines to match a card
+       without a flyer -- 4px -- would have pushed the image hard against the
+       kicker above it and the title below; leaving it at 12 left this one
+       card type visibly looser than every other listing on the page.
+
+       So the gap goes to the text's spacing and the IMAGE buys its own air
+       back with a margin. 4 + 8 lands the flyer 12px clear on both sides,
+       exactly where it was, while the three text lines close up. Measured
+       after: type-media 12, media-h3 12, h3-where 4, where-when 4. */
+    .card.has-flyer { gap: var(--space-4); }
+    .card.has-flyer .card-media { margin: var(--space-8) 0; }
+
     /* `height: auto` is NOT redundant here, and leaving it out cost a
        deadlock. The base rule sets width:100% with aspect-ratio:1, and that
        square ratio was quietly doing a second job: reserving the box before a
@@ -533,6 +688,69 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
   @media (max-width: 40rem) {
     .block { margin: var(--space-48) 0; }
 
+    /* LESS LEADING EVERYWHERE ON A PHONE. Everything that inherits the body's
+       --lh-body (1.6) gets --lh-meta (1.5) instead: the lede, the empty-state
+       lines, the card fields, the regulars line and the archive link. The
+       headings are not in the list because they were never loose -- h1 is at
+       1.05, a section heading at 1.08, a card title at 1.25.
+
+       1.6 is a measure-length decision. It was chosen for a 75rem shell where
+       a paragraph runs long and the eye needs help finding the next line; a
+       343px column does not, and the same ratio there just spreads the page
+       out. */
+    .empty, .standing, .more { line-height: var(--lh-meta); }
+
+    /* THE LEDE NEEDS ITS OWN LEADING ONCE IT IS A HEADING'S SIZE, and the
+       phone is where that bites. --lh-section is 1.03/1.08 because a section
+       heading is one line, or two; at 375px this sentence wraps to SEVEN at
+       31px, and a paragraph set solid collides its own ascenders with the
+       descenders above them. --lh-h2 (1.25) is the step that reads as prose
+       without going back to the 1.5 it had as body text.
+
+       Desktop keeps --lh-section: at 48px in a 75rem column the same sentence
+       is two lines, which is a heading's shape and takes a heading's
+       leading. */
+    .intro { line-height: var(--lh-h2); }
+
+    /* A CARD IS AN EVENT TOO, so its fields take the same --t-meta as a row's.
+       Two listings of the same thing on one page, one at 20px and one at 16,
+       would read as an accident -- and on a phone the grid is a single column
+       at the same 343px as a row, so they are literally side by side down the
+       page.
+
+       It also repairs something this session broke in passing: `.type` is one
+       rule for both listings, so sending the row's eyebrow to --t-meta sent
+       the card's with it, leaving a card whose label was SMALLER than the
+       venue under it. Now the label and the fields agree again.
+
+       The card TITLE keeps --t-card (27px) rather than joining the row's
+       --t-h1 (31px). Those are two tuned triples -- size, leading, tracking --
+       and the card's was measured against the reference's own Events section.
+       Worth a second look: at one column they are the same object in two
+       sizes. */
+    .card-where, .card-when, .card-who { font-size: var(--t-meta); }
+
+    /* AND THE CARD TITLE JOINS THE ROW TITLE, which closes the question left
+       open above. --t-card (27px) was measured against the reference's Events
+       section at a ~460px column; on a phone the grid is ONE column at 343px,
+       the same width as a row, so the two listings are the same object
+       stacked down one page and had no business being 27 and 31.
+
+       All three of the triple move together -- size, leading and tracking --
+       because --tr-card (-0.034em) was chosen for --t-card. Carrying a
+       tracking value across to a different size is the mistake docs/DESIGN.md
+       records as "taking a number without its role".
+
+       SPACING TO MATCH TOO. Measured inside a card before this: 8px above the
+       title, 12px below it, 4px before the date -- against a row, which is
+       flush, every line separated by its own leading and nothing else. The
+       title keeps the row's 4px either side; the rest goes to zero. */
+    .card h3 {
+      font-size: var(--t-h1); line-height: var(--lh-h1);
+      letter-spacing: var(--tr-h1);
+      margin: var(--space-4) 0;
+    }
+
     /* A row title's line box is 27.5px and a card's 30px, so 10px either side
        takes them to 47.5 and 50. 8px was tried first and produced 43.5 -- half
        a pixel short, and invisible to a probe that rounds before comparing.
@@ -550,8 +768,44 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      steps down, so the two changes now happen together instead of leaving a
      band with desktop-sized dates in a phone-sized layout. */
   @media (max-width: 40rem) {
-    .events li { grid-template-columns: 1fr; gap: var(--space-4); }
+    /* gap: 0, down from --space-4. Stacked, every field is its own grid item,
+       so that gap was 4px of air ADDED to each line's own leading -- five
+       items to a row, four gaps, 16px per row on top of the line boxes. With
+       the row set at --lh-meta the leading already separates the lines, and
+       what the gap separated was a column layout that no longer exists here.
+       h3 keeps its own 4px margins, so the title still breathes. */
+    .events li { grid-template-columns: 1fr; gap: 0; }
     .where { grid-column: auto; }
+
+    /* THE EVENT PAGE'S SIZES, NOT JUST ITS FACES -- 2026-10-23, and it
+       replaces the "one size across the stacked row" answer from earlier the
+       same day. That one put everything at the title's size; this one puts
+       the title at --t-h1 and everything else at --t-meta, which is exactly
+       the two-step an event page has: one large thing, one size under it.
+
+       The eyebrow goes to --t-meta with the rest rather than keeping
+       --t-kicker. It was the smaller thing when the row was uniform; with the
+       row at 16px, leaving it at 20 would have made the format label the
+       second-largest text in the row. It is still marked -- uppercase, the
+       accent, +0.09em -- which is how the same label works on an event page.
+
+       A 31px title in a list of eight rows is a lot of title. That is the
+       shape asked for, and it is also what makes the row scannable: the one
+       thing a reader is looking for is the only thing set large. */
+    h3 { font-size: var(--t-h1); line-height: var(--lh-h1); }
+    /* --lh-h2 (1.25), matching the cards -- the two listings stack in ONE
+       column on a phone, directly above one another, so 24px line boxes in a
+       row against 20px in a card was visible as a mistake rather than as a
+       distinction. Same reasoning as the cards: a date, an organizer and a
+       venue are single short lines, not the block of text WCAG 1.4.8's 1.5
+       floor is written for. The lede, the prose and the footer keep 1.5.
+
+       .type is in this list, so BOTH eyebrows move -- the rule is shared
+       between the row and the card, which is how the card's eyebrow came to
+       be 16px in the first place. */
+    .date, .time, .type, .meta, .where, .status {
+      font-size: var(--t-meta); line-height: var(--lh-h2);
+    }
 
     /* THE ROW GIVES UP ITS EQUAL WEIGHTS HERE, deliberately, and this reverses
        the rule three columns up. Across three columns, setting when/what/where
@@ -568,9 +822,37 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
        decide whether to go. Venue under organizer, which is what a first pass
        at this produced, had "MJC Magnan" set smaller than "El Gato Tanguero"
        on a screen where the venue is the harder question. */
-    .date  { font-size: var(--t-body); line-height: var(--lh-body); }
-    .where { font-size: var(--t-body); line-height: var(--lh-body); }
-    .meta  { font-size: var(--t-meta); line-height: var(--lh-meta); }
+    /* ONE SIZE ACROSS THE STACKED ROW, bar the eyebrow -- asked for on
+       2026-10-23, and it reverses the three paragraphs above rather than
+       qualifying them. They are kept because the reasoning is still the
+       reasoning, and because a reader who finds this block should see what it
+       overturned: the claim was that three identical lines read as a flat
+       list with nothing marking where a row starts. What marks it now is
+       --type, which is the only thing that steps DOWN, plus the rule above
+       every row and the accent the eyebrow carries.
+
+       --t-kicker (20px) is already smaller than --t-h2 (24px here), so the
+       eyebrow needs no rule of its own: the token that exists for it is
+       the token that makes it the smaller thing. .date and .where need none
+       either -- dropping their overrides returns them to the --t-h2 the
+       three-column row sets, which is what the title is set at. */
+    /* THE SAME FACES AS AN EVENT PAGE, asked for on 2026-10-23. That page
+       sets its title in the display face and every fact under it in the body
+       face at normal tracking; here the date and the place were the odd ones
+       out, set in Space Grotesk at --tr-h2 like the title they sit under.
+
+       So they join the time and the organizer, which were already body type,
+       and the row ends up with exactly the event page's split: Space Grotesk
+       for the title and the eyebrow, IBM Plex for everything that answers
+       when, who and where. Nothing here changes a SIZE -- the row is one size
+       at every width now, three rules up.
+
+       --weight rather than --weight-medium: both are 500, and this is the
+       name the event page uses for the same job. */
+    .date, .where {
+      font-family: var(--font-body); font-weight: var(--weight);
+      letter-spacing: normal;
+    }
     /* Not a flex row. A date range wraps to two lines on a phone, and as a
        flex item the time was then stranded at the top right of the wrapped
        date instead of following it. As inline text it simply flows after. */

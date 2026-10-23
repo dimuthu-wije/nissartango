@@ -136,8 +136,28 @@
   --t-card:     34px;   --lh-card:     1.22; --tr-card:     -0.034em;
   --t-kicker:   20px;   --lh-kicker:   1.33; --tr-kicker:    0.09em;
   --word-space: -0.02em;
+  /* --lh-body 1.6 -> 1.5, 2026-10-23, asked for on desktop.
+     LEADING IS A MEASURE-LENGTH DECISION. 1.6 was set for a 75rem shell where
+     a paragraph runs long and the eye needs help finding the start of the
+     next line; at the lengths this site actually sets, it was spreading the
+     page out instead.
+
+     IN PRACTICE THIS ONLY MOVES DESKTOP, although a token cannot be scoped to
+     a width. Every phone rule that mattered had already been sent to
+     --lh-meta earlier today, and --lh-meta IS 1.5 -- so below 40rem the two
+     now agree and nothing visibly changes.
+
+     1.5 AND NO FURTHER. It is the floor WCAG 1.4.8 names for line spacing
+     inside a block of text, and this file sets contrast and tap targets by
+     measurement rather than by eye; the leading is held to the same standard.
+     Tighter is available and would cost that.
+
+     --lh-body reaches only two declarations -- base.css's `body` and the
+     editor's own `font:` shorthand -- and everything else inherits it, which
+     is why one line here is the whole change AND why it reaches the editor.
+     tokens.css is copied to editor/public/ byte for byte. */
   --t-lead:     20px;   --lh-lead:     1.55;
-  --t-body:     20px;   --lh-body:     1.6;
+  --t-body:     20px;   --lh-body:     1.5;
   --t-meta:     16px;   --lh-meta:     1.5;
   --t-caption:  13px;   --lh-caption:  1.54;
 

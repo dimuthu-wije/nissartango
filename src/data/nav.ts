@@ -21,8 +21,15 @@ export interface NavItem {
   label: string;
 }
 
+/* Évènements is a SECTION of the agenda, not a page, so its entry is a
+ * fragment. verify-build check 8 strips #... before resolving, so it is
+ * checked as `/` and passes; isCurrent never matches it, which is correct --
+ * a section is not a page and should not be marked as the current one.
+ *
+ * Order follows the page: the two blocks of the agenda, then the archive. */
 export const NAV: NavItem[] = [
   { href: '/', label: 'Agenda' },
+  { href: '/#evenements', label: 'Évènements' },
   { href: '/archives/', label: 'Archives' },
 ];
 

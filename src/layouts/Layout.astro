@@ -101,10 +101,18 @@ const og = image ?? {
   <body>
     <header>
       <a href="/" class="logo" aria-label="nissARTango — accueil" set:html={wordmark} />
-      {/* Text only, no icons and no background pills, per the reference. Two
-          entries wrap rather than collapse at narrow widths: a disclosure menu
-          needs JavaScript, and verify-build check 3 fails the build on any. */}
+      {/* Text only, no icons and no background pills, per the reference.
+          Below 62rem it collapses to a dropdown -- see base.css for why that
+          breakpoint and why a CHECKBOX rather than <details>.
+
+          This comment used to say a disclosure menu "needs JavaScript, and
+          verify-build check 3 fails the build on any". Both halves were
+          wrong. A disclosure needs no script -- <details> is native, and a
+          checkbox and a label are older still -- and check 3 looks for .js
+          files shipped into dist/, not for <script> tags in the markup. */}
       <nav aria-label="Navigation principale">
+        <input type="checkbox" id="nav-toggle" class="nav-toggle" />
+        <label for="nav-toggle" class="nav-button">Menu</label>
         <ul>
           {NAV.map((item) => (
             <li>

@@ -262,6 +262,34 @@ const jsonLd = nodes.length === 1
   </a>
 
   <span class="type">{formatSummary(e)}</span>
+
+  {/* THE DATE ABOVE THE TITLE, from 2026-10-23, and at every width rather
+      than only on a phone -- one structure beats two.
+
+      It was the first row of the <dl> below, which on a portrait flyer put it
+      a full screen down: the page opened on a poster and the reader scrolled
+      past it to learn when the thing happens. Kicker, date, headline is the
+      ordinary editorial stack and it says the two facts that decide whether
+      to read on before the title has to carry them alone.
+
+      THE LABEL IS STILL SAID, clipped exactly as the <dt>s are. "Prochaine
+      date" is not furniture on a weekly series -- it is the difference
+      between the next one and the only one -- and leaving the dl must not
+      cost it. */}
+  <p class="when">
+    <span class="label">{dateLabel}</span>
+    {/* The END TIME, which until 2026-10-02 appeared nowhere on this page.
+        duration_minutes had one use in the whole site -- schema.org's
+        endDate -- so the markup told aggregators how long an event ran and
+        the page told a reader nothing. No duration still renders "à 18:00",
+        because for a multi-day workshop whose days differ in length that is
+        the honest answer rather than a missing one. */}
+    {isRun
+      ? dateRangeLabel(dates[0].start, dates[dates.length - 1].start, tz, { year: false })
+      : fmtDay(when, tz)} {spanLabel(when, e.duration_minutes, tz)}
+    {recurrenceLabel && <span class="recur">{recurrenceLabel}</span>}
+  </p>
+
   <h1>{e.title}</h1>
 
   {cancelled && (
@@ -283,20 +311,6 @@ const jsonLd = nodes.length === 1
   )}
 
   <dl class="details">
-    <dt>{dateLabel}</dt>
-    <dd>
-      {/* The END TIME, which until 2026-10-02 appeared nowhere on this page.
-          duration_minutes had one use in the whole site -- schema.org's
-          endDate -- so the markup told aggregators how long an event ran and
-          the page told a reader nothing. No duration still renders "à 18:00",
-          because for a multi-day workshop whose days differ in length that is
-          the honest answer rather than a missing one. */}
-      {isRun
-        ? dateRangeLabel(dates[0].start, dates[dates.length - 1].start, tz, { year: false })
-        : fmtDay(when, tz)} {spanLabel(when, e.duration_minutes, tz)}
-      {recurrenceLabel && <span class="recur">{recurrenceLabel}</span>}
-    </dd>
-
     <dt>Lieu</dt>
     <dd>
       {/* A LINK ONLY WHEN IT WOULD LAND SOMEWHERE. mapsUrl() returns null for
@@ -467,7 +481,7 @@ const jsonLd = nodes.length === 1
     margin: 0 0 var(--space-32); padding: 0;
     font-size: var(--t-body);
   }
-  .details dt {
+  .details dt, .when .label {
     position: absolute; width: 1px; height: 1px;
     padding: 0; margin: -1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap; border: 0;
@@ -475,11 +489,15 @@ const jsonLd = nodes.length === 1
   /* The values are set like a row title on the home page -- the same display
      face, weight and step of the scale -- because that is what they are: the
      answer to when, where and how much, which the agenda already sets this way. */
-  .details dd {
+  .details dd, .when {
     margin: 0;
     font-family: var(--font-display); font-weight: var(--weight-medium);
     font-size: var(--t-h2); line-height: var(--lh-h2); letter-spacing: var(--tr-h2);
   }
+  /* The date left the list but not its typography: it is the same answer to
+     the same kind of question, and setting it apart up here would make it a
+     third voice between the kicker and the headline. */
+  .when { margin: var(--space-4) 0 var(--space-8); }
   /* THE ADDRESS KEEPS ITS INK. It is set at --t-h2 in the display face, so the
      site's default link colour -- accent, full underline -- would turn the
      loudest block on the page into the loudest link on the page, and it is an
@@ -551,5 +569,63 @@ const jsonLd = nodes.length === 1
     display: inline-block; background: var(--accent); color: var(--ink);
     padding: var(--space-12) var(--space-24); border-radius: var(--radius-pill);
     text-decoration: none; font-size: var(--t-body);
+  }
+  /* ON A PHONE, ONE SIZE FOR EVERYTHING BUT THE TITLE -- AND IT IS --t-meta.
+   *
+   * At 375px this page carried three sizes above the body: the values at 24px
+   * in the display face, the prose at 24, and "Prochaines dates" at 31 -- a
+   * hierarchy drawn for a 1200px column, where a step up has room to read as
+   * a step up. On a 343px measure it reads as four competing voices.
+   *
+   * So the scale collapses to ONE size here and the h1 keeps the only step.
+   * The headings do not stop being headings: "Prochaines dates" holds
+   * --weight-heavy and the kicker holds its case and its colour, which is
+   * enough to mark a boundary when there is no room to mark it by size.
+   *
+   * THE SIZE IS --t-meta, NOT --t-body, and that is a measured choice rather
+   * than a nudge. 20px over a 343px measure is about 34 characters to the
+   * line; 16px is about 45, the bottom of the range a paragraph wants and the
+   * first point on this scale that reaches it. There is nothing between the
+   * two -- the public ramp steps 13 -> 16 -> 20 on purpose -- so the honest
+   * options were 20 or 16, and 20 was the one already on screen.
+   *
+   * --lh-meta (1.5) comes with it, against --lh-body (1.6). 32px line boxes
+   * become 24px: the leading was set for a long measure, and a short one
+   * needs less of it to keep the eye on the right line.
+   *
+   * THE H1 IS UNTOUCHED -- 31px at --lh-h1 -- so the one step that survives
+   * gets wider rather than narrower, which is the point of collapsing the
+   * rest.
+   *
+   * THE DISPLAY FACE GOES WITH THE SIZE. Space Grotesk at --tr-h2 is tracked
+   * -0.02em because large type has air to buy back; set this small it is
+   * simply tight, and an address is the one block on the page a reader parses
+   * character by character. The values become body type -- IBM Plex, normal
+   * tracking -- like everything around them.
+   *
+   * THIS BLOCK IS LAST IN THE FILE ON PURPOSE. A media query carries no
+   * specificity of its own, so it ties with every plain class rule here and
+   * source order decides. While it sat higher up, .cta -- declared below it
+   * at the same specificity -- won, and the one button on the page stayed
+   * 20px while everything around it was 16. Measured, not reasoned about.
+   * Anything added after this block will beat it the same way. */
+  @media (max-width: 40rem) {
+    .back, .type, .when, .details dd, .recur, .note, .social, .contact,
+    .dates h2, .dates ul, .prose, .cta {
+      font-size: var(--t-meta); line-height: var(--lh-meta);
+    }
+    .when, .details dd {
+      font-family: var(--font-body); font-weight: var(--weight);
+      letter-spacing: normal;
+    }
+    .dates h2 { letter-spacing: normal; }
+    /* :global, because these come out of <Content /> -- an organizer's own
+       markdown -- and never carry this component's scope attribute. The
+       inherited size above reaches a <p> and cannot reach these, which
+       base.css sets explicitly at --t-h2. They stay headings by weight:
+       the browser's bold matches IBM Plex's 600, a face it ships. */
+    .prose :global(h2), .prose :global(h3) {
+      font-size: var(--t-meta); line-height: var(--lh-meta);
+    }
   }
 </style>
