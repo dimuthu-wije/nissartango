@@ -290,8 +290,14 @@ const nothingAtAll = soon.length === 0 && later.length === 0 && standing.length 
      Grotesk here, and setting three lines of running prose in the display
      face at 48px makes a poster rather than a sentence. Size was what was
      asked for. */
+  /* --space-96 under the lede, 32 -> 64 -> 96 over two passes. It is the only
+     gap on the page between two different KINDS of thing -- a sentence about
+     the site, then the agenda itself -- and 32px is what separates a title
+     from its own rows further down, so the boundary has to be the larger of
+     the two by a clear margin. It is now the widest gap on the page, which is
+     the right place for the widest gap to be. */
   .intro {
-    color: var(--ink); margin: 0 0 var(--space-32);
+    color: var(--ink); margin: 0 0 var(--space-96);
     font-size: var(--t-section); line-height: var(--lh-section);
     letter-spacing: var(--tr-section);
   }

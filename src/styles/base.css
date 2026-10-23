@@ -62,7 +62,20 @@ img { max-width: 100%; height: auto; }
  *
  * No rule under the header, following the reference: the page begins at the
  * first thing worth reading, not at a line drawn above it. */
+/* STICKY, so the menu stays reachable while reading. It is NOT sticky below
+ * 40rem -- see the un-sticking at the end of this file -- and the two facts
+ * are the same fact: 40rem is exactly where the menu leaves the header for a
+ * fixed button at the bottom right, so it is already reachable there and a
+ * band at the top would only eat screen.
+ *
+ * --paper is load-bearing, not decoration: a transparent sticky header shows
+ * the agenda scrolling through the wordmark.
+ *
+ * WHAT IT COSTS: 104px of every screen, measured -- a 4rem logo between two
+ * --space-20 paddings. On a 900px window that is 12%. */
 header {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--paper);
   max-width: var(--width-shell);
   margin: 0 auto;
   padding: var(--space-20) var(--gutter);
@@ -70,6 +83,19 @@ header {
   justify-content: space-between;
   align-items: center;
 }
+
+/* A FRAGMENT LANDS UNDER A STICKY BAND unless it is told not to. The nav's
+ * Évènements entry is /#evenements, and an event page deep-links each date as
+ * #date-<key>; without this, every one of them scrolls its target to y=0,
+ * which is behind the header.
+ *
+ * :target rather than a blanket [id], so it applies only to the element the
+ * fragment actually names.
+ *
+ * The value is DERIVED from the band rather than guessed: the logo is 4rem
+ * between two --space-20, which is the 104px measured above, plus --space-16
+ * of air so the heading does not sit flush against the rule. */
+:target { scroll-margin-top: calc(4rem + var(--space-20) * 2 + var(--space-16)); }
 /* THE HEADER STACKS ON A PHONE, and it is arithmetic rather than taste.
  * Measured at 375px: the shell is 343px inside the gutters and the nav needs
  * 213px on one line -- it grew with the type and again with the 44px tap
@@ -217,13 +243,13 @@ nav ul {
 .nav-toggle, .nav-button { display: none; }
 
 @media (max-width: 76rem) {
-  /* The panel is positioned against the HEADER, not against nav. Against nav
-     it was 202px wide on a phone and the lede showed through on either side
-     of it -- a panel with body text beside it reads as broken layout rather
-     than as a menu. Spanning the header, inset by the gutter, it covers what
-     it overlaps. It also means one rule works for both header shapes: a row
-     above 40rem, a column below. */
-  header { position: relative; }
+  /* `header { position: relative }` lived here, to anchor the panel while it
+     was absolutely positioned. The panel came back into flow when the border
+     went, which left this rule doing nothing -- until the header was asked to
+     be sticky, at which point it was doing something after all: `relative`
+     beat `sticky` on source order and the band scrolled away between 40 and
+     76rem while working everywhere else. Deleted 2026-10-23, found by
+     measuring the computed position at 900px rather than at one width. */
 
   .nav-toggle {
     display: block;
@@ -340,25 +366,41 @@ nav ul {
     color: var(--paper);
     font-size: var(--t-meta); line-height: var(--lh-meta);
   }
-  /* The current page keeps its accent rule; on ink it is a graphic at 3:1,
-     not lettering, which is the same reasoning as the header version. */
+  /* THE ONLY LINES LEFT IN ANY MENU, and they are orange on the black panel.
+     Measured rather than assumed, because the pairing is new: --accent
+     #E55039 on --ink #171614 is 4.77:1, well past the 3:1 a 2px graphic
+     needs. On paper the same orange is 3.79:1 -- it clears 3 but not the 4.5
+     lettering would want, which is why it was only ever used as a rule and
+     never as a label.
+
+     The lettering stays --paper at 18.08:1; the orange is the marker, not the
+     text. */
+  .nav-toggle:checked ~ ul a:hover,
   .nav-toggle:checked ~ ul a[aria-current="page"] {
+    text-decoration: underline;
     text-decoration-color: var(--accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
   }
+
+  /* No band to stick: the menu is the floating button now, the wordmark is
+     the only thing left up there, and 104px of fixed chrome on an 812px
+     screen would be 13% of it spent on a logo. The scroll-margin goes with
+     it -- with nothing overlapping the top, it would only leave a gap above
+     whatever was linked to. */
+  header { position: static; }
+  :target { scroll-margin-top: 0; }
 }
 
+/* NO LINES IN THE TOP MENU, 2026-10-23 -- not on hover, not under the page
+ * you are on. The header carries the wordmark, three words and nothing else.
+ *
+ * WHAT THIS COSTS, said plainly: above 40rem a sighted reader can no longer
+ * see which page they are on. aria-current="page" is still in the markup, so
+ * a screen reader still announces it and nothing is broken for assistive
+ * technology -- but the visible half of that signal is gone, and it was the
+ * only one. The floating menu below 40rem keeps its marker; see there. */
 nav a { color: var(--ink); text-decoration: none; }
-nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
-
-/* The current page is marked with a rule in the accent, not with coloured
- * text: as a 2px graphic the brand orange only needs 3:1 and has 3.79:1,
- * where as lettering it would need 4.5:1 and fail. The label stays ink. */
-nav a[aria-current="page"] {
-  text-decoration: underline;
-  text-decoration-color: var(--accent);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
-}
 
 main {
   max-width: var(--width-shell);
