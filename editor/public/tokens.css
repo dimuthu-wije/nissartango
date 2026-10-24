@@ -203,14 +203,26 @@
      held two 698px cells, so it is nearly full bleed with small gutters. 64rem
      was chosen when a row had two columns; it now has three, and the middle
      one was being squeezed before the breakpoint that rescues it. */
-  --width-shell: 75rem;
+  /* 90rem from 2026-10-23, asked for as "reduce margin width" -- which on a
+     wide screen is the same request: 1200px of content in a 1538px window
+     leaves 169px of nothing on either side before the gutter even starts.
+     1440px is also the figure the paragraph above already measured on the
+     reference, where its Events grid held two 698px cells at that viewport.
+     Ours gives 688px cells at the same width, which is as close to the thing
+     being followed as this layout gets. */
+  --width-shell: 90rem;
   /* 45rem, not 34. A measure is a count of CHARACTERS, not a width: 34rem
      held ~65 characters at 16px and holds ~40 at the reference's 22px, which
      is a column, not a paragraph. The reference itself caps prose at nothing
      at all and runs it nearly full bleed; 45rem keeps roughly the 65 this
      had, which is the part of the old value that was actually the decision. */
   --width-prose: 45rem;
-  --gutter:      24px;
+  /* 16px, down from 24, and now ONE value at every width -- the phone block
+     below used to redefine it and no longer needs to. The gutter is the only
+     margin left once the shell stops binding, and it is the last thing
+     between the text and the edge of a phone, which is why it stops here
+     rather than going further. */
+  --gutter:      16px;
 }
 
 /* THE PHONE STEP OF THE SCALE, 2026-10-13.
@@ -236,7 +248,6 @@
  * where a phone wants less air, the RULE asks for a smaller token. */
 @media (max-width: 40rem) {
   :root {
-    --gutter: 16px;
     --t-masthead: 44px;   --lh-masthead: 1.05; --tr-masthead: -0.030em;
     --t-section:  31px;   --lh-section:  1.08; --tr-section:  -0.026em;
     --t-h1:       31px;

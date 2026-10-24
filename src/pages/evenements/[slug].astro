@@ -372,6 +372,13 @@ const jsonLd = nodes.length === 1
     </dd>
   </dl>
 
+  {/* THE DESCRIPTION COMES BEFORE THE DATES, 2026-10-23. It was the other way
+      round, which asked a reader to work through a list of occurrences before
+      finding out what the event IS -- and on a weekly series inside the
+      six-month horizon that list is long. What it is, then when it happens
+      again. */}
+  <div class="prose"><Content /></div>
+
   {dates.length > 0 && (
     <section class="dates">
       <h2>Prochaines dates</h2>
@@ -389,8 +396,6 @@ const jsonLd = nodes.length === 1
       </ul>
     </section>
   )}
-
-  <div class="prose"><Content /></div>
 
   {e.signup_url && !cancelled && (
     <a class="cta" href={e.signup_url} rel="noopener">S'inscrire</a>
@@ -437,9 +442,13 @@ const jsonLd = nodes.length === 1
    * Capping the width is what makes that attribute true again; it is not a new
    * decision, it is the one the markup already recorded.
    *
-   * The width cap is --width-prose rather than 46rem: the flyer now sits on
-   * exactly the measure of the text below it, which is a relationship rather
-   * than a number, and it cannot drift from the prose if that ever changes.
+   * The width cap is --width-prose rather than a literal 46rem. That was
+   * chosen so the flyer sat on exactly the measure of the text below it --
+   * a relationship rather than a number. THAT IS NO LONGER TRUE: the
+   * description was uncapped on 2026-10-23 and the flyer stayed. What keeps
+   * it here is the `sizes` attribute, which promises 46rem and would be a
+   * lie at any wider box; --width-prose happens to be 45rem and honours it.
+   * If --width-prose ever moves, check `sizes` rather than assuming.
    *
    * THE HEIGHT CAP IS THE NEW ONE. A portrait flyer -- and they are portrait,
    * the fixture's are 900x1200 because real ones are -- hits the width cap
@@ -554,8 +563,25 @@ const jsonLd = nodes.length === 1
   .dates li { padding: var(--space-4) 0; }
   .dates li.off { color: var(--ink); text-decoration: line-through; }
 
-  /* max-width lives with the .prose rules in base.css. */
-  .prose { margin-bottom: var(--space-32); }
+  /* THE DESCRIPTION RUNS THE FULL COLUMN HERE, 2026-10-23. base.css caps
+     .prose at --width-prose; this page uncaps it, so the text lines up with
+     the venue, the price and the dates list above and below it instead of
+     stopping at 62% of their width and leaving a ragged right edge down the
+     middle of the page.
+
+     MEASURED BEFORE AND AFTER, because the cap's own comment in tokens.css
+     is wrong about what it buys: it says 45rem "keeps roughly the 65"
+     characters, and at --t-h2 (28px) the longest paragraph in the fixture
+     actually ran 50 per line. Uncapped at a 1200px viewport it runs ~80 --
+     the long end of comfortable, and what the reference this design follows
+     does on its own pages, which cap prose at nothing at all.
+
+     The FLYER keeps --width-prose and does not follow. Its cap is not really
+     about the prose: `sizes` promises the browser the image will never exceed
+     46rem, so a wider box would stretch a 736px file across 1152 and go soft.
+     The comment there claims the two are tied so they cannot drift; they are
+     untied as of today, and the flyer's number is now its own. */
+  .prose { margin-bottom: var(--space-32); max-width: none; }
 
   /* Pill, per the reference's radius contrast -- and an INK label, not a
      cream one: cream on this orange is 3.79:1 and fails, ink is 4.77:1 and
